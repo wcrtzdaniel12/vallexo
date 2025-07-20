@@ -10,11 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
-  <script>
-    const SUPABASE_URL = "https://jknxzujfpgahylskiyoz.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imprbnh6dWpmcGdhaHlsc2tpeW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5NzgyMzAsImV4cCI6MjA2ODU1NDIzMH0.xvMU3rWSH8EC7ag2LZvgqMjFkOu3DDmD5hG3XrwYcwM";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  </script>
 </head>
 <body>
   <div class="topbar">
@@ -157,31 +152,37 @@
   </footer>
 
   <script src="js/script-onepage.js"></script>
-  <script>
-    // Get Started form handler
-    const form = document.querySelector('.get-started-form');
-    const button = form.querySelector('button[type="submit"]');
-    const note = form.querySelector('.form-note');
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-      button.disabled = true;
-      note.textContent = '';
-      const fullname = form.querySelector('#fullname').value.trim();
-      const linkedin = form.querySelector('#linkedin').value.trim();
-      const thoughts = form.querySelector('#thoughts').value.trim();
-      try {
-        const { error } = await supabase.from('early_access').insert({ fullname, linkedin, thoughts });
-        if (error) {
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = "https://jknxzujfpgahylskiyoz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imprbnh6dWpmcGdhaHlsc2tpeW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5NzgyMzAsImV4cCI6MjA2ODU1NDIzMH0.xvMU3rWSH8EC7ag2LZvgqMjFkOu3DDmD5hG3XrwYcwM";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.addEventListener('DOMContentLoaded', () => {
+      const form = document.querySelector('.get-started-form');
+      if (!form) return;
+      const button = form.querySelector('button[type="submit"]');
+      const note = form.querySelector('.form-note');
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        button.disabled = true;
+        note.textContent = '';
+        const fullname = form.querySelector('#fullname').value.trim();
+        const linkedin = form.querySelector('#linkedin').value.trim();
+        const thoughts = form.querySelector('#thoughts').value.trim();
+        try {
+          const { error } = await supabase.from('early_access').insert({ fullname, linkedin, thoughts });
+          if (error) {
+            note.textContent = '❌ Something went wrong. Please try again.';
+            button.disabled = false;
+          } else {
+            note.textContent = '✅ Thanks! We\'ll review your submission.';
+            form.reset();
+          }
+        } catch (err) {
           note.textContent = '❌ Something went wrong. Please try again.';
           button.disabled = false;
-        } else {
-          note.textContent = '✅ Thanks! We\'ll review your submission.';
-          form.reset();
         }
-      } catch (err) {
-        note.textContent = '❌ Something went wrong. Please try again.';
-        button.disabled = false;
-      }
+      });
     });
   </script>
 </body>
