@@ -9,6 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+  <script>
+    const SUPABASE_URL = "https://jknxzujfpgahylskiyoz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imprbnh6dWpmcGdhaHlsc2tpeW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5NzgyMzAsImV4cCI6MjA2ODU1NDIzMH0.xvMU3rWSH8EC7ag2LZvgqMjFkOu3DDmD5hG3XrwYcwM";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  </script>
 </head>
 <body>
   <div class="topbar">
@@ -62,7 +68,7 @@
         <div class="service-card">
           <span class="service-icon gold-icon">
             <!-- Cracked grid / abstract branching lines SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#d4a574" stroke-width="3"><rect x="6" y="6" width="36" height="36" rx="6"/><path d="M24 6v36M6 24h36"/><path d="M24 24l10-10M24 24l-10 10"/></g></svg>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><rect x="6" y="6" width="36" height="36" rx="6"/><path d="M24 6v36M6 24h36"/><path d="M24 24l10-10M24 24l-10 10"/></g></svg>
           </span>
           <h3>Pattern-breaking search</h3>
           <p>We track startups behaving in ways that don’t fit conventional categories—and that’s the point.</p>
@@ -70,7 +76,7 @@
         <div class="service-card">
           <span class="service-icon gold-icon">
             <!-- Web nodes / database streams SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#d4a574" stroke-width="3"><circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="6"/><path d="M24 6v12M24 30v12M6 24h12M30 24h12"/></g></svg>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="6"/><path d="M24 6v12M24 30v12M6 24h12M30 24h12"/></g></svg>
           </span>
           <h3>Uncommon data pipelines</h3>
           <p>We mine non-obvious signals from niche forums, changelogs, side projects, founder behavior—where most overlook.</p>
@@ -78,7 +84,7 @@
         <div class="service-card">
           <span class="service-icon gold-icon">
             <!-- Gear morphing into rocket / infinity loop SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#d4a574" stroke-width="3"><path d="M24 8a16 16 0 1 1-8.5 29.5"/><path d="M24 40a16 16 0 1 1 8.5-29.5"/><path d="M24 24l6-6M24 24l-6 6"/></g></svg>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><path d="M24 8a16 16 0 1 1-8.5 29.5"/><path d="M24 40a16 16 0 1 1 8.5-29.5"/><path d="M24 24l6-6M24 24l-6 6"/></g></svg>
           </span>
           <h3>Self-improving discovery loops</h3>
           <p>Our systems learn with every pick, getting sharper at recognizing early momentum before it's externally visible.</p>
@@ -86,7 +92,7 @@
         <div class="service-card">
           <span class="service-icon gold-icon">
             <!-- Magnifying glass over static noise / idea bulb SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#d4a574" stroke-width="3"><circle cx="20" cy="20" r="10"/><path d="M28 28l8 8"/><path d="M16 16h8M16 20h8M16 24h8"/></g></svg>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><circle cx="20" cy="20" r="10"/><path d="M28 28l8 8"/><path d="M16 16h8M16 20h8M16 24h8"/></g></svg>
           </span>
           <h3>Under-the-radar thesis building</h3>
           <p>We're not trend-chasing. We’re tracking foundational shifts—before they have names.</p>
@@ -151,5 +157,32 @@
   </footer>
 
   <script src="js/script-onepage.js"></script>
+  <script>
+    // Get Started form handler
+    const form = document.querySelector('.get-started-form');
+    const button = form.querySelector('button[type="submit"]');
+    const note = form.querySelector('.form-note');
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      button.disabled = true;
+      note.textContent = '';
+      const fullname = form.querySelector('#fullname').value.trim();
+      const linkedin = form.querySelector('#linkedin').value.trim();
+      const thoughts = form.querySelector('#thoughts').value.trim();
+      try {
+        const { error } = await supabase.from('early_access').insert({ fullname, linkedin, thoughts });
+        if (error) {
+          note.textContent = '❌ Something went wrong. Please try again.';
+          button.disabled = false;
+        } else {
+          note.textContent = '✅ Thanks! We\'ll review your submission.';
+          form.reset();
+        }
+      } catch (err) {
+        note.textContent = '❌ Something went wrong. Please try again.';
+        button.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html> 
