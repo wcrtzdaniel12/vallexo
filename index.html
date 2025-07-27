@@ -3,185 +3,867 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vallexo - Premium AI/Tech Solutions</title>
-  <link rel="icon" type="image/png" href="img/vallexo1.png">
-  <link rel="stylesheet" href="css/style-onepage.css?v=2">
+  <title>Memory Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(-2px, -2px); }
+      60% { transform: translate(2px, 2px); }
+      80% { transform: translate(2px, -2px); }
+      100% { transform: translate(0); }
+    }
+    
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+    
+    @keyframes ambient {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(0.5deg); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+    
+    .liminal-bg {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #1f1f1f 50%, #2a2a2a 75%, #1a1a1a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .liminal-bg::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
+      animation: ambient 20s ease-in-out infinite;
+    }
+    
+    .glitch-text {
+      animation: glitch 0.3s infinite;
+      text-shadow: 
+        2px 0 #00ffff,
+        -2px 0 #ff00ff,
+        0 2px #ffff00;
+    }
+    
+    .flicker-text {
+      animation: flicker 3s infinite;
+    }
+    
+    .scanline {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.5), transparent);
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+    }
+    
+    .glitch-button {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .glitch-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .glitch-button:hover::before {
+      left: 100%;
+    }
+    
+    .glitch-button:hover {
+      animation: glitch 0.1s infinite;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.5),
+        0 0 40px rgba(255, 0, 255, 0.3);
+    }
+    
+    .neon-pulse {
+      animation: pulse 4s ease-in-out infinite;
+    }
+    
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .text-shadow-glow {
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .brand-section {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 20px 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+    
+    .brand-section.scrolled {
+      background: rgba(0, 0, 0, 0.8);
+      border-bottom: 1px solid rgba(0, 255, 255, 0.4);
+    }
+    
+    .brand-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .brand-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: #00ffff;
+      text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+      letter-spacing: 2px;
+      animation: brand-glow 3s ease-in-out infinite;
+    }
+    
+    .brand-tagline {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 300;
+      letter-spacing: 1px;
+      opacity: 0.8;
+      animation: tagline-fade 4s ease-in-out infinite;
+    }
+    
+    @keyframes brand-glow {
+      0%, 100% { text-shadow: 0 0 15px rgba(0, 255, 255, 0.8); }
+      50% { text-shadow: 0 0 25px rgba(0, 255, 255, 1), 0 0 35px rgba(0, 255, 255, 0.5); }
+    }
+    
+    @keyframes tagline-fade {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    
+    .brand-logo:hover {
+      animation: brand-glitch 0.3s ease-in-out;
+    }
+    
+    @keyframes brand-glitch {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      75% { transform: translateX(-1px); }
+      100% { transform: translateX(0); }
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px);
+      z-index: 1000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .modal-content {
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      margin: auto;
+      position: relative;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+      animation: modal-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes modal-glow {
+      0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+      50% { box-shadow: 0 0 50px rgba(0, 255, 255, 0.4); }
+    }
+    
+    .modal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      color: #00ffff;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .form-group {
+      margin-bottom: 25px;
+    }
+    
+    .form-label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 4px;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.8);
+    }
+    
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .modal-button {
+      width: 100%;
+      padding: 16px 24px;
+      background: transparent;
+      border: 2px solid #00ffff;
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .modal-button:hover {
+      background: rgba(0, 255, 255, 0.1);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .modal-button:active {
+      transform: translateY(0);
+    }
+    
+    .modal-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .modal-button:hover::before {
+      left: 100%;
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+    
+    .modal-close:hover {
+      color: #00ffff;
+    }
+    
+    .error-message {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .error-message.show {
+      opacity: 1;
+    }
+    
+    .ticker {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.8);
+      border-top: 1px solid rgba(0, 255, 255, 0.3);
+      overflow: hidden;
+      z-index: 50;
+    }
+    
+    .ticker-content {
+      display: flex;
+      white-space: nowrap;
+      animation: ticker-scroll 60s linear infinite;
+    }
+    
+    @keyframes ticker-scroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    
+    .ticker-item {
+      display: inline-block;
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      margin-right: 60px;
+      opacity: 0.7;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    }
+    
+    .ticker-item.flicker {
+      animation: flicker 2s infinite;
+    }
+    
+    .ticker-item.glitch {
+      animation: glitch 0.5s infinite;
+    }
+    
+    .social-proof {
+      position: absolute;
+      color: rgba(0, 255, 255, 0.8);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+      transition: opacity 1.5s ease-in-out;
+    }
+    
+    .social-proof.visible {
+      opacity: 1;
+    }
+    
+    .social-proof.float-1 {
+      animation: float1 8s ease-in-out infinite;
+    }
+    
+    .social-proof.float-2 {
+      animation: float2 10s ease-in-out infinite;
+    }
+    
+    .social-proof.float-3 {
+      animation: float3 12s ease-in-out infinite;
+    }
+    
+    @keyframes float1 {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(-15px) translateX(10px); }
+    }
+    
+    @keyframes float2 {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(10px) translateX(-8px); }
+    }
+    
+    @keyframes float3 {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(-8px) translateX(-12px); }
+    }
+  </style>
 </head>
-<body>
-  <div class="topbar">
-    <div class="topbar-left">
-      <img src="img/vallexo1.png" alt="Vallexo Logo" class="logo">
-      <span class="topbar-company futuristic-font">Vallexo</span>
+<body class="liminal-bg min-h-screen">
+  <!-- Brand Section -->
+  <div class="brand-section" id="brand-section">
+    <div class="brand-container">
+      <div class="brand-logo">VALLEXO</div>
+      <div class="brand-tagline">You were there. You just forgot.</div>
     </div>
-    <nav class="main-nav futuristic-font">
-      <a href="#about">About</a>
-      <a href="#services">Services</a>
-      <a href="#pre-launch">Pre-Launch</a>
-      <a href="#get-started">Get Started</a>
-    </nav>
   </div>
-  <!-- Banner/Header -->
-  <header class="banner">
-    <div class="banner-content">
-      <h1 class="hero-title futuristic-font">Vallexo</h1>
-      <p class="hero-headline">Designing the Edge Where Tomorrow’s Giants Emerge</p>
-      <p class="hero-subheadline">Vallexo is a frontier tech company engineering intelligent deal discovery — where machine learning meets proprietary signals to surface the next breakout companies before the crowd.</p>
-      <p class="hero-subheading">Where Data Meets Intuition. And the Future Gets Found.</p>
-    </div>
-    <div class="geometric-bg"></div>
-  </header>
 
-  <!-- About Us -->
-  <section id="about" class="about-section">
-    <div class="geometric-bg"></div>
-    <div class="container">
-      <h2 class="futuristic-font">About Us</h2>
-      <div class="about-content">
-        <div class="about-text">
-          <p class="about-lead">There are patterns beneath every breakout — we built Vallexo to surface them before they echo.</p>
-          <p class="about-description">We're an AI-native discovery layer focused on surfacing signals before they become consensus.<br>
-          Not a newsletter. Not a fund. Not a community.<br>
-          More like a radar for operators who don't need noise — just unfair edge.</p>
-          <p class="about-mission">We're working with a small group of builders, investors, and advisors who don't wait for momentum — they cause it.</p>
-          <p class="about-close">If that's you, you already know why this exists.</p>
-        </div>
+  <!-- Scanline Effect -->
+  <div class="scanline"></div>
+  
+  <!-- Hero Section -->
+  <section class="min-h-screen flex items-center justify-center px-4 relative" style="padding-top: 50px;">
+    <div class="text-center max-w-5xl mx-auto relative z-10">
+      <!-- Main Headline -->
+      <h1 class="font-playfair text-4xl md:text-6xl lg:text-8xl font-bold text-gray-100 mb-8 leading-tight flicker-text">
+        You were there.
+      </h1>
+      <h2 class="font-mono text-2xl md:text-4xl lg:text-6xl font-light text-cyan-300 mb-4 glitch-text">
+        You just don't remember it yet.
+      </h2>
+      
+      <!-- Subtext -->
+      <p class="font-inter text-lg md:text-xl lg:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed neon-pulse">
+        Pay $1 to remember something you never lived.
+      </p>
+      
+      <!-- CTA Button -->
+      <button 
+        onclick="openModal()"
+        class="glitch-button font-mono bg-transparent border-2 border-cyan-400 text-cyan-400 px-12 py-6 text-xl md:text-2xl font-medium hover:bg-cyan-400 hover:text-gray-900 transition-all duration-500"
+      >
+        Generate My Memory — $1
+      </button>
+      
+      <!-- Ambient Text -->
+      <div class="absolute top-1/4 left-1/4 text-xs text-gray-500 font-mono opacity-30 neon-pulse">
+        MEMORY_001.CORRUPTED
+      </div>
+      <div class="absolute bottom-1/4 right-1/4 text-xs text-gray-500 font-mono opacity-30 neon-pulse">
+        ACCESS_DENIED
+      </div>
+      <div class="absolute top-1/2 right-1/3 text-xs text-pink-400 font-mono opacity-40 flicker-text">
+        SYSTEM_GLITCH
       </div>
     </div>
+    
+    <!-- Social Proof Container -->
+    <div id="social-proof-container"></div>
   </section>
 
-  <!-- Services -->
-  <section id="services" class="services-section">
-    <div class="container">
-      <h2 class="futuristic-font">What We're Building Toward</h2>
-      <p class="services-subline">At Vallexo, we're building infrastructure to spot the breakthrough companies the world hasn't noticed yet.<br>
-      The weird ones. The quiet ones. The ones that don’t look like much—until they do.</p>
-      <div class="services-grid">
-        <div class="service-card">
-          <span class="service-icon gold-icon">
-            <!-- Cracked grid / abstract branching lines SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><rect x="6" y="6" width="36" height="36" rx="6"/><path d="M24 6v36M6 24h36"/><path d="M24 24l10-10M24 24l-10 10"/></g></svg>
-          </span>
-          <h3>Pattern-breaking search</h3>
-          <p>We track startups behaving in ways that don’t fit conventional categories—and that’s the point.</p>
-        </div>
-        <div class="service-card">
-          <span class="service-icon gold-icon">
-            <!-- Web nodes / database streams SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="6"/><path d="M24 6v12M24 30v12M6 24h12M30 24h12"/></g></svg>
-          </span>
-          <h3>Uncommon data pipelines</h3>
-          <p>We mine non-obvious signals from niche forums, changelogs, side projects, founder behavior—where most overlook.</p>
-        </div>
-        <div class="service-card">
-          <span class="service-icon gold-icon">
-            <!-- Gear morphing into rocket / infinity loop SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><path d="M24 8a16 16 0 1 1-8.5 29.5"/><path d="M24 40a16 16 0 1 1 8.5-29.5"/><path d="M24 24l6-6M24 24l-6 6"/></g></svg>
-          </span>
-          <h3>Self-improving discovery loops</h3>
-          <p>Our systems learn with every pick, getting sharper at recognizing early momentum before it's externally visible.</p>
-        </div>
-        <div class="service-card">
-          <span class="service-icon gold-icon">
-            <!-- Magnifying glass over static noise / idea bulb SVG -->
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#D4AF37" stroke-width="3"><circle cx="20" cy="20" r="10"/><path d="M28 28l8 8"/><path d="M16 16h8M16 20h8M16 24h8"/></g></svg>
-          </span>
-          <h3>Under-the-radar thesis building</h3>
-          <p>We're not trend-chasing. We’re tracking foundational shifts—before they have names.</p>
-        </div>
-      </div>
+  <!-- Memory Ticker -->
+  <div class="ticker">
+    <div class="ticker-content">
+      <span class="ticker-item">RECALLING: MALL_1997.CORRUPTED</span>
+      <span class="ticker-item flicker">ACCESSING: SCHOOL_HALLWAY_2001</span>
+      <span class="ticker-item">LOADING: GRANDMA_HOUSE_1995</span>
+      <span class="ticker-item glitch">ERROR: BEACH_VACATION_1999</span>
+      <span class="ticker-item">PROCESSING: BIRTHDAY_PARTY_2003</span>
+      <span class="ticker-item flicker">RECOVERING: CHRISTMAS_MORNING_1996</span>
+      <span class="ticker-item">SCANNING: SUMMER_CAMP_2000</span>
+      <span class="ticker-item glitch">CORRUPTED: FIRST_KISS_2005</span>
+      <span class="ticker-item">DECODING: FAMILY_DINNER_1998</span>
+      <span class="ticker-item flicker">RETRIEVING: ROAD_TRIP_2002</span>
+      <span class="ticker-item">ANALYZING: SLEEPOVER_2004</span>
+      <span class="ticker-item glitch">ERROR: PROM_NIGHT_2006</span>
+      <span class="ticker-item">LOADING: BACKYARD_BBQ_1997</span>
+      <span class="ticker-item flicker">PROCESSING: MOVIE_THEATER_2001</span>
+      <span class="ticker-item">RECALLING: ICE_CREAM_SHOP_1999</span>
+      <span class="ticker-item glitch">CORRUPTED: GRADUATION_2007</span>
+      <span class="ticker-item">SCANNING: AMUSEMENT_PARK_2000</span>
+      <span class="ticker-item flicker">ACCESSING: LIBRARY_STUDY_2003</span>
+      <span class="ticker-item">DECODING: FISHING_TRIP_1996</span>
+      <span class="ticker-item glitch">ERROR: FIRST_CAR_2005</span>
+      <span class="ticker-item">RECALLING: MALL_1997.CORRUPTED</span>
+      <span class="ticker-item flicker">ACCESSING: SCHOOL_HALLWAY_2001</span>
+      <span class="ticker-item">LOADING: GRANDMA_HOUSE_1995</span>
+      <span class="ticker-item glitch">ERROR: BEACH_VACATION_1999</span>
+      <span class="ticker-item">PROCESSING: BIRTHDAY_PARTY_2003</span>
+      <span class="ticker-item flicker">RECOVERING: CHRISTMAS_MORNING_1996</span>
+      <span class="ticker-item">SCANNING: SUMMER_CAMP_2000</span>
+      <span class="ticker-item glitch">CORRUPTED: FIRST_KISS_2005</span>
+      <span class="ticker-item">DECODING: FAMILY_DINNER_1998</span>
+      <span class="ticker-item flicker">RETRIEVING: ROAD_TRIP_2002</span>
+      <span class="ticker-item">ANALYZING: SLEEPOVER_2004</span>
+      <span class="ticker-item glitch">ERROR: PROM_NIGHT_2006</span>
+      <span class="ticker-item">LOADING: BACKYARD_BBQ_1997</span>
+      <span class="ticker-item flicker">PROCESSING: MOVIE_THEATER_2001</span>
+      <span class="ticker-item">RECALLING: ICE_CREAM_SHOP_1999</span>
+      <span class="ticker-item glitch">CORRUPTED: GRADUATION_2007</span>
+      <span class="ticker-item">SCANNING: AMUSEMENT_PARK_2000</span>
+      <span class="ticker-item flicker">ACCESSING: LIBRARY_STUDY_2003</span>
+      <span class="ticker-item">DECODING: FISHING_TRIP_1996</span>
+      <span class="ticker-item glitch">ERROR: FIRST_CAR_2005</span>
     </div>
-  </section>
+  </div>
 
-  <!-- Pre-Launch -->
-  <section id="pre-launch" class="pre-launch-section">
-    <div class="geometric-bg"></div>
-    <div class="container">
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-number">$1M+</div>
-          <div class="stat-label">revenue driven via cold email</div>
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h2 class="modal-title">Generate Your Memory</h2>
+      
+      <form id="memory-form">
+        <div class="form-group">
+          <label class="form-label">Your Full Name</label>
+          <input type="text" class="form-input" id="fullname" placeholder="e.g. Evelyn Rose" required>
+          <div class="error-message" id="name-error"></div>
         </div>
-        <div class="stat-item">
-          <div class="stat-number">45%</div>
-          <div class="stat-label">avg. pipeline lift</div>
+        
+        <div class="form-group">
+          <label class="form-label">A Year (in past)</label>
+          <input type="number" class="form-input" id="year" placeholder="e.g. 1996" min="1950" max="2010" required>
+          <div class="error-message" id="year-error"></div>
         </div>
-        <div class="stat-item">
-          <div class="stat-number">35+</div>
-          <div class="stat-label">SaaS founders backed us before Day 1</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Get Started -->
-  <section id="get-started" class="get-started-section">
-    <div class="container">
-      <h2 class="futuristic-font">Get Started</h2>
-      <form class="get-started-form">
-        <div class="form-field">
-          <label for="fullname">Full name</label>
-          <input type="text" id="fullname" placeholder="Your Name" required>
-        </div>
-        <div class="form-field">
-          <label for="linkedin">Drop your LinkedIn — if it's a fit, we'll reach out.</label>
-          <input type="url" id="linkedin" placeholder="LinkedIn" required>
-        </div>
-        <div class="form-field">
-          <label for="thoughts">What caught your eye? (Optional)</label>
-          <textarea id="thoughts" placeholder="Thoughts"></textarea>
-        </div>
-        <button type="submit">🔘 Request Access</button>
-        <p class="form-note">(We'll reach out if there's a strong fit.)</p>
+        
+        <button type="submit" class="modal-button">Generate My Memory →</button>
       </form>
-      <div class="contact-icons">
-        <img src="img/contact/email.svg" alt="Email">
-        <img src="img/contact/phone.svg" alt="Phone">
-        <img src="img/contact/in.svg" alt="LinkedIn">
-      </div>
     </div>
-  </section>
+  </div>
 
-  <footer class="footer">
-    <div class="container">
-      <p>&copy; 2024 Vallexo. All rights reserved.</p>
-    </div>
-  </footer>
+  <script>
+    // Fake user actions for social proof
+    const fakeUserActions = [
+      "That night drive through a foggy highway in 2004 just came back.",
+      "Recalled the quiet hum of fluorescent lights in a middle school hallway.",
+      "A dusty couch, static-filled TV, and late-night Cartoon Network in 2007—unlocked.",
+      "Memory of a birthday party at Chuck E. Cheese in 2001 just resurfaced.",
+      "The empty mall food court in 2010 suddenly felt real again.",
+      "He felt the classroom clock ticking during a 2003 math test.",
+      "Just remembered hugging mom after the first day of 5th grade.",
+      "The hum of a computer lab and that default Windows XP wallpaper... unlocked.",
+      "Smell of McDonald's fries after a soccer game in 2006—back again.",
+      "Her 2012 playlist just started playing in her head out of nowhere.",
+      "A cold morning walk to the bus stop in Illinois just returned.",
+      "They just saw the 2011 Orlando Christmas lights in their head.",
+      "A hoodie, fall leaves, and Red Ribbon cake from Thanksgiving 2002—resurfaced.",
+      "Remembered walking past Forever 21 in a half-empty mall—Quebec, 2013.",
+      "The hallway outside the gym in Shibuya High, 2005. Vividly recalled.",
+      "Someone remembered their Gangnam subway ride listening to 2NE1 in 2010.",
+      "Texas summer heat, flip phones, and grape soda—memory reloaded.",
+      "That birthday trip to Disneyland in 2009 is back.",
+      "Saw a glimpse of prom night in a limo, Los Angeles 2011.",
+      "The Taco Bell drive-thru line at 11 PM, Chicago, 2014.",
+      "Just relived staring at glow-in-the-dark stars on their bedroom ceiling.",
+      "Remembered their crush giving them a candy cane during 7th grade homeroom.",
+      "Unlocked that exact moment of panic before a surprise pop quiz.",
+      "The ice cream truck jingle echoing through the suburbs—it's back.",
+      "That one awkward slow dance in the gym, Homecoming 2008.",
+      "She remembered dad lifting her up to see fireworks in 2003.",
+      "He just relived building LEGO on grandma's carpet in 2005.",
+      "Recalling a rainy day spent in the school library, 2012.",
+      "The purple Game Boy Advance and Mario Kart just reappeared in someone's head.",
+      "The weird silence of a Target at 9 PM on Christmas Eve... returned.",
+      "That one sunny afternoon in the park with grandpa, 2006.",
+      "A late-night drive-thru at Sonic in 2013... somehow felt too real.",
+      "Remembered laying on the grass watching clouds before phones ruled the world.",
+      "Just saw an old AIM chat window in their head from 2010.",
+      "Tangled Christmas lights and mom's voice—2004 came rushing back.",
+      "The faint buzz of the TV left on all night, 2002.",
+      "Back to scribbling in a diary with a gel pen, 2009.",
+      "A classroom projector flickering during a movie day, 2007—just unlocked.",
+      "A pizza party after the spelling bee in 2011—vividly remembered.",
+      "Relived the smell of a Blockbuster carpet and stale popcorn.",
+      "She remembered the scent of Abercrombie & Fitch while window shopping.",
+      "An awkward middle school hallway bump with a crush—2008, perfectly recalled.",
+      "The metallic taste of braces and cafeteria tater tots just returned.",
+      "He heard the sound of a dial-up modem... again.",
+      "Just saw the green laser lights of a roller rink from 2006.",
+      "The first iPod Shuffle and that Avril Lavigne track—back from 2010.",
+      "Tasting blue raspberry Icee from 7-Eleven in 2013 again.",
+      "Remembered dad fixing a broken lamp in total silence.",
+      "The 2015 Vine video binge spiral—randomly recalled.",
+      "Recalled the exact moment the dog barked during their first kiss."
+    ];
 
-  <script src="js/script-onepage.js"></script>
-  <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    const SUPABASE_URL = "https://jknxzujfpgahylskiyoz.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imprbnh6dWpmcGdhaHlsc2tpeW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5NzgyMzAsImV4cCI6MjA2ODU1NDIzMH0.xvMU3rWSH8EC7ag2LZvgqMjFkOu3DDmD5hG3XrwYcwM";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.addEventListener('DOMContentLoaded', () => {
-      const form = document.querySelector('.get-started-form');
-      if (!form) return;
-      const button = form.querySelector('button[type="submit"]');
-      const note = form.querySelector('.form-note');
-      form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        button.disabled = true;
-        note.textContent = '';
-        const fullname = form.querySelector('#fullname').value.trim();
-        const linkedin = form.querySelector('#linkedin').value.trim();
-        const thoughts = form.querySelector('#thoughts').value.trim();
-        try {
-          const { error } = await supabase.from('early_access').insert({ fullname, linkedin, thoughts });
-          if (error) {
-            note.textContent = '❌ Something went wrong. Please try again.';
-            button.disabled = false;
-          } else {
-            note.textContent = '✅ Thanks! We\'ll review your submission.';
-            form.reset();
+    // Social proof system
+    let currentMessage = null;
+    let usedMessages = [];
+    let messageIndex = 0;
+
+    function showSocialProof() {
+      // Get next message with better cycling logic
+      if (usedMessages.length >= fakeUserActions.length) {
+        usedMessages = [];
+        messageIndex = 0;
+      }
+
+      // If we're starting fresh, randomize the starting point
+      if (usedMessages.length === 0) {
+        messageIndex = Math.floor(Math.random() * fakeUserActions.length);
+      }
+
+      const message = fakeUserActions[messageIndex];
+      usedMessages.push(message);
+      messageIndex++;
+
+      // Create new message element
+      const messageEl = document.createElement('div');
+      messageEl.className = 'social-proof';
+      messageEl.textContent = message;
+
+      // Random position
+      const positions = [
+        { top: '20%', left: '10%' },
+        { top: '15%', right: '15%' },
+        { bottom: '30%', left: '8%' },
+        { bottom: '25%', right: '12%' },
+        { top: '40%', left: '5%' },
+        { top: '35%', right: '8%' },
+        { bottom: '40%', left: '15%' },
+        { bottom: '35%', right: '5%' }
+      ];
+
+      const position = positions[Math.floor(Math.random() * positions.length)];
+      Object.assign(messageEl.style, position);
+
+      // Random float animation
+      const floatClasses = ['float-1', 'float-2', 'float-3'];
+      messageEl.classList.add(floatClasses[Math.floor(Math.random() * floatClasses.length)]);
+
+      // Add to container
+      const container = document.getElementById('social-proof-container');
+      container.appendChild(messageEl);
+
+      // Show message
+      setTimeout(() => {
+        messageEl.classList.add('visible');
+      }, 100);
+
+      // Hide message after 4 seconds
+      setTimeout(() => {
+        messageEl.classList.remove('visible');
+        setTimeout(() => {
+          if (messageEl.parentNode) {
+            messageEl.parentNode.removeChild(messageEl);
           }
-        } catch (err) {
-          note.textContent = '❌ Something went wrong. Please try again.';
-          button.disabled = false;
+        }, 1500);
+      }, 4000);
+
+      // Schedule next message
+      setTimeout(() => {
+        showSocialProof();
+      }, 5500); // 4 seconds display + 1.5 seconds fade out
+    }
+
+    // Start social proof system with proper randomization
+    setTimeout(() => {
+      // Shuffle the array for better variety
+      for (let i = fakeUserActions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fakeUserActions[i], fakeUserActions[j]] = [fakeUserActions[j], fakeUserActions[i]];
+      }
+      showSocialProof();
+    }, 2000);
+
+    // Brand section scroll effect
+    window.addEventListener('scroll', () => {
+      const brandSection = document.getElementById('brand-section');
+      if (window.scrollY > 50) {
+        brandSection.classList.add('scrolled');
+      } else {
+        brandSection.classList.remove('scrolled');
+      }
+    });
+
+    // Modal functionality
+    function openModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      
+      // Focus on first input
+      setTimeout(() => {
+        document.getElementById('fullname').focus();
+      }, 100);
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      
+      // Clear form
+      document.getElementById('memory-form').reset();
+      clearErrors();
+    }
+
+    function clearErrors() {
+      document.getElementById('name-error').classList.remove('show');
+      document.getElementById('year-error').classList.remove('show');
+    }
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    // Close modal on outside click
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') {
+        closeModal();
+      }
+    });
+
+    // Form submission
+    document.getElementById('memory-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const fullname = document.getElementById('fullname').value.trim();
+      const year = document.getElementById('year').value;
+      
+      clearErrors();
+      let hasErrors = false;
+      
+      // Validate name
+      if (!fullname) {
+        document.getElementById('name-error').textContent = 'Please enter your full name';
+        document.getElementById('name-error').classList.add('show');
+        hasErrors = true;
+      }
+      
+      // Validate year
+      if (!year) {
+        document.getElementById('year-error').textContent = 'Please enter a year';
+        document.getElementById('year-error').classList.add('show');
+        hasErrors = true;
+      } else if (year < 1950 || year > 2010) {
+        document.getElementById('year-error').textContent = 'Please enter a year between 1950-2010';
+        document.getElementById('year-error').classList.add('show');
+        hasErrors = true;
+      }
+      
+      if (!hasErrors) {
+        // Show loading state
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Generating Memory...';
+        submitButton.disabled = true;
+        
+        // Generate memory
+        generateMemory(fullname, year, 'United States') // Default country for now
+          .then(memory => {
+            // Close modal and show success
+            closeModal();
+            console.log('Generated memory:', memory);
+            
+            // You can add success message or redirect here
+            // For now, just log the generated memory
+          })
+          .catch(error => {
+            console.error('Error generating memory:', error);
+            // Show error message to user
+            document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
+            document.getElementById('year-error').classList.add('show');
+          })
+          .finally(() => {
+            // Reset button
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
+          });
+      }
+    });
+
+    // OpenAI Memory Generation Function
+    async function generateMemory(name, year, country) {
+      const OPENAI_API_KEY = 'your-openai-api-key-here'; // Placeholder - will be stored securely later
+      const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+      
+      const systemPrompt = `You are a memory reconstruction AI. Given a full name, year of birth, and country, generate a surreal, emotionally rich memory from that identity's perspective. First, deduce the likely gender from the name, but do not mention or refer to gender in the output. The memory should be vivid, fragmented, poetic, and a little unsettling — like a dream half-remembered.`;
+      
+      const userPrompt = `Generate a memory for: ${name}, born in ${year}, from ${country}.`;
+      
+      try {
+        const response = await fetch(OPENAI_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4',
+            messages: [
+              {
+                role: 'system',
+                content: systemPrompt
+              },
+              {
+                role: 'user',
+                content: userPrompt
+              }
+            ],
+            max_tokens: 500,
+            temperature: 0.8,
+            top_p: 0.9,
+            frequency_penalty: 0.1,
+            presence_penalty: 0.1
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
         }
+        
+        const data = await response.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+          throw new Error('Invalid response format from OpenAI API');
+        }
+        
+        return data.choices[0].message.content.trim();
+        
+      } catch (error) {
+        console.error('Error calling OpenAI API:', error);
+        throw new Error('Failed to generate memory. Please try again later.');
+      }
+    }
+
+    // Add random glitch effects
+    setInterval(() => {
+      const elements = document.querySelectorAll('.glitch-text, .flicker-text');
+      const randomElement = elements[Math.floor(Math.random() * elements.length)];
+      randomElement.style.animation = 'none';
+      setTimeout(() => {
+        randomElement.style.animation = '';
+      }, 100);
+    }, 3000);
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
       });
     });
   </script>
