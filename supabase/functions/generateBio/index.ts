@@ -1,3 +1,4 @@
+// This function expects an .env file in the same directory with OPENAI_API_KEY=sk-xxx... for local and deployed environments.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 Deno.serve(async (req) => {
