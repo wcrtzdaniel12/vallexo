@@ -478,6 +478,28 @@
     <div id="social-proof-container"></div>
   </section>
 
+  <!-- Dream Journal Memory Section (hidden by default) -->
+  <section id="memory-section" class="w-full flex justify-center opacity-0 pointer-events-none transition-opacity duration-1000" style="min-height: 300px;">
+    <div class="max-w-2xl w-full bg-black bg-opacity-90 rounded-3xl shadow-2xl p-10 mt-10 mb-10 flex flex-col items-center border border-white/20" style="font-family: 'Playfair Display', serif;">
+      <h2 class="text-3xl md:text-4xl font-bold mb-8 text-white text-center tracking-wide" style="letter-spacing:0.04em;">Here's what we remembered:</h2>
+      <div class="flex flex-col md:flex-row items-center w-full gap-4">
+        <p id="memory-text" class="text-xl md:text-2xl text-white text-center leading-relaxed md:leading-loose whitespace-pre-line flex-1" style="line-height:2.1; letter-spacing:0.01em;"></p>
+        <button id="copy-memory" class="mt-4 md:mt-0 md:ml-4 px-5 py-2 bg-white bg-opacity-10 border border-white/30 hover:bg-opacity-30 text-white rounded-lg transition-colors text-lg font-serif" style="backdrop-filter: blur(2px);">Copy</button>
+      </div>
+    </div>
+  </section>
+  <style>
+    @keyframes fade-in-memory {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #memory-section.fade-in {
+      opacity: 1 !important;
+      pointer-events: auto;
+      animation: fade-in-memory 1.2s cubic-bezier(0.4,0,0.2,1);
+    }
+  </style>
+
   <!-- Memory Ticker -->
   <div class="ticker">
     <div class="ticker-content">
@@ -734,24 +756,61 @@
       }
     });
 
-    // Form submission
-    document.getElementById('memory-form').addEventListener('submit', (e) => {
+    // Remove OpenAI logic and use Supabase Edge Function
+    async function generateMemory(name, year, country) {
+      try {
+        const response = await fetch('/functions/v1/generateBio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, year, country })
+        });
+        if (!response.ok) {
+          throw new Error('Supabase function error: ' + response.status);
+        }
+        const data = await response.json();
+        if (data.bio) {
+          return data.bio;
+        } else if (data.memory) {
+          return data.memory;
+        } else {
+          throw new Error('No memory returned');
+        }
+      } catch (error) {
+        console.error('Error calling Supabase Edge Function:', error);
+        throw new Error('Failed to generate memory. Please try again later.');
+      }
+    }
+
+    // Show memory section with fade-in and scroll
+    function showMemorySection(memoryText) {
+      const section = document.getElementById('memory-section');
+      const textEl = document.getElementById('memory-text');
+      textEl.textContent = memoryText;
+      section.classList.add('fade-in');
+      section.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+
+    // Copy button logic
+    document.getElementById('copy-memory').addEventListener('click', function() {
+      const text = document.getElementById('memory-text').textContent;
+      navigator.clipboard.writeText(text);
+    });
+
+    // Update form submit handler to show memory section
+    document.getElementById('memory-form').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
-      const fullname = document.getElementById('fullname').value.trim();
-      const year = document.getElementById('year').value;
-      
       clearErrors();
+      const fullname = document.getElementById('fullname').value.trim();
+      const year = parseInt(document.getElementById('year').value, 10);
       let hasErrors = false;
-      
-      // Validate name
       if (!fullname) {
         document.getElementById('name-error').textContent = 'Please enter your full name';
         document.getElementById('name-error').classList.add('show');
         hasErrors = true;
       }
-      
-      // Validate year
       if (!year) {
         document.getElementById('year-error').textContent = 'Please enter a year';
         document.getElementById('year-error').classList.add('show');
@@ -761,91 +820,24 @@
         document.getElementById('year-error').classList.add('show');
         hasErrors = true;
       }
-      
       if (!hasErrors) {
-        // Show loading state
         const submitButton = e.target.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
         submitButton.textContent = 'Generating Memory...';
         submitButton.disabled = true;
-        
-        // Generate memory
-        generateMemory(fullname, year, 'United States') // Default country for now
-          .then(memory => {
-            // Close modal and show success
-            closeModal();
-            console.log('Generated memory:', memory);
-            
-            // You can add success message or redirect here
-            // For now, just log the generated memory
-          })
-          .catch(error => {
-            console.error('Error generating memory:', error);
-            // Show error message to user
-            document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
-            document.getElementById('year-error').classList.add('show');
-          })
-          .finally(() => {
-            // Reset button
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
-          });
+        try {
+          const memory = await generateMemory(fullname, year, 'United States');
+          closeModal();
+          showMemorySection(memory);
+        } catch (error) {
+          document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
+          document.getElementById('year-error').classList.add('show');
+        } finally {
+          submitButton.textContent = originalText;
+          submitButton.disabled = false;
+        }
       }
     });
-
-    // OpenAI Memory Generation Function
-    async function generateMemory(name, year, country) {
-      const OPENAI_API_KEY = 'your-openai-api-key-here'; // Placeholder - will be stored securely later
-      const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-      
-      const systemPrompt = `You are a memory reconstruction AI. Given a full name, year of birth, and country, generate a surreal, emotionally rich memory from that identity's perspective. First, deduce the likely gender from the name, but do not mention or refer to gender in the output. The memory should be vivid, fragmented, poetic, and a little unsettling — like a dream half-remembered.`;
-      
-      const userPrompt = `Generate a memory for: ${name}, born in ${year}, from ${country}.`;
-      
-      try {
-        const response = await fetch(OPENAI_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4',
-            messages: [
-              {
-                role: 'system',
-                content: systemPrompt
-              },
-              {
-                role: 'user',
-                content: userPrompt
-              }
-            ],
-            max_tokens: 500,
-            temperature: 0.8,
-            top_p: 0.9,
-            frequency_penalty: 0.1,
-            presence_penalty: 0.1
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-          throw new Error('Invalid response format from OpenAI API');
-        }
-        
-        return data.choices[0].message.content.trim();
-        
-      } catch (error) {
-        console.error('Error calling OpenAI API:', error);
-        throw new Error('Failed to generate memory. Please try again later.');
-      }
-    }
 
     // Add random glitch effects
     setInterval(() => {
