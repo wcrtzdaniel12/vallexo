@@ -768,9 +768,7 @@
           throw new Error('Supabase function error: ' + response.status);
         }
         const data = await response.json();
-        if (data.bio) {
-          return data.bio;
-        } else if (data.memory) {
+        if (data.memory) {
           return data.memory;
         } else {
           throw new Error('No memory returned');
@@ -827,14 +825,14 @@
         submitButton.disabled = true;
         try {
           const memory = await generateMemory(fullname, year, 'United States');
-          closeModal();
+            closeModal();
           showMemorySection(memory);
         } catch (error) {
-          document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
-          document.getElementById('year-error').classList.add('show');
+            document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
+            document.getElementById('year-error').classList.add('show');
         } finally {
-          submitButton.textContent = originalText;
-          submitButton.disabled = false;
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
         }
       }
     });
