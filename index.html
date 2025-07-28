@@ -758,25 +758,34 @@
 
     // Remove OpenAI logic and use Supabase Edge Function
     async function generateMemory(name, year, country) {
-      try {
-        const response = await fetch('/functions/v1/generateBio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, year, country })
-        });
-        if (!response.ok) {
-          throw new Error('Supabase function error: ' + response.status);
+      const urls = [
+        'http://127.0.0.1:54321/functions/v1/generateBio',
+        '/functions/v1/generateBio'
+      ];
+      
+      for (const url of urls) {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, year, country })
+          });
+          if (!response.ok) {
+            console.warn(`Failed with ${url}: ${response.status}`);
+            continue;
+          }
+          const data = await response.json();
+          if (data.memory) {
+            return data.memory;
+          } else {
+            throw new Error('No memory returned');
+          }
+        } catch (error) {
+          console.warn(`Error with ${url}:`, error);
+          continue;
         }
-        const data = await response.json();
-        if (data.memory) {
-          return data.memory;
-        } else {
-          throw new Error('No memory returned');
-        }
-      } catch (error) {
-        console.error('Error calling Supabase Edge Function:', error);
-        throw new Error('Failed to generate memory. Please try again later.');
       }
+      throw new Error('Failed to generate memory. Please try again later.');
     }
 
     // Show memory section with fade-in and scroll
