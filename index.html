@@ -758,10 +758,16 @@
 
     // Remove OpenAI logic and use Supabase Edge Function
     async function generateMemory(name, year, country) {
+      // For production (replace with your actual Supabase project URL from dashboard)
       const urls = [
-        'http://127.0.0.1:54321/functions/v1/generateBio',
-        '/functions/v1/generateBio'
+        'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateBio'
       ];
+      
+      // For local development (requires: supabase start)
+      // const urls = [
+      //   'http://127.0.0.1:54321/functions/v1/generateBio',
+      //   '/functions/v1/generateBio'
+      // ];
       
       for (const url of urls) {
         try {
