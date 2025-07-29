@@ -560,9 +560,9 @@
         </div>
         
         <div class="form-group">
-          <label class="form-label">A Year (in past)</label>
-          <input type="number" class="form-input" id="year" placeholder="e.g. 1996" min="1950" max="2010" required>
-          <div class="error-message" id="year-error"></div>
+          <label class="form-label">Birth Year</label>
+          <input type="number" class="form-input" id="birthYear" placeholder="e.g. 1996" min="1950" max="2010" required>
+          <div class="error-message" id="birthYear-error"></div>
         </div>
         
         <button type="submit" class="modal-button">Generate My Memory →</button>
@@ -739,7 +739,7 @@
 
     function clearErrors() {
       document.getElementById('name-error').classList.remove('show');
-      document.getElementById('year-error').classList.remove('show');
+      document.getElementById('birthYear-error').classList.remove('show');
     }
 
     // Close modal on ESC key
@@ -757,7 +757,7 @@
     });
 
     // Remove OpenAI logic and use Supabase Edge Function
-    async function generateMemory(name, year, country) {
+    async function generateMemory(name, birthYear) {
       // For production (replace with your actual Supabase project URL from dashboard)
       const urls = [
         'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateBio'
@@ -771,7 +771,7 @@
       
       for (const url of urls) {
         try {
-          const requestBody = { name, year, country };
+          const requestBody = { name, birthYear };
           console.log('Sending to Supabase function:', requestBody);
           
           const response = await fetch(url, {
@@ -821,20 +821,20 @@
       e.preventDefault();
       clearErrors();
       const fullname = document.getElementById('fullname').value.trim();
-      const year = parseInt(document.getElementById('year').value, 10);
+      const birthYear = parseInt(document.getElementById('birthYear').value, 10);
       let hasErrors = false;
       if (!fullname) {
         document.getElementById('name-error').textContent = 'Please enter your full name';
         document.getElementById('name-error').classList.add('show');
         hasErrors = true;
       }
-      if (!year) {
-        document.getElementById('year-error').textContent = 'Please enter a year';
-        document.getElementById('year-error').classList.add('show');
+      if (!birthYear) {
+        document.getElementById('birthYear-error').textContent = 'Please enter your birth year';
+        document.getElementById('birthYear-error').classList.add('show');
         hasErrors = true;
-      } else if (year < 1950 || year > 2010) {
-        document.getElementById('year-error').textContent = 'Please enter a year between 1950-2010';
-        document.getElementById('year-error').classList.add('show');
+      } else if (birthYear < 1950 || birthYear > 2010) {
+        document.getElementById('birthYear-error').textContent = 'Please enter a birth year between 1950-2010';
+        document.getElementById('birthYear-error').classList.add('show');
         hasErrors = true;
       }
       if (!hasErrors) {
@@ -843,12 +843,12 @@
         submitButton.textContent = 'Generating Memory...';
         submitButton.disabled = true;
         try {
-          const memory = await generateMemory(fullname, year, 'United States');
+          const memory = await generateMemory(fullname, birthYear);
           closeModal();
           showMemorySection(memory);
         } catch (error) {
-            document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
-            document.getElementById('year-error').classList.add('show');
+            document.getElementById('birthYear-error').textContent = 'Failed to generate memory. Please try again.';
+            document.getElementById('birthYear-error').classList.add('show');
         } finally {
             submitButton.textContent = originalText;
             submitButton.disabled = false;

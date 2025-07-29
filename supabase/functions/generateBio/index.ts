@@ -14,10 +14,10 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { name, year, country } = await req.json();
+  const { name, birthYear } = await req.json();
 
-  if (!name || !year || !country) {
-    return new Response(JSON.stringify({ error: "Name, year, and country are required" }), {
+  if (!name || !birthYear) {
+    return new Response(JSON.stringify({ error: "Name and birthYear are required" }), {
       status: 400,
       headers: { 
         "Content-Type": "application/json",
@@ -39,9 +39,37 @@ Deno.serve(async (req) => {
       });
     }
     
-    const systemPrompt = `You are a memory reconstruction AI. Given a full name, year of birth, and country, generate a surreal, emotionally rich memory from that identity's perspective. First, deduce the likely gender from the name, but do not mention or refer to gender in the output. The memory should be vivid, fragmented, poetic, and a little unsettling — like a dream half-remembered.`;
-    
-    const userPrompt = `Generate a memory for: ${name}, born in ${year}, from ${country}.`;
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - birthYear;
+
+    // Emotionally significant age targeting
+    let memoryStage = "";
+    if (age < 13) {
+      memoryStage = "a surreal moment from early childhood";
+    } else if (age < 20) {
+      memoryStage = "a vivid teenage memory";
+    } else if (age < 30) {
+      memoryStage = "a liminal memory from early adulthood";
+    } else if (age < 45) {
+      memoryStage = "a strange but nostalgic moment from your twenties";
+    } else {
+      memoryStage = "a fragmented memory from your youth";
+    }
+
+    const systemPrompt = `
+You are a memory reconstruction AI. Given only a name and birth year, generate a poetic, haunting memory from that identity's perspective.
+
+You must:
+- Deduce likely context, but never reference actual gender or location.
+- Write in surreal, dreamlike fragments — like a diary page from a dream.
+- Embed emotional resonance using universal emotional archetypes: innocence, loss, awe, mystery, quiet joy, wonder, isolation, or deja vu.
+- The tone should tingle the reader's memory center — eerily relatable, oddly familiar.
+- At the end, output metadata in this format:
+
+[scene: {concise scene description}; feeling: {emotion keywords}]
+`;
+
+    const userPrompt = `Name: ${name}\nYear of Birth: ${birthYear}\nGenerate ${memoryStage}.`;
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -61,9 +89,9 @@ Deno.serve(async (req) => {
             content: userPrompt
           }
         ],
-        max_tokens: 500,
-        temperature: 0.8,
-        top_p: 0.9,
+        max_tokens: 600,
+        temperature: 0.85,
+        top_p: 0.95,
         frequency_penalty: 0.1,
         presence_penalty: 0.1
       }),
