@@ -771,16 +771,20 @@
       
       for (const url of urls) {
         try {
+          const requestBody = { name, year, country };
+          console.log('Sending to Supabase function:', requestBody);
+          
           const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, year, country })
+            body: JSON.stringify(requestBody)
           });
           if (!response.ok) {
             console.warn(`Failed with ${url}: ${response.status}`);
             continue;
           }
           const data = await response.json();
+          console.log('Response from Supabase function:', data);
           if (data.memory) {
             return data.memory;
           } else {
@@ -840,7 +844,7 @@
         submitButton.disabled = true;
         try {
           const memory = await generateMemory(fullname, year, 'United States');
-            closeModal();
+          closeModal();
           showMemorySection(memory);
         } catch (error) {
             document.getElementById('year-error').textContent = 'Failed to generate memory. Please try again.';
