@@ -312,6 +312,170 @@
       left: 100%;
     }
     
+    /* Loading Effects */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(20px);
+      z-index: 2000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    
+    .loading-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      color: #00ffff;
+      text-align: center;
+      margin-bottom: 40px;
+      text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+      animation: loading-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes loading-pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    
+    .loading-progress {
+      width: 300px;
+      height: 4px;
+      background: rgba(0, 255, 255, 0.2);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 30px;
+    }
+    
+    .loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+      background-size: 300% 100%;
+      animation: loading-flow 3s ease-in-out infinite, loading-move 8s linear infinite;
+      border-radius: 2px;
+    }
+    
+    @keyframes loading-flow {
+      0%, 100% { width: 0%; }
+      50% { width: 100%; }
+    }
+    
+    @keyframes loading-move {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+    
+    .loading-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: rgba(0, 255, 255, 0.8);
+      text-align: center;
+      margin-bottom: 20px;
+      animation: status-flicker 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes status-flicker {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    
+    .loading-scanline {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.8), transparent);
+      animation: scanline-loading 4s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes scanline-loading {
+      0% { transform: translateY(-50vh); }
+      100% { transform: translateY(50vh); }
+    }
+    
+    .loading-glitch {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    
+    .loading-glitch::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 255, 0.1) 50%, transparent 70%);
+      animation: glitch-sweep 6s linear infinite;
+    }
+    
+    @keyframes glitch-sweep {
+      0% { transform: translateX(-100%) translateY(-100%); }
+      100% { transform: translateX(100%) translateY(100%); }
+    }
+    
+    .loading-matrix {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.1;
+    }
+    
+    .matrix-rain {
+      position: absolute;
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      animation: matrix-fall 3s linear infinite;
+    }
+    
+    @keyframes matrix-fall {
+      0% { transform: translateY(-100px); opacity: 1; }
+      100% { transform: translateY(100vh); opacity: 0; }
+    }
+    
+    .loading-memory-fragments {
+      position: absolute;
+      color: rgba(0, 255, 255, 0.6);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      pointer-events: none;
+      animation: fragment-float 4s ease-in-out infinite;
+    }
+    
+    @keyframes fragment-float {
+      0%, 100% { opacity: 0.3; transform: translateY(0px); }
+      50% { opacity: 0.8; transform: translateY(-10px); }
+    }
+    
     .modal-close {
       position: absolute;
       top: 15px;
@@ -570,6 +734,23 @@
     </div>
   </div>
 
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-container">
+      <div class="loading-scanline"></div>
+      <div class="loading-glitch"></div>
+      <div class="loading-matrix" id="loading-matrix"></div>
+      
+      <div class="loading-text" id="loading-text">RECONSTRUCTING MEMORY</div>
+      <div class="loading-progress">
+        <div class="loading-bar"></div>
+      </div>
+      <div class="loading-status" id="loading-status">ACCESSING NEURAL PATHWAYS...</div>
+      
+      <div class="loading-memory-fragments" id="memory-fragments"></div>
+    </div>
+  </div>
+
   <script>
     // Fake user actions for social proof
     const fakeUserActions = [
@@ -816,6 +997,122 @@
       navigator.clipboard.writeText(text);
     });
 
+    // Loading animation functions
+    function showLoadingOverlay() {
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.add('active');
+      
+      // Start matrix rain effect
+      startMatrixRain();
+      
+      // Start memory fragments
+      startMemoryFragments();
+      
+      // Update loading text and status
+      updateLoadingText();
+    }
+    
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.remove('active');
+      
+      // Clear matrix rain
+      const matrix = document.getElementById('loading-matrix');
+      matrix.innerHTML = '';
+      
+      // Clear memory fragments
+      const fragments = document.getElementById('memory-fragments');
+      fragments.innerHTML = '';
+    }
+    
+    function startMatrixRain() {
+      const matrix = document.getElementById('loading-matrix');
+      const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+      
+      setInterval(() => {
+        const rain = document.createElement('div');
+        rain.className = 'matrix-rain';
+        rain.style.left = Math.random() * 100 + '%';
+        rain.style.animationDelay = Math.random() * 2 + 's';
+        rain.textContent = characters[Math.floor(Math.random() * characters.length)];
+        matrix.appendChild(rain);
+        
+        // Remove after animation
+        setTimeout(() => {
+          if (rain.parentNode) {
+            rain.parentNode.removeChild(rain);
+          }
+        }, 3000);
+      }, 100);
+    }
+    
+    function startMemoryFragments() {
+      const fragments = document.getElementById('memory-fragments');
+      const fragmentTexts = [
+        'flickering screen...',
+        'warm carpet fibers...',
+        'distant laughter...',
+        'static hum...',
+        'glowing dials...',
+        'whispered secrets...',
+        'crackling vinyl...',
+        'neon reflections...',
+        'dust motes dancing...',
+        'echoing footsteps...',
+        'radio static...',
+        'fading light...',
+        'cold metal...',
+        'warm breath...',
+        'distant thunder...',
+        'cigarette smoke...',
+        'rain on windows...',
+        'old photographs...',
+        'telephone rings...',
+        'car engine hum...'
+      ];
+      
+      setInterval(() => {
+        const fragment = document.createElement('div');
+        fragment.className = 'loading-memory-fragments';
+        fragment.style.left = Math.random() * 80 + 10 + '%';
+        fragment.style.top = Math.random() * 80 + 10 + '%';
+        fragment.style.animationDelay = Math.random() * 2 + 's';
+        fragment.textContent = fragmentTexts[Math.floor(Math.random() * fragmentTexts.length)];
+        fragments.appendChild(fragment);
+        
+        // Remove after animation
+        setTimeout(() => {
+          if (fragment.parentNode) {
+            fragment.parentNode.removeChild(fragment);
+          }
+        }, 4000);
+      }, 800);
+    }
+    
+    function updateLoadingText() {
+      const loadingText = document.getElementById('loading-text');
+      const loadingStatus = document.getElementById('loading-status');
+      
+      const loadingPhases = [
+        { text: 'RECONSTRUCTING MEMORY', status: 'ACCESSING NEURAL PATHWAYS...' },
+        { text: 'SCANNING TIMELINE', status: 'LOCATING MEMORY FRAGMENTS...' },
+        { text: 'DECODING SIGNALS', status: 'ANALYZING EMOTIONAL PATTERNS...' },
+        { text: 'SYNCHRONIZING DATA', status: 'RECONSTRUCTING SCENES...' },
+        { text: 'FINALIZING MEMORY', status: 'RENDERING EXPERIENCE...' }
+      ];
+      
+      let phaseIndex = 0;
+      const textInterval = setInterval(() => {
+        if (phaseIndex < loadingPhases.length) {
+          loadingText.textContent = loadingPhases[phaseIndex].text;
+          loadingStatus.textContent = loadingPhases[phaseIndex].status;
+          phaseIndex++;
+        } else {
+          clearInterval(textInterval);
+        }
+      }, 2000);
+    }
+    
     // Update form submit handler to show memory section
     document.getElementById('memory-form').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -838,20 +1135,17 @@
         hasErrors = true;
       }
       if (!hasErrors) {
-        const submitButton = e.target.querySelector('button[type="submit"]');
-        const originalText = submitButton.textContent;
-        submitButton.textContent = 'Generating Memory...';
-        submitButton.disabled = true;
+        closeModal();
+        showLoadingOverlay();
+        
         try {
           const memory = await generateMemory(fullname, birthYear);
-          closeModal();
+          hideLoadingOverlay();
           showMemorySection(memory);
         } catch (error) {
-            document.getElementById('birthYear-error').textContent = 'Failed to generate memory. Please try again.';
-            document.getElementById('birthYear-error').classList.add('show');
-        } finally {
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
+          hideLoadingOverlay();
+          // Show error in a new modal or overlay
+          alert('Failed to generate memory. Please try again.');
         }
       }
     });
