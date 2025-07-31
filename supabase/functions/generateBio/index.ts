@@ -88,8 +88,6 @@ You press your hand against the tiled wall. It's warm — like the sun's still o
 > You were thirteen when you swore you'd come back here together.  
 Now you're twenty-one, and the water never came back.  
 > Something's still floating at the bottom. But you don't check.
-
-
 `;
 
     const userPrompt = `Name: ${name}\nYear of Birth: ${birthYear}\nGenerate ${memoryStage}.`;
