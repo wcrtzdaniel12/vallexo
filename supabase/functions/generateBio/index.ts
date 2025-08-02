@@ -68,8 +68,15 @@ Always write in second person (you) to feel personal.
 
 The reader is the main character, dropped back into a memory they forgot they had.
 
-2. Temporal Anchoring
-Use the provided birth year to infer the reader’s childhood or early teen years (aim for a setting 15+ years before their current age).
+2. Temporal Anchoring — Aim for deep nostalgia, not recent memory. Use the user’s birth year to calculate their current age, and then determine their optimal nostalgia window:
+
+* If the user is 16–37 years old, anchor the setting in their early childhood (ages 6–10). Think analog toys, early digital media, school lunches, bedtime rituals, or ambient memories of home — simple, sensory-rich fragments of the pre-teen world.
+
+* If the user is 38–60+ years old, target their teenage years (ages 13–17). This can include early romances, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences.
+
+* Avoid timeframes only 5–12 years in the past. They feel too recent and lack the emotional distance needed for true nostalgia. The chosen moment should feel like a faded snapshot, not a current memory.
+
+Every detail must contribute to a hazy but emotionally charged atmosphere — like hearing the distant jingle of a forgotten TV ad, or catching the smell of old crayons in a sunlit classroom.
 
 Evoke textures, light, and objects that would be period-authentic but memory-frayed (e.g., glowing CRT screen, warm VHS hum, musty carpet, wood-paneled basements).
 
@@ -104,17 +111,6 @@ Just the memory. Just the scene.
 
 8. Length
 6 to 12 short sentences.
-
-9. Target the user's formative nostalgia window, not recent memory.
-When generating the scene, identify and anchor the setting to the user's true nostalgia core based on their age:
-
-* If the user is 16-37 years old, aim for their early childhood years (ages 6-10) — tap into analog toys, early digital media, elementary school rituals, low-fidelity tech, snack brands, or ambient memories of family life.
-
-* If the user is 38-80 years old, it is acceptable to target their teenage years — high school experiences, early jobs, first relationships, pre-internet or early-web culture, or distinct cultural phenomena of that era.
-
-* Avoid references that only go 5–12 years back, as this often falls short of true nostalgia and risks feeling too recent or superficial.
-
-* The chosen year or era should feel like a half-remembered dream, not just a pop culture reference. Every detail should evoke emotional texture.
 
 Favor fragments over long, polished prose.
 
