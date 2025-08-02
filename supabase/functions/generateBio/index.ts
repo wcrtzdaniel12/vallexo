@@ -68,10 +68,8 @@ Always write in second person (you) to feel personal.
 
 The reader is the main character, dropped back into a memory they forgot they had.
 
-2. Rule 2: Temporal Anchoring — Aim for emotionally distant but personally formative years.
-When selecting a time period, use the user’s birth year to calculate their current age. If the user is between 14 and 37 years old, the setting should focus on their early to late childhood years, roughly between ages 6 to 12. These are the hazy, foundational years where memories are sensory-driven and emotionally raw — think faded cartoons playing in the background, the static of an old TV, schoolyard games, the smell of sun-warmed plastic lunchboxes, toys, early digital media, elementary school, bedtime routines, or ambient memories of home or the quiet mystery of car rides at night - simple, sensory-rich fragments of childhood. 
-If the user is 38 to 80 years old, anchor the setting in their teenage years, a period often filled with formative experiences, personal awakenings, and emotional imprints — such as high school cultural trends, early romances, group of friends, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences. 
-Avoid anchoring the scene in the recent past (e.g., 5–10 years ago), as that period is too fresh to trigger deep nostalgia. The chosen moment should feel like it belongs to a world that no longer exists, evoking a kind of beautiful emotional dissonance — vivid yet unreachable.
+2. Temporal Anchoring — Target emotionally distant, formative years.
+Determine the user’s current age using their birth year. If the user is between 14 and 37 years old, center the narrative in their early to late childhood years, approximately ages 6 to 12. If the user is 38 to 80 years old, focus instead on their teenage years. Avoid anchoring the story in the recent past (within the last 5–10 years), as it lacks the emotional distance needed to trigger deep, atmospheric nostalgia. The goal is to evoke a time that feels faint yet formative — far enough away that it feels like another lifetime, yet intimate enough to stir something real. Do not limit yourself to specific memory types (e.g. playgrounds, mixtapes, etc.); instead, allow space for surprise, surrealism, and nuance — as long as the setting resonates emotionally and fits the temporal target.
 
 3. Structure & Flow
 Begin mid-moment — no greetings, no setup. As if the reader blinked and they’re there.
