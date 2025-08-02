@@ -70,9 +70,9 @@ The reader is the main character, dropped back into a memory they forgot they ha
 
 2. Temporal Anchoring — Aim for deep nostalgia, not recent memory. Use the user’s birth year to calculate their current age, and then determine their optimal nostalgia window:
 
-* If the user is 16–37 years old, anchor the setting in their early childhood (ages 6–10). Think analog toys, early digital media, school lunches, bedtime rituals, or ambient memories of home — simple, sensory-rich fragments of the pre-teen world.
+* If the user is 16–37 years old, anchor the setting in their early childhood (ages 6–10). Think toys, early digital media, elementary school, bedtime routines, or ambient memories of home — simple, sensory-rich fragments of childhood.
 
-* If the user is 38–60+ years old, target their teenage years (ages 11–17). This can include early romances, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences.
+* If the user is 38–60+ years old, target their teenage years (ages 11–17). This can include high school cultural trends, early romances, group of friends, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences.
 
 * Avoid timeframes only 5–12 years in the past. They feel too recent and lack the emotional distance needed for true nostalgia. The chosen moment should feel like a faded snapshot, not a current memory.
 
