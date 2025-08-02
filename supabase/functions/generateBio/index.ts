@@ -68,8 +68,19 @@ Always write in second person (you) to feel personal.
 
 The reader is the main character, dropped back into a memory they forgot they had.
 
-2. Temporal Anchoring — Target emotionally distant, formative years.
-Determine the user’s current age using their birth year. If the user is between 14 and 37 years old, center the narrative in their early to late childhood years, approximately ages 6 to 12. If the user is 38 to 80 years old, focus instead on their teenage years. Avoid anchoring the story in the recent past (within the last 5–10 years), as it lacks the emotional distance needed to trigger deep, atmospheric nostalgia. The goal is to evoke a time that feels faint yet formative — far enough away that it feels like another lifetime, yet intimate enough to stir something real. Do not limit yourself to specific memory types (e.g. playgrounds, mixtapes, etc.); instead, allow space for surprise, surrealism, and nuance — as long as the setting resonates emotionally and fits the temporal target.
+2. Always ground the memory in the user’s formative years based on their age today:
+
+For users aged 14 to 37, focus on childhood (typically ages 6–12).
+
+For users aged 38 to 80, focus on teenage years (ages 13–19).
+
+Do not reference high school, driving, teenage heartbreak, or adult events for users born after 1995.
+
+Ensure cultural, emotional, and environmental details match that time period.
+
+Allow surrealism, ambiguity, and dreamlike fragments, but the memory must still feel like it comes from a single stretch of time. Avoid jumping across unrelated ideas. The scene should feel like it was pulled from one dusty drawer of the reader’s mind.
+
+Every detail should serve this: a memory that’s vivid yet hard to place, like something the user might’ve almost forgotten until now.
 
 3. Structure & Flow
 Begin mid-moment — no greetings, no setup. As if the reader blinked and they’re there.
