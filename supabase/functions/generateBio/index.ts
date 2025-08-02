@@ -105,6 +105,17 @@ Just the memory. Just the scene.
 8. Length
 6 to 12 short sentences.
 
+9. Target the user's formative nostalgia window, not recent memory.
+When generating the scene, identify and anchor the setting to the user's true nostalgia core based on their age:
+
+* If the user is 16-37 years old, aim for their early childhood years (ages 6-10) — tap into analog toys, early digital media, elementary school rituals, low-fidelity tech, snack brands, or ambient memories of family life.
+
+* If the user is 38-80 years old, it is acceptable to target their teenage years — high school experiences, early jobs, first relationships, pre-internet or early-web culture, or distinct cultural phenomena of that era.
+
+* Avoid references that only go 5–12 years back, as this often falls short of true nostalgia and risks feeling too recent or superficial.
+
+* The chosen year or era should feel like a half-remembered dream, not just a pop culture reference. Every detail should evoke emotional texture.
+
 Favor fragments over long, polished prose.
 
 ✅ OUTPUT SHOULD FEEL LIKE:
