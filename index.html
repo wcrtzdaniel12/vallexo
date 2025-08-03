@@ -1348,6 +1348,44 @@
       }
     }
     
+    // Add natural pauses and emphasis to text
+    function addNaturalPauses(text) {
+      // Convert to SSML for better natural speech
+      let ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">`;
+      
+      // Add natural pauses and emphasis
+      let enhanced = text
+        .replace(/\./g, '... ')
+        .replace(/,/g, ', ')
+        .replace(/([.!?])\s+/g, '$1... ');
+      
+      // Add emphasis to key emotional words
+      const emotionalWords = [
+        'remember', 'memory', 'felt', 'saw', 'heard', 'smelled',
+        'touched', 'warm', 'cold', 'bright', 'dark', 'quiet',
+        'loud', 'soft', 'hard', 'gentle', 'rough', 'smooth',
+        'familiar', 'strange', 'beautiful', 'haunting', 'dream',
+        'real', 'unreal', 'vivid', 'faded', 'clear', 'blurry',
+        'moment', 'time', 'place', 'feeling', 'emotion', 'sensation'
+      ];
+      
+      emotionalWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        enhanced = enhanced.replace(regex, `<emphasis level="moderate">${word}</emphasis>`);
+      });
+      
+      // Add natural breathing pauses
+      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="500ms"/> ');
+      
+      // Add subtle pauses for natural rhythm
+      enhanced = enhanced.replace(/([,;])\s+/g, '$1<break time="200ms"/> ');
+      
+      ssml += enhanced;
+      ssml += '</speak>';
+      
+      return ssml;
+    }
+    
     // Retro radio announcer narration
     function narrateMemory(memoryText) {
       console.log('Attempting to narrate memory:', memoryText.substring(0, 50) + '...');
@@ -1361,30 +1399,75 @@
           try {
             const utterance = new SpeechSynthesisUtterance(memoryText);
             
-            // Configure for retro radio voice
-            utterance.rate = 0.8; // Slower pace
-            utterance.pitch = 0.7; // Deeper voice
-            utterance.volume = 0.9; // High volume
+            // Configure for natural, human-like voice
+            utterance.rate = 0.85; // Slightly slower for natural pace
+            utterance.pitch = 0.9; // More natural pitch (less deep)
+            utterance.volume = 0.95; // High volume for clarity
             
-            // Try to get a male voice for that radio announcer feel
+            // Add natural pauses and emphasis
+            const enhancedText = addNaturalPauses(memoryText);
+            
+            // Check if browser supports SSML
+            if (utterance.text !== undefined) {
+              utterance.text = enhancedText;
+            } else {
+              // Fallback to plain text if SSML not supported
+              utterance.text = memoryText;
+            }
+            
+            // Enhanced voice selection for more natural sound
             const voices = speechSynthesis.getVoices();
             console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
             
-            const maleVoice = voices.find(voice => 
-              voice.lang.includes('en') && 
-              (voice.name.toLowerCase().includes('male') || 
-               voice.name.toLowerCase().includes('david') ||
-               voice.name.toLowerCase().includes('james') ||
-               voice.name.toLowerCase().includes('mark') ||
-               voice.name.toLowerCase().includes('alex') ||
-               voice.name.toLowerCase().includes('daniel'))
-            );
+            // Priority list for natural-sounding voices
+            const voicePriority = [
+              'Google UK English Male',
+              'Google US English Male', 
+              'Microsoft David Online (Natural)',
+              'Microsoft Mark Online (Natural)',
+              'Alex',
+              'Daniel',
+              'James',
+              'David',
+              'Mark'
+            ];
             
-            if (maleVoice) {
-              utterance.voice = maleVoice;
-              console.log('Using voice:', maleVoice.name);
+            // Find the best available voice
+            let selectedVoice = null;
+            
+            // First, try to find voices from our priority list
+            for (const priorityName of voicePriority) {
+              const voice = voices.find(v => 
+                v.name.toLowerCase().includes(priorityName.toLowerCase()) ||
+                v.name.toLowerCase().includes('natural') ||
+                (v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male'))
+              );
+              if (voice) {
+                selectedVoice = voice;
+                break;
+              }
+            }
+            
+            // If no priority voice found, look for any high-quality male voice
+            if (!selectedVoice) {
+              selectedVoice = voices.find(voice => 
+                voice.lang.includes('en') && 
+                (voice.name.toLowerCase().includes('male') || 
+                 voice.name.toLowerCase().includes('david') ||
+                 voice.name.toLowerCase().includes('james') ||
+                 voice.name.toLowerCase().includes('mark') ||
+                 voice.name.toLowerCase().includes('alex') ||
+                 voice.name.toLowerCase().includes('daniel') ||
+                 voice.name.toLowerCase().includes('google') ||
+                 voice.name.toLowerCase().includes('microsoft'))
+              );
+            }
+            
+            if (selectedVoice) {
+              utterance.voice = selectedVoice;
+              console.log('Using voice:', selectedVoice.name);
             } else {
-              console.log('No male voice found, using default');
+              console.log('No preferred voice found, using default');
             }
             
             // Add radio static effect
@@ -1539,6 +1622,18 @@
         speechSynthesis.getVoices();
         console.log('Speech synthesis initialized');
         updateDebugInfo();
+        
+        // Wait for voices to load and log the best ones
+        setTimeout(() => {
+          const voices = speechSynthesis.getVoices();
+          const naturalVoices = voices.filter(v => 
+            v.name.toLowerCase().includes('natural') ||
+            v.name.toLowerCase().includes('google') ||
+            v.name.toLowerCase().includes('microsoft') ||
+            v.name.toLowerCase().includes('premium')
+          );
+          console.log('Natural-sounding voices available:', naturalVoices.map(v => v.name));
+        }, 2000);
       }
     });
     
