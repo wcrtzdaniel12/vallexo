@@ -728,8 +728,8 @@
   <!-- Debug Panel -->
   <div class="debug-panel" id="debug-panel">
     <div>🔧 DEBUG MODE</div>
-    <div id="speech-status">Speech: Loading...</div>
-    <div id="voice-count">Voices: 0</div>
+    <div id="speech-status">ElevenLabs: Loading...</div>
+    <div id="voice-count">Voice: Adam (Radio)</div>
     <button onclick="toggleDebug()" style="margin-top: 5px; padding: 2px 5px; font-size: 8px;">Toggle Debug</button>
   </div>
 
@@ -1337,15 +1337,10 @@
       const speechStatus = document.getElementById('speech-status');
       const voiceCount = document.getElementById('voice-count');
       
-      if ('speechSynthesis' in window) {
-        speechStatus.textContent = 'Speech: Available';
-        const voices = speechSynthesis.getVoices();
-        voiceCount.textContent = `Voices: ${voices.length}`;
-        console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
-      } else {
-        speechStatus.textContent = 'Speech: Not Supported';
-        voiceCount.textContent = 'Voices: 0';
-      }
+      // Update to show ElevenLabs status
+      speechStatus.textContent = 'ElevenLabs: Active';
+      voiceCount.textContent = 'Voice: Adam (Radio)';
+      console.log('Using ElevenLabs for realistic voice synthesis');
     }
     
     // Add natural pauses and emphasis to text
@@ -1386,135 +1381,113 @@
       return ssml;
     }
     
-    // Retro radio announcer narration
-    function narrateMemory(memoryText) {
-      console.log('Attempting to narrate memory:', memoryText.substring(0, 50) + '...');
+    // ElevenLabs realistic radio announcer narration
+    async function narrateMemory(memoryText) {
+      console.log('Attempting to narrate memory with ElevenLabs:', memoryText.substring(0, 50) + '...');
       
+      try {
+        // Add radio static effect immediately
+        addRadioStaticEffect();
+        
+        // Enhanced text for better narration
+        const enhancedText = addNaturalPauses(memoryText);
+        
+        // Call ElevenLabs API via Supabase Edge Function
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeech', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: enhancedText,
+            voiceId: "pNInz6obpgDQGcFmaJgB" // Adam - deep, professional radio voice
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`ElevenLabs API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.audio) {
+          // Convert base64 to audio blob
+          const audioData = atob(data.audio);
+          const audioArray = new Uint8Array(audioData.length);
+          for (let i = 0; i < audioData.length; i++) {
+            audioArray[i] = audioData.charCodeAt(i);
+          }
+          
+          const audioBlob = new Blob([audioArray], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Create and play audio
+          const audio = new Audio(audioUrl);
+          audio.volume = 0.9;
+          
+          audio.onplay = () => {
+            console.log('ElevenLabs narration started');
+            updateDebugInfo();
+          };
+          
+          audio.onended = () => {
+            console.log('ElevenLabs narration ended');
+            removeRadioStaticEffect();
+            URL.revokeObjectURL(audioUrl); // Clean up
+          };
+          
+          audio.onerror = (error) => {
+            console.error('ElevenLabs audio error:', error);
+            removeRadioStaticEffect();
+            URL.revokeObjectURL(audioUrl);
+            alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
+          };
+          
+          // Start playing
+          await audio.play();
+          
+        } else {
+          throw new Error('No audio data received from ElevenLabs');
+        }
+        
+      } catch (error) {
+        console.error('Error in ElevenLabs narration:', error);
+        removeRadioStaticEffect();
+        
+        // Fallback to Web Speech API if ElevenLabs fails
+        console.log('Falling back to Web Speech API...');
+        fallbackToWebSpeech(memoryText);
+      }
+    }
+    
+    // Fallback to Web Speech API
+    function fallbackToWebSpeech(memoryText) {
       if ('speechSynthesis' in window) {
-        // Cancel any existing speech
         speechSynthesis.cancel();
         
-        // Function to start narration once voices are loaded
-        const startNarration = () => {
-          try {
-            const utterance = new SpeechSynthesisUtterance(memoryText);
-            
-            // Configure for natural, human-like voice
-            utterance.rate = 0.85; // Slightly slower for natural pace
-            utterance.pitch = 0.9; // More natural pitch (less deep)
-            utterance.volume = 0.95; // High volume for clarity
-            
-            // Add natural pauses and emphasis
-            const enhancedText = addNaturalPauses(memoryText);
-            
-            // Check if browser supports SSML
-            if (utterance.text !== undefined) {
-              utterance.text = enhancedText;
-            } else {
-              // Fallback to plain text if SSML not supported
-              utterance.text = memoryText;
-            }
-            
-            // Enhanced voice selection for more natural sound
-            const voices = speechSynthesis.getVoices();
-            console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
-            
-            // Priority list for natural-sounding voices
-            const voicePriority = [
-              'Google UK English Male',
-              'Google US English Male', 
-              'Microsoft David Online (Natural)',
-              'Microsoft Mark Online (Natural)',
-              'Alex',
-              'Daniel',
-              'James',
-              'David',
-              'Mark'
-            ];
-            
-            // Find the best available voice
-            let selectedVoice = null;
-            
-            // First, try to find voices from our priority list
-            for (const priorityName of voicePriority) {
-              const voice = voices.find(v => 
-                v.name.toLowerCase().includes(priorityName.toLowerCase()) ||
-                v.name.toLowerCase().includes('natural') ||
-                (v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes('male'))
-              );
-              if (voice) {
-                selectedVoice = voice;
-                break;
-              }
-            }
-            
-            // If no priority voice found, look for any high-quality male voice
-            if (!selectedVoice) {
-              selectedVoice = voices.find(voice => 
-                voice.lang.includes('en') && 
-                (voice.name.toLowerCase().includes('male') || 
-                 voice.name.toLowerCase().includes('david') ||
-                 voice.name.toLowerCase().includes('james') ||
-                 voice.name.toLowerCase().includes('mark') ||
-                 voice.name.toLowerCase().includes('alex') ||
-                 voice.name.toLowerCase().includes('daniel') ||
-                 voice.name.toLowerCase().includes('google') ||
-                 voice.name.toLowerCase().includes('microsoft'))
-              );
-            }
-            
-            if (selectedVoice) {
-              utterance.voice = selectedVoice;
-              console.log('Using voice:', selectedVoice.name);
-            } else {
-              console.log('No preferred voice found, using default');
-            }
-            
-            // Add radio static effect
-            addRadioStaticEffect();
-            
-            // Start narration
-            utterance.onstart = () => {
-              console.log('Radio narration started');
-              updateDebugInfo();
-            };
-            
-            utterance.onend = () => {
-              console.log('Radio narration ended');
-              removeRadioStaticEffect();
-            };
-            
-            utterance.onerror = (event) => {
-              console.log('Radio narration error:', event);
-              removeRadioStaticEffect();
-              alert('Speech synthesis failed. Please try clicking the "Replay Narration" button.');
-            };
-            
-            // Speak the utterance
-            speechSynthesis.speak(utterance);
-            
-          } catch (error) {
-            console.error('Error in startNarration:', error);
-            alert('Speech synthesis error. Please try again.');
-          }
+        const utterance = new SpeechSynthesisUtterance(memoryText);
+        utterance.rate = 0.85;
+        utterance.pitch = 0.9;
+        utterance.volume = 0.95;
+        
+        utterance.onstart = () => {
+          console.log('Fallback Web Speech narration started');
+          updateDebugInfo();
         };
         
-        // Check if voices are already loaded
-        const voices = speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          // Voices are already loaded
-          console.log('Voices already loaded, starting narration');
-          setTimeout(startNarration, 500);
-        } else {
-          // Wait for voices to load
-          console.log('Waiting for voices to load...');
-          speechSynthesis.onvoiceschanged = () => {
-            console.log('Voices loaded, starting narration');
-            setTimeout(startNarration, 500);
-          };
-        }
+        utterance.onend = () => {
+          console.log('Fallback Web Speech narration ended');
+          removeRadioStaticEffect();
+        };
+        
+        utterance.onerror = (event) => {
+          console.log('Fallback Web Speech error:', event);
+          removeRadioStaticEffect();
+          alert('Speech synthesis failed. Please try again.');
+        };
+        
+        speechSynthesis.speak(utterance);
       } else {
-        console.log('Speech synthesis not supported');
         alert('Speech synthesis is not supported in this browser.');
       }
     }
