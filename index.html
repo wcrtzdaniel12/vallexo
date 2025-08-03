@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Memory Generator</title>
+      <title>Memory Generator v2.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1337,53 +1337,47 @@
       const speechStatus = document.getElementById('speech-status');
       const voiceCount = document.getElementById('voice-count');
       
-      // Update to show ElevenLabs direct API status
-      speechStatus.textContent = 'ElevenLabs: Direct API';
+      // Update to show ElevenLabs edge function status
+      speechStatus.textContent = 'ElevenLabs: Edge Function';
       voiceCount.textContent = 'Voice: Matthew (Radio)';
-      console.log('Using ElevenLabs direct API with Matthew voice for realistic voice synthesis');
+      console.log('Using ElevenLabs via edge function with Matthew voice for realistic voice synthesis');
     }
     
-    // Add natural pauses and emphasis to text
+    // Add natural pauses and emphasis to text - OPTIMIZED FOR CREDITS
     function addNaturalPauses(text) {
-      // Convert to SSML for better natural speech
-      let ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">`;
+      // Limit text length to save credits
+      const maxLength = 500; // Reduce from unlimited
+      if (text.length > maxLength) {
+        text = text.substring(0, maxLength) + '...';
+        console.log('Text truncated to save credits:', text.length, 'characters');
+      }
       
-      // Add natural pauses and emphasis
+      // Simplified SSML - less processing = fewer credits
       let enhanced = text
-        .replace(/\./g, '... ')
+        .replace(/\./g, '. ')
         .replace(/,/g, ', ')
-        .replace(/([.!?])\s+/g, '$1... ');
+        .replace(/([.!?])\s+/g, '$1 ');
       
-      // Add emphasis to key emotional words
-      const emotionalWords = [
-        'remember', 'memory', 'felt', 'saw', 'heard', 'smelled',
-        'touched', 'warm', 'cold', 'bright', 'dark', 'quiet',
-        'loud', 'soft', 'hard', 'gentle', 'rough', 'smooth',
-        'familiar', 'strange', 'beautiful', 'haunting', 'dream',
-        'real', 'unreal', 'vivid', 'faded', 'clear', 'blurry',
-        'moment', 'time', 'place', 'feeling', 'emotion', 'sensation'
+      // Only emphasize key words (reduced list)
+      const keyWords = [
+        'remember', 'memory', 'felt', 'saw', 'heard',
+        'moment', 'time', 'place', 'feeling'
       ];
       
-      emotionalWords.forEach(word => {
+      keyWords.forEach(word => {
         const regex = new RegExp(`\\b${word}\\b`, 'gi');
         enhanced = enhanced.replace(regex, `<emphasis level="moderate">${word}</emphasis>`);
       });
       
-      // Add natural breathing pauses
-      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="500ms"/> ');
+      // Minimal pauses
+      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="300ms"/> ');
       
-      // Add subtle pauses for natural rhythm
-      enhanced = enhanced.replace(/([,;])\s+/g, '$1<break time="200ms"/> ');
-      
-      ssml += enhanced;
-      ssml += '</speak>';
-      
-      return ssml;
+      return enhanced;
     }
     
-    // ElevenLabs realistic radio announcer narration - Direct API Call
+    // ElevenLabs realistic radio announcer narration - Via Edge Function
     async function narrateMemory(memoryText) {
-      console.log('Attempting to narrate memory with ElevenLabs directly:', memoryText.substring(0, 50) + '...');
+      console.log('Attempting to narrate memory with ElevenLabs via edge function:', memoryText.substring(0, 50) + '...');
       
       try {
         // Add radio static effect immediately
@@ -1392,74 +1386,71 @@
         // Enhanced text for better narration
         const enhancedText = addNaturalPauses(memoryText);
         
-        // Call ElevenLabs API directly
-        console.log('Calling ElevenLabs API directly...');
-        
-        // IMPORTANT: Replace YOUR_API_KEY with your actual ElevenLabs API key
-        const apiKey = 'sk_f032818946eaa8a7a786d70f0c7cc93662d4b49ad67c0053'; // ⚠️ Replace this with your actual API key
-        
-        const voiceId = "dWlo9A8YyLspmlvHk1dB"; // Matthew voice
-        
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        // Call ElevenLabs API via Supabase Edge Function
+        console.log('Calling edge function...');
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeech', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'xi-api-key': apiKey, // ElevenLabs API key header
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            text: enhancedText,
-            model_id: "eleven_monolingual_v1",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75
-            }
+            text: enhancedText
           })
         });
         
-        console.log('ElevenLabs response status:', response.status);
-        console.log('ElevenLabs response headers:', response.headers);
+        console.log('Edge function response status:', response.status);
         
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('ElevenLabs API error:', response.status, errorText);
-          throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+          const errorData = await response.json();
+          console.error('Edge function error:', errorData);
+          throw new Error(`Edge function error: ${response.status} - ${JSON.stringify(errorData)}`);
         }
         
-        // Get audio data directly
-        const audioBuffer = await response.arrayBuffer();
-        console.log('Audio received:', audioBuffer.byteLength, 'bytes');
+        const data = await response.json();
+        console.log('Edge function success:', data);
         
-        // Create audio blob directly
-        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Create and play audio
-        const audio = new Audio(audioUrl);
-        audio.volume = 0.9;
-        
-        audio.onplay = () => {
-          console.log('ElevenLabs direct API narration started');
-          updateDebugInfo();
-        };
-        
-        audio.onended = () => {
-          console.log('ElevenLabs direct API narration ended');
-          removeRadioStaticEffect();
-          URL.revokeObjectURL(audioUrl); // Clean up
-        };
-        
-        audio.onerror = (error) => {
-          console.error('ElevenLabs direct API audio error:', error);
-          removeRadioStaticEffect();
-          URL.revokeObjectURL(audioUrl);
-          alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
-        };
-        
-        // Start playing
-        await audio.play();
+        if (data.audio) {
+          // Convert base64 to audio blob
+          const audioData = atob(data.audio);
+          const audioArray = new Uint8Array(audioData.length);
+          for (let i = 0; i < audioData.length; i++) {
+            audioArray[i] = audioData.charCodeAt(i);
+          }
+          
+          const audioBlob = new Blob([audioArray], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Create and play audio
+          const audio = new Audio(audioUrl);
+          audio.volume = 0.9;
+          
+          audio.onplay = () => {
+            console.log('ElevenLabs edge function narration started');
+            updateDebugInfo();
+          };
+          
+          audio.onended = () => {
+            console.log('ElevenLabs edge function narration ended');
+            removeRadioStaticEffect();
+            URL.revokeObjectURL(audioUrl); // Clean up
+          };
+          
+          audio.onerror = (error) => {
+            console.error('ElevenLabs edge function audio error:', error);
+            removeRadioStaticEffect();
+            URL.revokeObjectURL(audioUrl);
+            alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
+          };
+          
+          // Start playing
+          await audio.play();
+          
+        } else {
+          throw new Error('No audio data received from edge function');
+        }
         
       } catch (error) {
-        console.error('Error in ElevenLabs direct API narration:', error);
+        console.error('Error in ElevenLabs edge function narration:', error);
         removeRadioStaticEffect();
         
         // Fallback to Web Speech API if ElevenLabs fails
