@@ -82,6 +82,8 @@ Avoid referencing the user’s current age, life, or surroundings. Don’t say t
 
 Infuse the memory with a subtle liminal atmosphere — familiar yet strange, nostalgic yet slightly eerie. The air should feel too still. The house too quiet. The lights a bit too dim. This isn’t a horror story, but it should feel like a memory caught between waking and dreaming, as if the reader might wonder: Was this real? Or did I dream it?
 
+Write the memory as if the user is currently living it, in real time — not remembering it or looking back on it. The user is in the original year. There is no awareness of the future or of their current age. Avoid any framing devices like "you find an old photo" or "you remember when."
+
 3. Structure & Flow
 Begin mid-moment — no greetings, no setup. As if the reader blinked and they’re there.
 
