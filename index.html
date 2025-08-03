@@ -667,6 +667,25 @@
       height: 60px;
     }
     
+    .debug-panel {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #00ffff;
+      z-index: 1000;
+      max-width: 200px;
+      display: none;
+    }
+    
+    .debug-panel.show {
+      display: block;
+    }
+    
     .visualizer-bar {
       width: 3px;
       background: linear-gradient(to top, #00ffff, rgba(0, 255, 255, 0.3));
@@ -683,7 +702,7 @@
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
   <div class="audio-controls">
-    <button class="audio-button" id="audio-toggle">♪ ON</button>
+    <button class="audio-button" id="audio-toggle">♪ LOADING...</button>
     <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="50">
   </div>
   
@@ -704,6 +723,14 @@
     <div class="visualizer-bar"></div>
     <div class="visualizer-bar"></div>
     <div class="visualizer-bar"></div>
+  </div>
+  
+  <!-- Debug Panel -->
+  <div class="debug-panel" id="debug-panel">
+    <div>🔧 DEBUG MODE</div>
+    <div id="speech-status">Speech: Loading...</div>
+    <div id="voice-count">Voices: 0</div>
+    <button onclick="toggleDebug()" style="margin-top: 5px; padding: 2px 5px; font-size: 8px;">Toggle Debug</button>
   </div>
 
   <!-- Brand Section -->
@@ -1021,11 +1048,36 @@
       }
     });
     
-    // Initialize audio on first user interaction
+    // Initialize audio on page load
+    window.addEventListener('load', function() {
+      // Small delay to ensure page is fully loaded
+      setTimeout(() => {
+        if (!audioContext) {
+          initAudio();
+          isPlaying = true;
+          document.getElementById('audio-toggle').textContent = '♪ ON';
+          document.getElementById('audio-toggle').classList.remove('muted');
+        }
+      }, 1000);
+    });
+    
+    // Initialize audio on first user interaction (fallback)
     document.addEventListener('click', function initOnFirstClick() {
       if (!audioContext) {
         initAudio();
+        isPlaying = true;
+        document.getElementById('audio-toggle').textContent = '♪ ON';
+        document.getElementById('audio-toggle').classList.remove('muted');
       }
+      
+      // Test speech synthesis on first click
+      if ('speechSynthesis' in window) {
+        const testUtterance = new SpeechSynthesisUtterance('Radio test');
+        testUtterance.volume = 0;
+        speechSynthesis.speak(testUtterance);
+        console.log('Speech synthesis test completed');
+      }
+      
       document.removeEventListener('click', initOnFirstClick);
     }, { once: true });
     
@@ -1274,56 +1326,113 @@
       narrateMemory(memoryText);
     }
     
+    // Debug functions
+    function toggleDebug() {
+      const debugPanel = document.getElementById('debug-panel');
+      debugPanel.classList.toggle('show');
+      updateDebugInfo();
+    }
+    
+    function updateDebugInfo() {
+      const speechStatus = document.getElementById('speech-status');
+      const voiceCount = document.getElementById('voice-count');
+      
+      if ('speechSynthesis' in window) {
+        speechStatus.textContent = 'Speech: Available';
+        const voices = speechSynthesis.getVoices();
+        voiceCount.textContent = `Voices: ${voices.length}`;
+        console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+      } else {
+        speechStatus.textContent = 'Speech: Not Supported';
+        voiceCount.textContent = 'Voices: 0';
+      }
+    }
+    
     // Retro radio announcer narration
     function narrateMemory(memoryText) {
+      console.log('Attempting to narrate memory:', memoryText.substring(0, 50) + '...');
+      
       if ('speechSynthesis' in window) {
         // Cancel any existing speech
         speechSynthesis.cancel();
         
-        // Create speech utterance
-        const utterance = new SpeechSynthesisUtterance(memoryText);
+        // Function to start narration once voices are loaded
+        const startNarration = () => {
+          try {
+            const utterance = new SpeechSynthesisUtterance(memoryText);
+            
+            // Configure for retro radio voice
+            utterance.rate = 0.8; // Slower pace
+            utterance.pitch = 0.7; // Deeper voice
+            utterance.volume = 0.9; // High volume
+            
+            // Try to get a male voice for that radio announcer feel
+            const voices = speechSynthesis.getVoices();
+            console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+            
+            const maleVoice = voices.find(voice => 
+              voice.lang.includes('en') && 
+              (voice.name.toLowerCase().includes('male') || 
+               voice.name.toLowerCase().includes('david') ||
+               voice.name.toLowerCase().includes('james') ||
+               voice.name.toLowerCase().includes('mark') ||
+               voice.name.toLowerCase().includes('alex') ||
+               voice.name.toLowerCase().includes('daniel'))
+            );
+            
+            if (maleVoice) {
+              utterance.voice = maleVoice;
+              console.log('Using voice:', maleVoice.name);
+            } else {
+              console.log('No male voice found, using default');
+            }
+            
+            // Add radio static effect
+            addRadioStaticEffect();
+            
+            // Start narration
+            utterance.onstart = () => {
+              console.log('Radio narration started');
+              updateDebugInfo();
+            };
+            
+            utterance.onend = () => {
+              console.log('Radio narration ended');
+              removeRadioStaticEffect();
+            };
+            
+            utterance.onerror = (event) => {
+              console.log('Radio narration error:', event);
+              removeRadioStaticEffect();
+              alert('Speech synthesis failed. Please try clicking the "Replay Narration" button.');
+            };
+            
+            // Speak the utterance
+            speechSynthesis.speak(utterance);
+            
+          } catch (error) {
+            console.error('Error in startNarration:', error);
+            alert('Speech synthesis error. Please try again.');
+          }
+        };
         
-        // Configure for retro radio voice
-        utterance.rate = 0.8; // Slower pace
-        utterance.pitch = 0.7; // Deeper voice
-        utterance.volume = 0.9; // High volume
-        
-        // Try to get a male voice for that radio announcer feel
+        // Check if voices are already loaded
         const voices = speechSynthesis.getVoices();
-        const maleVoice = voices.find(voice => 
-          voice.lang.includes('en') && 
-          (voice.name.toLowerCase().includes('male') || 
-           voice.name.toLowerCase().includes('david') ||
-           voice.name.toLowerCase().includes('james') ||
-           voice.name.toLowerCase().includes('mark'))
-        );
-        
-        if (maleVoice) {
-          utterance.voice = maleVoice;
+        if (voices.length > 0) {
+          // Voices are already loaded
+          console.log('Voices already loaded, starting narration');
+          setTimeout(startNarration, 500);
+        } else {
+          // Wait for voices to load
+          console.log('Waiting for voices to load...');
+          speechSynthesis.onvoiceschanged = () => {
+            console.log('Voices loaded, starting narration');
+            setTimeout(startNarration, 500);
+          };
         }
-        
-        // Add radio static effect
-        addRadioStaticEffect();
-        
-        // Start narration
-        utterance.onstart = () => {
-          console.log('Radio narration started');
-        };
-        
-        utterance.onend = () => {
-          console.log('Radio narration ended');
-          removeRadioStaticEffect();
-        };
-        
-        utterance.onerror = (event) => {
-          console.log('Radio narration error:', event);
-          removeRadioStaticEffect();
-        };
-        
-        // Small delay to let the memory section appear first
-        setTimeout(() => {
-          speechSynthesis.speak(utterance);
-        }, 500);
+      } else {
+        console.log('Speech synthesis not supported');
+        alert('Speech synthesis is not supported in this browser.');
       }
     }
     
@@ -1416,7 +1525,29 @@
     document.getElementById('replay-narration').addEventListener('click', function() {
       const memoryText = document.getElementById('memory-text').textContent;
       if (memoryText) {
+        // Force user interaction for speech synthesis
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext.resume();
         narrateMemory(memoryText);
+      }
+    });
+    
+    // Initialize speech synthesis on page load
+    window.addEventListener('load', function() {
+      if ('speechSynthesis' in window) {
+        // Trigger voice loading
+        speechSynthesis.getVoices();
+        console.log('Speech synthesis initialized');
+        updateDebugInfo();
+      }
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Ctrl/Cmd + D to toggle debug
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        toggleDebug();
       }
     });
 
