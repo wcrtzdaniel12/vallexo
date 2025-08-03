@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
   <style>
     @keyframes glitch {
       0% { transform: translate(0); }
@@ -588,9 +589,123 @@
       0%, 100% { transform: translateY(0px) translateX(0px); }
       50% { transform: translateY(-8px) translateX(-12px); }
     }
+    
+    /* Audio Controls */
+    .audio-controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .audio-button {
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      color: #00ffff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .audio-button:hover {
+      background: rgba(0, 255, 255, 0.1);
+      border-color: #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    }
+    
+    .audio-button.muted {
+      color: rgba(0, 255, 255, 0.5);
+      border-color: rgba(0, 255, 255, 0.2);
+    }
+    
+    .volume-slider {
+      width: 80px;
+      height: 4px;
+      background: rgba(0, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .volume-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .volume-slider::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .audio-visualizer {
+      position: fixed;
+      bottom: 60px;
+      left: 20px;
+      z-index: 50;
+      display: flex;
+      align-items: end;
+      gap: 2px;
+      height: 60px;
+    }
+    
+    .visualizer-bar {
+      width: 3px;
+      background: linear-gradient(to top, #00ffff, rgba(0, 255, 255, 0.3));
+      border-radius: 2px;
+      animation: visualizer-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes visualizer-pulse {
+      0%, 100% { height: 10px; opacity: 0.3; }
+      50% { height: 40px; opacity: 0.8; }
+    }
   </style>
 </head>
 <body class="liminal-bg min-h-screen">
+  <!-- Audio Controls -->
+  <div class="audio-controls">
+    <button class="audio-button" id="audio-toggle">♪ ON</button>
+    <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="50">
+  </div>
+  
+  <!-- Audio Visualizer -->
+  <div class="audio-visualizer" id="audio-visualizer">
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+  </div>
+
   <!-- Brand Section -->
   <div class="brand-section" id="brand-section">
     <div class="brand-container">
@@ -752,6 +867,166 @@
   </div>
 
   <script>
+    // Liminal Space Dreamcore Music System
+    let audioContext;
+    let masterGain;
+    let oscillators = [];
+    let filters = [];
+    let reverb;
+    let delay;
+    let isPlaying = false;
+    let volume = 0.5;
+    
+    // Initialize audio system
+    async function initAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioContext.createGain();
+        masterGain.connect(audioContext.destination);
+        masterGain.gain.value = volume;
+        
+        // Create reverb
+        reverb = audioContext.createConvolver();
+        const reverbBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 2, audioContext.sampleRate);
+        for (let channel = 0; channel < 2; channel++) {
+          const channelData = reverbBuffer.getChannelData(channel);
+          for (let i = 0; i < reverbBuffer.length; i++) {
+            channelData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioContext.sampleRate * 0.1));
+          }
+        }
+        reverb.buffer = reverbBuffer;
+        
+        // Create delay
+        delay = audioContext.createDelay(2.0);
+        delay.delayTime.value = 0.3;
+        
+        // Connect effects
+        reverb.connect(masterGain);
+        delay.connect(reverb);
+        
+        createLiminalSoundscape();
+        updateVisualizer();
+      } catch (error) {
+        console.log('Audio not supported:', error);
+      }
+    }
+    
+    // Create the liminal space soundscape
+    function createLiminalSoundscape() {
+      // Drone layer 1 - Low frequency hum
+      const drone1 = audioContext.createOscillator();
+      const droneGain1 = audioContext.createGain();
+      const droneFilter1 = audioContext.createBiquadFilter();
+      
+      drone1.frequency.value = 55;
+      drone1.type = 'sine';
+      droneGain1.gain.value = 0.1;
+      droneFilter1.type = 'lowpass';
+      droneFilter1.frequency.value = 200;
+      
+      drone1.connect(droneFilter1);
+      droneFilter1.connect(droneGain1);
+      droneGain1.connect(delay);
+      
+      // Drone layer 2 - Mid frequency pad
+      const drone2 = audioContext.createOscillator();
+      const droneGain2 = audioContext.createGain();
+      const droneFilter2 = audioContext.createBiquadFilter();
+      
+      drone2.frequency.value = 110;
+      drone2.type = 'triangle';
+      droneGain2.gain.value = 0.05;
+      droneFilter2.type = 'lowpass';
+      droneFilter2.frequency.value = 400;
+      
+      drone2.connect(droneFilter2);
+      droneFilter2.connect(droneGain2);
+      droneGain2.connect(delay);
+      
+      // Ambient layer - High frequency shimmer
+      const ambient = audioContext.createOscillator();
+      const ambientGain = audioContext.createGain();
+      const ambientFilter = audioContext.createBiquadFilter();
+      
+      ambient.frequency.value = 880;
+      ambient.type = 'sine';
+      ambientGain.gain.value = 0.03;
+      ambientFilter.type = 'highpass';
+      ambientFilter.frequency.value = 800;
+      
+      ambient.connect(ambientFilter);
+      ambientFilter.connect(ambientGain);
+      ambientGain.connect(delay);
+      
+      // Store oscillators for control
+      oscillators = [drone1, drone2, ambient];
+      filters = [droneFilter1, droneFilter2, ambientFilter];
+      
+      // Start oscillators
+      oscillators.forEach(osc => osc.start());
+      
+      // Add subtle modulation
+      setInterval(() => {
+        if (isPlaying) {
+          drone1.frequency.value = 55 + Math.sin(Date.now() * 0.0001) * 2;
+          drone2.frequency.value = 110 + Math.sin(Date.now() * 0.00015) * 3;
+          ambient.frequency.value = 880 + Math.sin(Date.now() * 0.0002) * 5;
+        }
+      }, 100);
+    }
+    
+    // Update audio visualizer
+    function updateVisualizer() {
+      const bars = document.querySelectorAll('.visualizer-bar');
+      bars.forEach((bar, index) => {
+        const delay = index * 0.1;
+        const height = 10 + Math.sin(Date.now() * 0.001 + delay) * 30;
+        bar.style.height = height + 'px';
+        bar.style.opacity = 0.3 + Math.sin(Date.now() * 0.002 + delay) * 0.5;
+      });
+    }
+    
+    // Audio controls
+    document.getElementById('audio-toggle').addEventListener('click', function() {
+      if (!audioContext) {
+        initAudio();
+        return;
+      }
+      
+      if (isPlaying) {
+        // Pause
+        audioContext.suspend();
+        this.textContent = '♪ OFF';
+        this.classList.add('muted');
+        isPlaying = false;
+      } else {
+        // Resume
+        audioContext.resume();
+        this.textContent = '♪ ON';
+        this.classList.remove('muted');
+        isPlaying = true;
+      }
+    });
+    
+    // Volume control
+    document.getElementById('volume-slider').addEventListener('input', function() {
+      volume = this.value / 100;
+      if (masterGain) {
+        masterGain.gain.value = volume;
+      }
+    });
+    
+    // Initialize audio on first user interaction
+    document.addEventListener('click', function initOnFirstClick() {
+      if (!audioContext) {
+        initAudio();
+      }
+      document.removeEventListener('click', initOnFirstClick);
+    }, { once: true });
+    
+    // Update visualizer continuously
+    setInterval(updateVisualizer, 50);
+    
     // Fake user actions for social proof
     const fakeUserActions = [
       "That night drive through a foggy highway in 2004 just came back.",
