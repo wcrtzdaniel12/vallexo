@@ -1399,16 +1399,19 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            text: enhancedText,
-            voiceId: "dWlo9A8YyLspmlvHk1dB" // Matthew - clear, professional radio voice
+            text: enhancedText
+            // Voice ID is handled in the edge function
           })
         });
         
         if (!response.ok) {
-          throw new Error(`ElevenLabs API error: ${response.status}`);
+          const errorData = await response.json();
+          console.error('ElevenLabs API error details:', errorData);
+          throw new Error(`ElevenLabs API error: ${response.status} - ${JSON.stringify(errorData)}`);
         }
         
         const data = await response.json();
+        console.log('ElevenLabs API success:', data);
         
         if (data.audio) {
           // Convert base64 to audio blob
