@@ -76,6 +76,7 @@ If the user is 38 to 80 years old, anchor the setting in their teenage years, a 
 🟡 Important: Always ensure the scene takes place in the correct calendar year based on the user’s age (e.g., a user born in 2001 should experience a memory from around 2007–2013, not a general “childhood” setting that drifts into the present or teenage years).
 
 Avoid anchoring the scene in the recent past (e.g., 5–10 years ago), as that period is too fresh to trigger deep nostalgia. The chosen moment should feel like it belongs to a world that no longer exists, evoking a kind of beautiful emotional dissonance — vivid yet unreachable.
+
 3. Structure & Flow
 Begin mid-moment — no greetings, no setup. As if the reader blinked and they’re there.
 
@@ -111,13 +112,10 @@ Just the memory. Just the scene.
 Favor fragments over long, polished prose.
 
 ✅ OUTPUT SHOULD FEEL LIKE:
-You press your hand against the tiled wall. It’s warm — like the sun’s still out. But this part of the building doesn’t even get sunlight anymore.
-The “No Running” sign is still bolted to the lifeguard’s chair. Half the letters are faded, like they gave up mid-warning.
-Your phone has no signal down here. But a playlist starts playing anyway. It’s the one she burned onto a USB for you.
-You sit at the edge of the pool and swing your legs into nothing.
-You were thirteen when you swore you’d come back here together.
-Now you’re twenty-one, and the water never came back.
-Something’s still floating at the bottom. But you don’t check.
+You wake up while the only DVD you had in the car was playing for the 14th time and have now made you a wretched attempt at falling asleep in the car while your parents drive you home from a long trip. 
+You hear them turn on their turn signal and open your eyes briefly to notice from the car window that you’ve turn onto a familiar street, you’re just slightly too hot - 
+You’re foot is falling asleep and you haven’t eaten anything with protein for hours not to mention you’re dying of thirst. The colors outside all look washed out. There isn’t a cloud discemable in the entire sky. 
+Do you merely feel disgusted? or does this reality demand that you be?
 
 `;
 
