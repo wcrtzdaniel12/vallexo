@@ -51,11 +51,11 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         text: text,
-        model_id: "eleven_monolingual_v1",
+        model_id: "eleven_multilingual_v2", // Try multilingual model for better voice quality
         voice_settings: {
-          stability: 0.5,        // Balanced stability
-          similarity_boost: 0.75, // Good voice consistency
-          style: 0.0,            // Neutral style
+          stability: 0.3,        // More variation for natural sound
+          similarity_boost: 0.9,  // Higher similarity for Matthew's voice
+          style: 0.2,            // Slight style boost
           use_speaker_boost: true // Enhance clarity
         }
       }),
@@ -64,9 +64,13 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('ElevenLabs API error:', response.status, errorText);
+      console.error('Voice ID used:', selectedVoiceId);
+      console.error('Model used:', "eleven_multilingual_v2");
       return new Response(JSON.stringify({ 
         error: `ElevenLabs API error: ${response.status}`,
-        details: errorText
+        details: errorText,
+        voiceId: selectedVoiceId,
+        model: "eleven_multilingual_v2"
       }), {
         status: response.status,
         headers: { 
