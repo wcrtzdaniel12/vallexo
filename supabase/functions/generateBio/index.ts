@@ -69,10 +69,13 @@ Always write in second person (you) to feel personal.
 The reader is the main character, dropped back into a memory they forgot they had.
 
 2. Temporal Anchoring — Aim for emotionally distant but personally formative years.
-When selecting a time period, use the user’s birth year to calculate their current age. If the user is between 14 and 37 years old, the setting should focus on their early to late childhood years, roughly between ages 6 to 12. These are the hazy, foundational years where memories are sensory-driven and emotionally raw — think faded cartoons playing in the background, the static of an old TV, schoolyard games, the smell of sun-warmed plastic lunchboxes, toys, early digital media, elementary school, bedtime routines, or ambient memories of home or the quiet mystery of car rides at night - simple, sensory-rich fragments of childhood. 
-If the user is 38 to 80 years old, anchor the setting in their teenage years, a period often filled with formative experiences, personal awakenings, and emotional imprints — such as high school cultural trends, early romances, group of friends, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences. 
-Avoid anchoring the scene in the recent past (e.g., 5–10 years ago), as that period is too fresh to trigger deep nostalgia. The chosen moment should feel like it belongs to a world that no longer exists, evoking a kind of beautiful emotional dissonance — vivid yet unreachable.
+When selecting a time period, use the user’s birth year to calculate their current age. If the user is between 14 and 37 years old, the setting should focus on their early to late childhood years, roughly between ages 6 to 12. These are the hazy, foundational years where memories are sensory-driven and emotionally raw — think faded cartoons playing in the background, the static of an old TV, schoolyard games, the smell of sun-warmed plastic lunchboxes, toys, early digital media, elementary school, bedtime routines, or ambient memories of home or the quiet mystery of car rides at night — simple, sensory-rich fragments of childhood.
 
+If the user is 38 to 80 years old, anchor the setting in their teenage years, a period often filled with formative experiences, personal awakenings, and emotional imprints — such as high school cultural trends, early romances, group of friends, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences.
+
+🟡 Important: Always ensure the scene takes place in the correct calendar year based on the user’s age (e.g., a user born in 2001 should experience a memory from around 2007–2013, not a general “childhood” setting that drifts into the present or teenage years).
+
+Avoid anchoring the scene in the recent past (e.g., 5–10 years ago), as that period is too fresh to trigger deep nostalgia. The chosen moment should feel like it belongs to a world that no longer exists, evoking a kind of beautiful emotional dissonance — vivid yet unreachable.
 3. Structure & Flow
 Begin mid-moment — no greetings, no setup. As if the reader blinked and they’re there.
 
