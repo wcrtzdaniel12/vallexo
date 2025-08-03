@@ -729,7 +729,7 @@
   <div class="debug-panel" id="debug-panel">
     <div>🔧 DEBUG MODE</div>
     <div id="speech-status">ElevenLabs: Loading...</div>
-    <div id="voice-count">Voice: Adam (Radio)</div>
+    <div id="voice-count">Voice: Matthew (Radio)</div>
     <button onclick="toggleDebug()" style="margin-top: 5px; padding: 2px 5px; font-size: 8px;">Toggle Debug</button>
   </div>
 
@@ -1339,8 +1339,8 @@
       
       // Update to show ElevenLabs status
       speechStatus.textContent = 'ElevenLabs: Active';
-      voiceCount.textContent = 'Voice: Adam (Radio)';
-      console.log('Using ElevenLabs for realistic voice synthesis');
+      voiceCount.textContent = 'Voice: Matthew (Radio)';
+      console.log('Using ElevenLabs Matthew voice for realistic voice synthesis');
     }
     
     // Add natural pauses and emphasis to text
@@ -1400,7 +1400,7 @@
           },
           body: JSON.stringify({
             text: enhancedText,
-            voiceId: "pNInz6obpgDQGcFmaJgB" // Adam - deep, professional radio voice
+            voiceId: "dWlo9A8YyLspmlvHk1dB" // Matthew - clear, professional radio voice
           })
         });
         

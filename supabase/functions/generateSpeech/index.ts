@@ -39,8 +39,8 @@ Deno.serve(async (req) => {
       });
     }
     
-    // Default to a deep, radio announcer voice if no voiceId provided
-    const selectedVoiceId = voiceId || "pNInz6obpgDQGcFmaJgB"; // Adam - deep, professional voice
+    // Default to Matthew voice for radio announcer effect
+    const selectedVoiceId = voiceId || "dWlo9A8YyLspmlvHk1dB"; // Matthew - clear, professional voice
     
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
       method: "POST",
