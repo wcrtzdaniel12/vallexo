@@ -763,7 +763,12 @@
       <h2 class="text-3xl md:text-4xl font-bold mb-8 text-white text-center tracking-wide" style="letter-spacing:0.04em;">Here's what we remembered:</h2>
       <div class="flex flex-col md:flex-row items-center w-full gap-4">
         <p id="memory-text" class="text-xl md:text-2xl text-white text-center leading-relaxed md:leading-loose whitespace-pre-line flex-1" style="line-height:2.1; letter-spacing:0.01em;"></p>
-        <button id="copy-memory" class="mt-4 md:mt-0 md:ml-4 px-5 py-2 bg-white bg-opacity-10 border border-white/30 hover:bg-opacity-30 text-white rounded-lg transition-colors text-lg font-serif" style="backdrop-filter: blur(2px);">Copy</button>
+        <div class="flex flex-col gap-2 mt-4 md:mt-0 md:ml-4">
+          <button id="replay-narration" class="px-5 py-2 bg-cyan-500 bg-opacity-20 border border-cyan-400 hover:bg-opacity-40 text-cyan-300 rounded-lg transition-colors text-sm font-mono backdrop-filter: blur(2px);">
+            📻 Replay Narration
+          </button>
+          <button id="copy-memory" class="px-5 py-2 bg-white bg-opacity-10 border border-white/30 hover:bg-opacity-30 text-white rounded-lg transition-colors text-sm font-serif" style="backdrop-filter: blur(2px);">Copy</button>
+        </div>
       </div>
     </div>
   </section>
@@ -1264,12 +1269,155 @@
       setTimeout(() => {
         section.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
+      
+      // Narrate the memory with retro radio voice
+      narrateMemory(memoryText);
+    }
+    
+    // Retro radio announcer narration
+    function narrateMemory(memoryText) {
+      if ('speechSynthesis' in window) {
+        // Cancel any existing speech
+        speechSynthesis.cancel();
+        
+        // Create speech utterance
+        const utterance = new SpeechSynthesisUtterance(memoryText);
+        
+        // Configure for retro radio voice
+        utterance.rate = 0.8; // Slower pace
+        utterance.pitch = 0.7; // Deeper voice
+        utterance.volume = 0.9; // High volume
+        
+        // Try to get a male voice for that radio announcer feel
+        const voices = speechSynthesis.getVoices();
+        const maleVoice = voices.find(voice => 
+          voice.lang.includes('en') && 
+          (voice.name.toLowerCase().includes('male') || 
+           voice.name.toLowerCase().includes('david') ||
+           voice.name.toLowerCase().includes('james') ||
+           voice.name.toLowerCase().includes('mark'))
+        );
+        
+        if (maleVoice) {
+          utterance.voice = maleVoice;
+        }
+        
+        // Add radio static effect
+        addRadioStaticEffect();
+        
+        // Start narration
+        utterance.onstart = () => {
+          console.log('Radio narration started');
+        };
+        
+        utterance.onend = () => {
+          console.log('Radio narration ended');
+          removeRadioStaticEffect();
+        };
+        
+        utterance.onerror = (event) => {
+          console.log('Radio narration error:', event);
+          removeRadioStaticEffect();
+        };
+        
+        // Small delay to let the memory section appear first
+        setTimeout(() => {
+          speechSynthesis.speak(utterance);
+        }, 500);
+      }
+    }
+    
+    // Add radio static effect during narration
+    function addRadioStaticEffect() {
+      // Create static overlay
+      const staticOverlay = document.createElement('div');
+      staticOverlay.id = 'radio-static';
+      staticOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0, 255, 255, 0.05) 50%, transparent 100%);
+        pointer-events: none;
+        z-index: 1500;
+        animation: radio-static 0.1s linear infinite;
+      `;
+      
+      // Add static animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes radio-static {
+          0% { opacity: 0.1; transform: translateX(0px); }
+          25% { opacity: 0.2; transform: translateX(1px); }
+          50% { opacity: 0.1; transform: translateX(-1px); }
+          75% { opacity: 0.15; transform: translateX(0.5px); }
+          100% { opacity: 0.1; transform: translateX(0px); }
+        }
+      `;
+      document.head.appendChild(style);
+      document.body.appendChild(staticOverlay);
+      
+      // Add radio frequency display
+      const radioDisplay = document.createElement('div');
+      radioDisplay.id = 'radio-display';
+      radioDisplay.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(0, 255, 255, 0.5);
+        padding: 10px 15px;
+        font-family: 'JetBrains Mono', monospace;
+        color: #00ffff;
+        font-size: 12px;
+        z-index: 1501;
+        backdrop-filter: blur(10px);
+        animation: radio-display-glow 2s ease-in-out infinite;
+      `;
+      radioDisplay.innerHTML = `
+        <div>📻 RADIO VALLEXO</div>
+        <div style="font-size: 10px; opacity: 0.7;">FREQ: 88.5 MHz</div>
+        <div style="font-size: 10px; opacity: 0.7;">SIGNAL: STRONG</div>
+      `;
+      document.body.appendChild(radioDisplay);
+      
+      // Add radio display glow animation
+      const radioStyle = document.createElement('style');
+      radioStyle.textContent = `
+        @keyframes radio-display-glow {
+          0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); }
+          50% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.6); }
+        }
+      `;
+      document.head.appendChild(radioStyle);
+    }
+    
+    // Remove radio static effect
+    function removeRadioStaticEffect() {
+      const staticOverlay = document.getElementById('radio-static');
+      const radioDisplay = document.getElementById('radio-display');
+      
+      if (staticOverlay) {
+        staticOverlay.remove();
+      }
+      if (radioDisplay) {
+        radioDisplay.remove();
+      }
     }
 
     // Copy button logic
     document.getElementById('copy-memory').addEventListener('click', function() {
       const text = document.getElementById('memory-text').textContent;
       navigator.clipboard.writeText(text);
+    });
+    
+    // Replay narration button logic
+    document.getElementById('replay-narration').addEventListener('click', function() {
+      const memoryText = document.getElementById('memory-text').textContent;
+      if (memoryText) {
+        narrateMemory(memoryText);
+      }
     });
 
     // Loading animation functions
