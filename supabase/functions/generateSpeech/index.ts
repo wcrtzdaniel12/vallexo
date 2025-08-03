@@ -1,110 +1,118 @@
-// ElevenLabs Text-to-Speech Edge Function
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+serve(async (req)=>{
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
+      status: 200
     });
   }
-
-  const { text, voiceId } = await req.json();
-
-  if (!text) {
-    return new Response(JSON.stringify({ error: "Text is required" }), {
-      status: 400,
-      headers: { 
-        "Content-Type": "application/json",
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
-  }
-
   try {
-    const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
-    
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "ElevenLabs API key not configured" }), {
-        status: 500,
-        headers: { 
-          "Content-Type": "application/json",
-          'Access-Control-Allow-Origin': '*',
-        },
+    const { text } = await req.json();
+    if (!text) {
+      return new Response(JSON.stringify({
+        error: "No text"
+      }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json"
+        }
       });
     }
-    
-    // Default to Matthew voice for radio announcer effect
-    const selectedVoiceId = voiceId || "dWlo9A8YyLspmlvHk1dB"; // Matthew - clear, professional voice
-    
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
+    // Check text length
+    if (text.length > 5000) {
+      return new Response(JSON.stringify({
+        error: "Text too long (max 5000 chars)"
+      }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+    const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
+    if (!apiKey) {
+      return new Response(JSON.stringify({
+        error: "No API key"
+      }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+    const voiceId = "dWlo9A8YyLspmlvHk1dB";
+    const requestBody = {
+      text: text,
+      model_id: "eleven_monolingual_v1",
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75
+      }
+    };
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: "POST",
       headers: {
-        "Accept": "audio/mpeg",
         "Content-Type": "application/json",
-        "xi-api-key": apiKey,
+        "xi-api-key": apiKey
       },
-      body: JSON.stringify({
-        text: text,
-        model_id: "eleven_multilingual_v2", // Try multilingual model for better voice quality
-        voice_settings: {
-          stability: 0.3,        // More variation for natural sound
-          similarity_boost: 0.9,  // Higher similarity for Matthew's voice
-          style: 0.2,            // Slight style boost
-          use_speaker_boost: true // Enhance clarity
-        }
-      }),
+      body: JSON.stringify(requestBody)
     });
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('ElevenLabs API error:', response.status, errorText);
-      console.error('Voice ID used:', selectedVoiceId);
-      console.error('Model used:', "eleven_multilingual_v2");
-      return new Response(JSON.stringify({ 
-        error: `ElevenLabs API error: ${response.status}`,
-        details: errorText,
-        voiceId: selectedVoiceId,
-        model: "eleven_multilingual_v2"
+      return new Response(JSON.stringify({
+        error: `ElevenLabs error: ${response.status}`,
+        details: errorText
       }), {
         status: response.status,
-        headers: { 
-          "Content-Type": "application/json",
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: {
+          "Content-Type": "application/json"
+        }
       });
     }
-
-    // Get the audio data
+    // Get audio data in chunks to avoid memory issues
     const audioBuffer = await response.arrayBuffer();
-    
-    // Convert to base64 for easy transmission
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
-
-    return new Response(JSON.stringify({ 
+    if (audioBuffer.byteLength > 10 * 1024 * 1024) {
+      return new Response(JSON.stringify({
+        error: "Audio file too large"
+      }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+    }
+    // Convert to base64 in chunks
+    const uint8Array = new Uint8Array(audioBuffer);
+    let base64Audio = "";
+    // Process in chunks of 1000 bytes
+    const chunkSize = 1000;
+    for(let i = 0; i < uint8Array.length; i += chunkSize){
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      for(let j = 0; j < chunk.length; j++){
+        base64Audio += String.fromCharCode(chunk[j]);
+      }
+    }
+    base64Audio = btoa(base64Audio);
+    return new Response(JSON.stringify({
       audio: base64Audio,
-      format: "mp3",
-      voiceId: selectedVoiceId
+      success: true,
+      size: audioBuffer.byteLength,
+      textLength: text.length
     }), {
-      headers: { 
-        "Content-Type": "application/json",
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers: {
+        "Content-Type": "application/json"
+      }
     });
-
   } catch (err) {
-    console.error('Error in generateSpeech:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({
+      error: "Function error",
+      message: err.message,
+      stack: err.stack
+    }), {
       status: 500,
-      headers: { 
-        "Content-Type": "application/json",
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers: {
+        "Content-Type": "application/json"
+      }
     });
   }
-}); 
+});
