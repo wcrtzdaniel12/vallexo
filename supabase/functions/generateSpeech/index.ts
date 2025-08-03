@@ -27,15 +27,15 @@ serve(async (req) => {
     }
 
     // Limit text length to save credits
-    const maxLength = 500;
+    const maxLength = 300; // Reasonable length for OpenAI TTS
     const truncatedText = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
     
     console.log("Processing text:", truncatedText.length, "characters");
 
-    const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
+    const apiKey = Deno.env.get("OPENAI_API_KEY");
     
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API key not found" }), {
+      return new Response(JSON.stringify({ error: "OpenAI API key not found" }), {
         status: 500,
         headers: { 
           "Content-Type": "application/json",
@@ -44,35 +44,30 @@ serve(async (req) => {
       });
     }
 
-    const voiceId = "dWlo9A8YyLspmlvHk1dB"; // Matthew voice
+    console.log("Calling OpenAI TTS...");
     
-    console.log("Calling ElevenLabs with optimized settings...");
-    
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "xi-api-key": apiKey,
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        text: truncatedText,
-        model_id: "eleven_monolingual_v1", // Cheaper model
-        voice_settings: {
-          stability: 0.3,        // Lower = fewer credits
-          similarity_boost: 0.6,  // Lower = fewer credits
-          style: 0.1,            // Lower = fewer credits
-          use_speaker_boost: false // Turn off to save credits
-        }
+        model: "tts-1", // High quality model
+        input: truncatedText,
+        voice: "alloy", // Male voice, good for radio announcer
+        response_format: "mp3",
+        speed: 0.9 // Slightly slower for radio effect
       }),
     });
 
-    console.log("ElevenLabs response status:", response.status);
+    console.log("OpenAI TTS response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("ElevenLabs API error:", response.status, errorText);
+      console.error("OpenAI TTS API error:", response.status, errorText);
       return new Response(JSON.stringify({ 
-        error: `ElevenLabs API error: ${response.status}`,
+        error: `OpenAI TTS API error: ${response.status}`,
         details: errorText
       }), {
         status: response.status,
@@ -102,7 +97,8 @@ serve(async (req) => {
       success: true,
       size: audioBuffer.byteLength,
       textLength: truncatedText.length,
-      creditsUsed: Math.ceil(truncatedText.length / 100) // Rough estimate
+      model: "tts-1",
+      voice: "alloy"
     }), {
       headers: { 
         "Content-Type": "application/json",
