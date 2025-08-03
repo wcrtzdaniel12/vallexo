@@ -1337,10 +1337,10 @@
       const speechStatus = document.getElementById('speech-status');
       const voiceCount = document.getElementById('voice-count');
       
-      // Update to show ElevenLabs status
-      speechStatus.textContent = 'ElevenLabs: Active';
+      // Update to show ElevenLabs direct API status
+      speechStatus.textContent = 'ElevenLabs: Direct API';
       voiceCount.textContent = 'Voice: Matthew (Radio)';
-      console.log('Using ElevenLabs Matthew voice for realistic voice synthesis');
+      console.log('Using ElevenLabs direct API with Matthew voice for realistic voice synthesis');
     }
     
     // Add natural pauses and emphasis to text
@@ -1381,9 +1381,9 @@
       return ssml;
     }
     
-    // ElevenLabs realistic radio announcer narration
+    // ElevenLabs realistic radio announcer narration - Direct API Call
     async function narrateMemory(memoryText) {
-      console.log('Attempting to narrate memory with ElevenLabs:', memoryText.substring(0, 50) + '...');
+      console.log('Attempting to narrate memory with ElevenLabs directly:', memoryText.substring(0, 50) + '...');
       
       try {
         // Add radio static effect immediately
@@ -1392,73 +1392,74 @@
         // Enhanced text for better narration
         const enhancedText = addNaturalPauses(memoryText);
         
-        // Call ElevenLabs API via Supabase Edge Function
-        console.log('Attempting to call edge function...');
-        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeech', {
+        // Call ElevenLabs API directly
+        console.log('Calling ElevenLabs API directly...');
+        
+        // IMPORTANT: Replace YOUR_API_KEY with your actual ElevenLabs API key
+        const apiKey = sk_f032818946eaa8a7a786d70f0c7cc93662d4b49ad67c0053; // ⚠️ Replace this with your actual API key
+        
+        const voiceId = "dWlo9A8YyLspmlvHk1dB"; // Matthew voice
+        
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'xi-api-key': apiKey, // ElevenLabs API key header
           },
           body: JSON.stringify({
-            text: enhancedText
-            // Voice ID is handled in the edge function
+            text: enhancedText,
+            model_id: "eleven_monolingual_v1",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75
+            }
           })
         });
         
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
+        console.log('ElevenLabs response status:', response.status);
+        console.log('ElevenLabs response headers:', response.headers);
         
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('ElevenLabs API error details:', errorData);
-          throw new Error(`ElevenLabs API error: ${response.status} - ${JSON.stringify(errorData)}`);
+          const errorText = await response.text();
+          console.error('ElevenLabs API error:', response.status, errorText);
+          throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
         }
         
-        const data = await response.json();
-        console.log('ElevenLabs API success:', data);
+        // Get audio data directly
+        const audioBuffer = await response.arrayBuffer();
+        console.log('Audio received:', audioBuffer.byteLength, 'bytes');
         
-        if (data.audio) {
-          // Convert base64 to audio blob
-          const audioData = atob(data.audio);
-          const audioArray = new Uint8Array(audioData.length);
-          for (let i = 0; i < audioData.length; i++) {
-            audioArray[i] = audioData.charCodeAt(i);
-          }
-          
-          const audioBlob = new Blob([audioArray], { type: 'audio/mpeg' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          
-          // Create and play audio
-          const audio = new Audio(audioUrl);
-          audio.volume = 0.9;
-          
-          audio.onplay = () => {
-            console.log('ElevenLabs narration started');
-            updateDebugInfo();
-          };
-          
-          audio.onended = () => {
-            console.log('ElevenLabs narration ended');
-            removeRadioStaticEffect();
-            URL.revokeObjectURL(audioUrl); // Clean up
-          };
-          
-          audio.onerror = (error) => {
-            console.error('ElevenLabs audio error:', error);
-            removeRadioStaticEffect();
-            URL.revokeObjectURL(audioUrl);
-            alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
-          };
-          
-          // Start playing
-          await audio.play();
-          
-        } else {
-          throw new Error('No audio data received from ElevenLabs');
-        }
+        // Create audio blob directly
+        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        // Create and play audio
+        const audio = new Audio(audioUrl);
+        audio.volume = 0.9;
+        
+        audio.onplay = () => {
+          console.log('ElevenLabs direct API narration started');
+          updateDebugInfo();
+        };
+        
+        audio.onended = () => {
+          console.log('ElevenLabs direct API narration ended');
+          removeRadioStaticEffect();
+          URL.revokeObjectURL(audioUrl); // Clean up
+        };
+        
+        audio.onerror = (error) => {
+          console.error('ElevenLabs direct API audio error:', error);
+          removeRadioStaticEffect();
+          URL.revokeObjectURL(audioUrl);
+          alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
+        };
+        
+        // Start playing
+        await audio.play();
         
       } catch (error) {
-        console.error('Error in ElevenLabs narration:', error);
+        console.error('Error in ElevenLabs direct API narration:', error);
         removeRadioStaticEffect();
         
         // Fallback to Web Speech API if ElevenLabs fails
