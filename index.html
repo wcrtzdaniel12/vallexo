@@ -996,7 +996,13 @@
         droneFilter.connect(droneGain);
         droneGain.connect(masterGain);
         
-        synthesizedAudio = { drone, droneGain, droneFilter, masterGain };
+        synthesizedAudio = { 
+          drone, 
+          droneGain, 
+          droneFilter, 
+          masterGain,
+          started: false  // Track if oscillator has been started
+        };
         
         console.log('Synthesized audio fallback initialized');
         return true;
@@ -1047,9 +1053,13 @@
           console.log('Audio file playlist started');
         } else if (audioContext && synthesizedAudio) {
           await audioContext.resume();
-          synthesizedAudio.drone.start();
+          if (!synthesizedAudio.started) {
+            synthesizedAudio.drone.start();
+            synthesizedAudio.started = true;
+            console.log('Synthesized audio oscillator started');
+          }
           isPlaying = true;
-          console.log('Synthesized audio started');
+          console.log('Synthesized audio resumed');
         }
         return true;
       } catch (error) {
@@ -1150,18 +1160,30 @@
     // Initialize audio on first user interaction (fallback) - AGGRESSIVE AUTO-START
     document.addEventListener('click', async function initOnFirstClick() {
       try {
-        if (!audioElement) {
+        if (!audioElement && !audioContext) {
           await initAudio();
         }
         
         // Always try to start/resume audio on first click if not already playing
-        if (audioElement && audioElement.paused) {
+        if (usingAudioFiles && audioElement && audioElement.paused) {
           await audioElement.play();
           if (!audioElement.paused) {
             isPlaying = true;
             document.getElementById('audio-toggle').textContent = '♪ ON';
             document.getElementById('audio-toggle').classList.remove('muted');
             console.log('Background music started on first user interaction');
+          }
+        } else if (!usingAudioFiles && audioContext && audioContext.state === 'suspended') {
+          await audioContext.resume();
+          if (synthesizedAudio && !synthesizedAudio.started) {
+            synthesizedAudio.drone.start();
+            synthesizedAudio.started = true;
+          }
+          if (audioContext.state === 'running') {
+            isPlaying = true;
+            document.getElementById('audio-toggle').textContent = '♪ ON';
+            document.getElementById('audio-toggle').classList.remove('muted');
+            console.log('Synthesized audio started on first user interaction');
           }
         }
         
@@ -1717,11 +1739,8 @@
     document.getElementById('replay-narration').addEventListener('click', function() {
       const memoryText = document.getElementById('memory-text').textContent;
       if (memoryText) {
-        // Force user interaction for speech synthesis
-        const audioElement = new Audio();
-        audioElement.src = 'audio/narration.mp3'; // Replace with your actual narration file
-        audioElement.volume = 0.9;
-        audioElement.play();
+        // Replay the TTS narration
+        narrateMemory(memoryText);
       }
     });
     
