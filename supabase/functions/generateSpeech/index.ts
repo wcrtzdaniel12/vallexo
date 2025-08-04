@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "tts-1",
         input: truncatedText,
-        voice: "alloy",
+        voice: "onyx",
         response_format: "mp3",
-        speed: 0.9
+        speed: 0.85
       }),
     });
 
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       size: audioBuffer.byteLength,
       textLength: truncatedText.length,
       model: "tts-1",
-      voice: "alloy"
+      voice: "onyx"
     }), {
       headers: { 
         "Content-Type": "application/json",
