@@ -917,19 +917,27 @@
     
     // Check if audio files exist
     async function checkAudioFiles() {
+      let foundFiles = [];
       for (let i = 0; i < audioFiles.length; i++) {
         try {
           const response = await fetch(audioFiles[i], { method: 'HEAD' });
           if (response.ok) {
             console.log('Found audio file:', audioFiles[i]);
-            return true; // At least one file exists
+            foundFiles.push(audioFiles[i]);
           }
         } catch (error) {
-          // File doesn't exist, continue checking
+          console.log('File not found:', audioFiles[i]);
         }
       }
-      console.log('No audio files found, will use synthesized music');
-      return false;
+      
+      if (foundFiles.length > 0) {
+        console.log('Found', foundFiles.length, 'audio files');
+        audioFiles = foundFiles; // Use only the files that exist
+        return true;
+      } else {
+        console.log('No audio files found, will use synthesized music');
+        return false;
+      }
     }
     
     // Initialize audio system
@@ -1017,27 +1025,57 @@
       if (usingAudioFiles && audioFiles[index]) {
         audioElement.src = audioFiles[index];
         console.log('Loading track:', audioFiles[index]);
+        
+        // Add error handling for this specific track
+        audioElement.onerror = (e) => {
+          console.log('Failed to load track:', audioFiles[index], e);
+          // Try next track after a short delay
+          setTimeout(() => {
+            playNextTrack();
+          }, 1000);
+        };
+        
+        // Add success handling
+        audioElement.oncanplaythrough = () => {
+          console.log('Track loaded successfully:', audioFiles[index]);
+        };
       }
     }
     
     // Play next track
     function playNextTrack() {
-      if (usingAudioFiles) {
+      if (usingAudioFiles && audioFiles.length > 0) {
         currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
+        console.log('Moving to track', currentTrackIndex + 1, 'of', audioFiles.length);
         loadTrack(currentTrackIndex);
         if (isPlaying && audioElement) {
           audioElement.play().catch(error => {
             console.log('Auto-play failed for next track:', error);
+            // If auto-play fails, try the next track
+            setTimeout(() => {
+              playNextTrack();
+            }, 2000);
           });
         }
+      } else {
+        console.log('No more tracks available, stopping playlist');
+        stopPlayback();
       }
     }
     
     // Handle audio errors
     function handleAudioError(e) {
-      console.log('Audio error:', e);
+      console.log('Audio error for track:', audioFiles[currentTrackIndex], e);
+      console.log('Error details:', e.target.error);
+      
+      // Log specific error information
+      if (e.target.error) {
+        console.log('Error code:', e.target.error.code);
+        console.log('Error message:', e.target.error.message);
+      }
+      
       console.log('Trying next track...');
-      playNextTrack();
+      // Don't immediately call playNextTrack, let the onerror handler do it
     }
     
     // Start playing
