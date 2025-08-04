@@ -899,11 +899,11 @@
   </div>
 
   <script>
-    // Background Music Playlist System
+    // Background Music System - Hybrid (Audio Files + Synthesized Fallback)
     let currentTrackIndex = 0;
     let audioElement = null;
     let audioFiles = [
-      'audio/track1.mp3',  // Replace with your actual file names
+      'audio/track1.mp3',
       'audio/track2.mp3',
       'audio/track3.mp3', 
       'audio/track4.mp3',
@@ -911,49 +911,119 @@
     ];
     let isPlaying = false;
     let volume = 0.5;
+    let usingAudioFiles = false;
+    let audioContext = null;
+    let synthesizedAudio = null;
     
-    // Initialize audio playlist system
+    // Check if audio files exist
+    async function checkAudioFiles() {
+      for (let i = 0; i < audioFiles.length; i++) {
+        try {
+          const response = await fetch(audioFiles[i], { method: 'HEAD' });
+          if (response.ok) {
+            console.log('Found audio file:', audioFiles[i]);
+            return true; // At least one file exists
+          }
+        } catch (error) {
+          // File doesn't exist, continue checking
+        }
+      }
+      console.log('No audio files found, will use synthesized music');
+      return false;
+    }
+    
+    // Initialize audio system
     async function initAudio() {
       try {
-        // Create audio element
-        audioElement = new Audio();
-        audioElement.volume = volume;
-        audioElement.preload = 'auto';
+        // Check if we have audio files
+        usingAudioFiles = await checkAudioFiles();
         
-        // Set up event listeners
-        audioElement.addEventListener('ended', playNextTrack);
-        audioElement.addEventListener('error', handleAudioError);
-        audioElement.addEventListener('canplaythrough', () => {
-          console.log('Audio track loaded successfully');
-        });
-        
-        // Load first track
-        loadTrack(currentTrackIndex);
-        
-        console.log('Audio playlist system initialized');
-        return true;
+        if (usingAudioFiles) {
+          // Use audio files
+          return await initAudioFiles();
+        } else {
+          // Fall back to synthesized music
+          return await initSynthesizedAudio();
+        }
       } catch (error) {
         console.log('Audio initialization failed:', error);
         return false;
       }
     }
     
+    // Initialize audio file playlist
+    async function initAudioFiles() {
+      try {
+        audioElement = new Audio();
+        audioElement.volume = volume;
+        audioElement.preload = 'auto';
+        
+        audioElement.addEventListener('ended', playNextTrack);
+        audioElement.addEventListener('error', handleAudioError);
+        audioElement.addEventListener('canplaythrough', () => {
+          console.log('Audio track loaded successfully');
+        });
+        
+        loadTrack(currentTrackIndex);
+        console.log('Audio file playlist system initialized');
+        return true;
+      } catch (error) {
+        console.log('Audio file initialization failed:', error);
+        return false;
+      }
+    }
+    
+    // Initialize synthesized audio fallback
+    async function initSynthesizedAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const masterGain = audioContext.createGain();
+        masterGain.connect(audioContext.destination);
+        masterGain.gain.value = volume;
+        
+        // Simple synthesized ambient track
+        const drone = audioContext.createOscillator();
+        const droneGain = audioContext.createGain();
+        const droneFilter = audioContext.createBiquadFilter();
+        
+        drone.frequency.value = 220;
+        drone.type = 'sine';
+        droneGain.gain.value = 0.08;
+        droneFilter.type = 'lowpass';
+        droneFilter.frequency.value = 800;
+        
+        drone.connect(droneFilter);
+        droneFilter.connect(droneGain);
+        droneGain.connect(masterGain);
+        
+        synthesizedAudio = { drone, droneGain, droneFilter, masterGain };
+        
+        console.log('Synthesized audio fallback initialized');
+        return true;
+      } catch (error) {
+        console.log('Synthesized audio initialization failed:', error);
+        return false;
+      }
+    }
+    
     // Load a specific track
     function loadTrack(index) {
-      if (audioFiles[index]) {
+      if (usingAudioFiles && audioFiles[index]) {
         audioElement.src = audioFiles[index];
         console.log('Loading track:', audioFiles[index]);
       }
     }
     
-    // Play next track in playlist
+    // Play next track
     function playNextTrack() {
-      currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
-      loadTrack(currentTrackIndex);
-      if (isPlaying) {
-        audioElement.play().catch(error => {
-          console.log('Auto-play failed for next track:', error);
-        });
+      if (usingAudioFiles) {
+        currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
+        loadTrack(currentTrackIndex);
+        if (isPlaying && audioElement) {
+          audioElement.play().catch(error => {
+            console.log('Auto-play failed for next track:', error);
+          });
+        }
       }
     }
     
@@ -964,16 +1034,23 @@
       playNextTrack();
     }
     
-    // Start playing playlist
-    async function startPlaylist() {
-      if (!audioElement) {
+    // Start playing
+    async function startPlayback() {
+      if (!audioElement && !audioContext) {
         await initAudio();
       }
       
       try {
-        await audioElement.play();
-        isPlaying = true;
-        console.log('Playlist started');
+        if (usingAudioFiles && audioElement) {
+          await audioElement.play();
+          isPlaying = true;
+          console.log('Audio file playlist started');
+        } else if (audioContext && synthesizedAudio) {
+          await audioContext.resume();
+          synthesizedAudio.drone.start();
+          isPlaying = true;
+          console.log('Synthesized audio started');
+        }
         return true;
       } catch (error) {
         console.log('Play failed:', error);
@@ -981,48 +1058,54 @@
       }
     }
     
-    // Stop playlist
-    function stopPlaylist() {
-      if (audioElement) {
+    // Stop playing
+    function stopPlayback() {
+      if (usingAudioFiles && audioElement) {
         audioElement.pause();
-        isPlaying = false;
-        console.log('Playlist stopped');
+      } else if (audioContext) {
+        audioContext.suspend();
       }
+      isPlaying = false;
+      console.log('Audio stopped');
     }
     
     // Update volume
-    function setPlaylistVolume(newVolume) {
+    function setVolume(newVolume) {
       volume = newVolume;
-      if (audioElement) {
+      if (usingAudioFiles && audioElement) {
         audioElement.volume = volume;
+      } else if (synthesizedAudio && synthesizedAudio.masterGain) {
+        synthesizedAudio.masterGain.gain.value = volume;
       }
     }
     
     // Audio controls with better state management
     document.getElementById('audio-toggle').addEventListener('click', async function() {
       try {
-        if (!audioElement) {
+        if (!audioElement && !audioContext) {
           await initAudio();
-          if (!audioElement) {
-            console.log('Failed to initialize audio element');
+          if (!audioElement && !audioContext) {
+            console.log('Failed to initialize audio system');
             return;
           }
         }
         
-        if (isPlaying && audioElement.paused) {
-          // Resume
-          await audioElement.play();
-          this.textContent = '♪ ON';
-          this.classList.remove('muted');
-          isPlaying = true;
-          console.log('Background music playing');
-        } else {
-          // Pause
-          await audioElement.pause();
+        if (isPlaying) {
+          // Pause/Stop
+          stopPlayback();
           this.textContent = '♪ OFF';
           this.classList.add('muted');
-          isPlaying = false;
           console.log('Background music paused');
+        } else {
+          // Resume or start
+          const success = await startPlayback();
+          if (success) {
+            this.textContent = '♪ ON';
+            this.classList.remove('muted');
+            console.log('Background music playing');
+          } else {
+            console.log('Failed to start audio playback');
+          }
         }
       } catch (error) {
         console.log('Audio toggle error:', error);
@@ -1032,7 +1115,7 @@
     
     // Volume control
     document.getElementById('volume-slider').addEventListener('input', function() {
-      setPlaylistVolume(this.value / 100);
+      setVolume(this.value / 100);
     });
     
     // Initialize audio on page load with better error handling and default to ON
@@ -1045,30 +1128,23 @@
       // Small delay to ensure page is fully loaded
       setTimeout(async () => {
         try {
-          if (!audioElement) {
+          if (!audioElement && !audioContext) {
             await initAudio();
-            if (audioElement && !audioElement.paused) {
-              console.log('Background music auto-started successfully');
-              // Music is already playing, keep the ON state
-            } else if (audioElement && audioElement.paused) {
-              // Try to resume if paused
-              await audioElement.play();
-              if (!audioElement.paused) {
-                console.log('Background music resumed successfully');
+            if ((usingAudioFiles && audioElement) || (!usingAudioFiles && audioContext)) {
+              const success = await startPlayback();
+              if (success) {
+                console.log('Background music auto-started successfully');
               } else {
                 console.log('Background music needs user interaction to start');
-                // Keep showing ON state, will start on first interaction
               }
             } else {
               console.log('Background music needs user interaction to start');
-              // Keep showing ON state, will start on first interaction
             }
           }
         } catch (error) {
           console.log('Auto-start failed, will start on user interaction:', error);
-          // Keep showing ON state, will start on first interaction
         }
-      }, 500); // Reduced delay for faster initialization
+      }, 500);
     });
     
     // Initialize audio on first user interaction (fallback) - AGGRESSIVE AUTO-START
