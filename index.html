@@ -1346,7 +1346,7 @@
     // Add natural pauses and emphasis to text - OPTIMIZED FOR CREDITS
     function addNaturalPauses(text) {
       // Limit text length to save credits  
-      const maxLength = 1200; // Increased to ensure full memory narration
+      const maxLength = 2500; // Increased for longer memories
       if (text.length > maxLength) {
         text = text.substring(0, maxLength) + '...';
         console.log('Text truncated to save credits:', text.length, 'characters');
@@ -1373,7 +1373,7 @@
       });
       
       // Add natural pauses between sentences
-      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="500ms"/> ');
+      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="200ms"/> ');
       
       return enhanced;
     }
