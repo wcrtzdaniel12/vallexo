@@ -899,250 +899,130 @@
   </div>
 
   <script>
-    // Liminal Space Dreamcore Music System
-    let audioContext;
-    let masterGain;
-    let oscillators = [];
-    let filters = [];
-    let reverb;
-    let delay;
+    // Background Music Playlist System
+    let currentTrackIndex = 0;
+    let audioElement = null;
+    let audioFiles = [
+      'audio/track1.mp3',  // Replace with your actual file names
+      'audio/track2.mp3',
+      'audio/track3.mp3', 
+      'audio/track4.mp3',
+      'audio/track5.mp3'
+    ];
     let isPlaying = false;
     let volume = 0.5;
     
-    // Initialize audio system
+    // Initialize audio playlist system
     async function initAudio() {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioContext.createGain();
-        masterGain.connect(audioContext.destination);
-        masterGain.gain.value = volume;
+        // Create audio element
+        audioElement = new Audio();
+        audioElement.volume = volume;
+        audioElement.preload = 'auto';
         
-        // Create reverb - BALLROOM ATMOSPHERE (Caretaker style)
-        reverb = audioContext.createConvolver();
-        const reverbBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 8, audioContext.sampleRate); // Even longer tail
-        for (let channel = 0; channel < 2; channel++) {
-          const channelData = reverbBuffer.getChannelData(channel);
-          for (let i = 0; i < reverbBuffer.length; i++) {
-            // Create lush ballroom reverb character
-            const decay = Math.exp(-i / (audioContext.sampleRate * 2.2)); // Slower, warmer decay
-            const noise = (Math.random() * 2 - 1) * decay;
-            const earlyReflection = i < audioContext.sampleRate * 0.15 ? Math.sin(i * 0.008) * decay * 0.4 : 0;
-            const lateReflection = i > audioContext.sampleRate * 0.5 ? Math.sin(i * 0.003) * decay * 0.2 : 0;
-            channelData[i] = noise + earlyReflection + lateReflection;
-          }
-        }
-        reverb.buffer = reverbBuffer;
+        // Set up event listeners
+        audioElement.addEventListener('ended', playNextTrack);
+        audioElement.addEventListener('error', handleAudioError);
+        audioElement.addEventListener('canplaythrough', () => {
+          console.log('Audio track loaded successfully');
+        });
         
-        // Create delay with warmer, tape-like characteristics
-        delay = audioContext.createDelay(4.0); // Longer delay for spaciousness
-        const delayFeedback = audioContext.createGain();
-        const delayMix = audioContext.createGain();
-        const delayFilter = audioContext.createBiquadFilter(); // Add filtering to delay
+        // Load first track
+        loadTrack(currentTrackIndex);
         
-        delay.delayTime.value = 1.2; // Longer, more spacious echo
-        delayFeedback.gain.value = 0.35; // Balanced feedback
-        delayMix.gain.value = 0.25;
-        
-        // Filter the delay for warmer, more vintage sound
-        delayFilter.type = 'lowpass';
-        delayFilter.frequency.value = 3000; // Roll off highs for warmth
-        delayFilter.Q.value = 0.7;
-        
-        // Create the filtered delay feedback loop
-        delay.connect(delayFilter);
-        delayFilter.connect(delayFeedback);
-        delayFeedback.connect(delay);
-        delay.connect(delayMix);
-        delayMix.connect(reverb);
-        
-        // Connect effects to output
-        reverb.connect(masterGain);
-        
-        createLiminalSoundscape();
-        updateVisualizer();
+        console.log('Audio playlist system initialized');
+        return true;
       } catch (error) {
-        console.log('Audio not supported:', error);
+        console.log('Audio initialization failed:', error);
+        return false;
       }
     }
     
-    // Create the liminal space soundscape - CHILDISHLY FRESH EYES STYLE
-    function createLiminalSoundscape() {
-      // Main melodic drone - nostalgic major 7th chord base (like old ballroom piano)
-      const melodicDrone = audioContext.createOscillator();
-      const melodicGain = audioContext.createGain();
-      const melodicFilter = audioContext.createBiquadFilter();
-      
-      melodicDrone.frequency.value = 261.63; // C4 - warm, nostalgic
-      melodicDrone.type = 'sine';
-      melodicGain.gain.value = 0.12;
-      melodicFilter.type = 'lowpass';
-      melodicFilter.frequency.value = 600; // Heavy filtering for that muffled tape sound
-      melodicFilter.Q.value = 2.0;
-      
-      melodicDrone.connect(melodicFilter);
-      melodicFilter.connect(melodicGain);
-      melodicGain.connect(delay);
-      
-      // Harmonic layer - major 7th interval (E4)
-      const harmonic = audioContext.createOscillator();
-      const harmonicGain = audioContext.createGain();
-      const harmonicFilter = audioContext.createBiquadFilter();
-      
-      harmonic.frequency.value = 329.63; // E4 - creates nostalgic major 7th
-      harmonic.type = 'triangle';
-      harmonicGain.gain.value = 0.08;
-      harmonicFilter.type = 'lowpass';
-      harmonicFilter.frequency.value = 400; // Even more muffled
-      harmonicFilter.Q.value = 1.8;
-      
-      harmonic.connect(harmonicFilter);
-      harmonicFilter.connect(harmonicGain);
-      harmonicGain.connect(delay);
-      
-      // Third layer - G4 for full major 7th chord
-      const thirdHarmonic = audioContext.createOscillator();
-      const thirdGain = audioContext.createGain();
-      const thirdFilter = audioContext.createBiquadFilter();
-      
-      thirdHarmonic.frequency.value = 392.00; // G4
-      thirdHarmonic.type = 'sine';
-      thirdGain.gain.value = 0.06;
-      thirdFilter.type = 'lowpass';
-      thirdFilter.frequency.value = 500;
-      thirdFilter.Q.value = 1.5;
-      
-      thirdHarmonic.connect(thirdFilter);
-      thirdFilter.connect(thirdGain);
-      thirdGain.connect(delay);
-      
-      // Tape hiss/saturation layer - more prominent
-      const tapeHiss = audioContext.createBufferSource();
-      const tapeGain = audioContext.createGain();
-      const tapeFilter = audioContext.createBiquadFilter();
-      
-      // Create more realistic tape hiss
-      const bufferSize = audioContext.sampleRate * 4;
-      const hissBuffer = audioContext.createBuffer(2, bufferSize, audioContext.sampleRate);
-      for (let channel = 0; channel < 2; channel++) {
-        const output = hissBuffer.getChannelData(channel);
-        for (let i = 0; i < bufferSize; i++) {
-          // More realistic tape hiss with frequency content
-          const highFreq = (Math.random() * 2 - 1) * 0.15;
-          const midFreq = (Math.random() * 2 - 1) * 0.05;
-          output[i] = highFreq + midFreq;
-        }
+    // Load a specific track
+    function loadTrack(index) {
+      if (audioFiles[index]) {
+        audioElement.src = audioFiles[index];
+        console.log('Loading track:', audioFiles[index]);
       }
-      
-      tapeHiss.buffer = hissBuffer;
-      tapeHiss.loop = true;
-      tapeGain.gain.value = 0.04; // More prominent hiss
-      tapeFilter.type = 'bandpass';
-      tapeFilter.frequency.value = 4000; // Tape hiss frequency
-      tapeFilter.Q.value = 0.8;
-      
-      tapeHiss.connect(tapeFilter);
-      tapeFilter.connect(tapeGain);
-      tapeGain.connect(reverb);
-      
-      // Sub-bass for warmth and weight
-      const subBass = audioContext.createOscillator();
-      const subBassGain = audioContext.createGain();
-      const subBassFilter = audioContext.createBiquadFilter();
-      
-      subBass.frequency.value = 65.41; // C2 - two octaves below main
-      subBass.type = 'sine';
-      subBassGain.gain.value = 0.08;
-      subBassFilter.type = 'lowpass';
-      subBassFilter.frequency.value = 100;
-      
-      subBass.connect(subBassFilter);
-      subBassFilter.connect(subBassGain);
-      subBassGain.connect(delay);
-      
-      // Store oscillators for control
-      oscillators = [melodicDrone, harmonic, thirdHarmonic, tapeHiss, subBass];
-      filters = [melodicFilter, harmonicFilter, thirdFilter, tapeFilter, subBassFilter];
-      
-      // Start oscillators
-      melodicDrone.start();
-      harmonic.start();
-      thirdHarmonic.start();
-      tapeHiss.start();
-      subBass.start();
-      
-      // Caretaker-style slow deterioration - like a dying ballroom
-      setInterval(() => {
-        if (isPlaying) {
-          // Very slow, melancholic modulation
-          const time = Date.now() * 0.00003; // Even slower for that lonely feel
-          
-          // Main chord: subtle pitch drift like tape warping
-          melodicDrone.frequency.value = 261.63 + Math.sin(time) * 2 + Math.sin(time * 1.3) * 1;
-          harmonic.frequency.value = 329.63 + Math.sin(time * 0.7) * 2.5 + Math.sin(time * 1.1) * 1.2;
-          thirdHarmonic.frequency.value = 392.00 + Math.sin(time * 0.9) * 2.2 + Math.sin(time * 1.4) * 1.1;
-          
-          // Filter modulation for that "memory fading" effect
-          melodicFilter.frequency.value = 600 + Math.sin(time * 0.4) * 150;
-          harmonicFilter.frequency.value = 400 + Math.sin(time * 0.6) * 100;
-          thirdFilter.frequency.value = 500 + Math.sin(time * 0.5) * 120;
-          
-          // Sub-bass: slow pulse like distant heartbeat
-          subBass.frequency.value = 65.41 + Math.sin(time * 0.2) * 3;
-          
-          // Occasionally vary tape hiss intensity for realism
-          if (Math.random() < 0.008) { // Less frequent, more subtle
-            tapeGain.gain.value = 0.02 + Math.random() * 0.04;
-          }
-          
-          // Very subtle gain fluctuations like old tape
-          if (Math.random() < 0.005) {
-            melodicGain.gain.value = 0.10 + Math.random() * 0.04;
-            harmonicGain.gain.value = 0.06 + Math.random() * 0.04;
-          }
-        }
-      }, 300); // Slower updates for more organic feel
     }
     
-    // Update audio visualizer
-    function updateVisualizer() {
-      const bars = document.querySelectorAll('.visualizer-bar');
-      bars.forEach((bar, index) => {
-        const delay = index * 0.1;
-        const height = 10 + Math.sin(Date.now() * 0.001 + delay) * 30;
-        bar.style.height = height + 'px';
-        bar.style.opacity = 0.3 + Math.sin(Date.now() * 0.002 + delay) * 0.5;
-      });
+    // Play next track in playlist
+    function playNextTrack() {
+      currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
+      loadTrack(currentTrackIndex);
+      if (isPlaying) {
+        audioElement.play().catch(error => {
+          console.log('Auto-play failed for next track:', error);
+        });
+      }
+    }
+    
+    // Handle audio errors
+    function handleAudioError(e) {
+      console.log('Audio error:', e);
+      console.log('Trying next track...');
+      playNextTrack();
+    }
+    
+    // Start playing playlist
+    async function startPlaylist() {
+      if (!audioElement) {
+        await initAudio();
+      }
+      
+      try {
+        await audioElement.play();
+        isPlaying = true;
+        console.log('Playlist started');
+        return true;
+      } catch (error) {
+        console.log('Play failed:', error);
+        return false;
+      }
+    }
+    
+    // Stop playlist
+    function stopPlaylist() {
+      if (audioElement) {
+        audioElement.pause();
+        isPlaying = false;
+        console.log('Playlist stopped');
+      }
+    }
+    
+    // Update volume
+    function setPlaylistVolume(newVolume) {
+      volume = newVolume;
+      if (audioElement) {
+        audioElement.volume = volume;
+      }
     }
     
     // Audio controls with better state management
     document.getElementById('audio-toggle').addEventListener('click', async function() {
       try {
-        if (!audioContext) {
+        if (!audioElement) {
           await initAudio();
-          if (!audioContext) {
-            console.log('Failed to initialize audio context');
+          if (!audioElement) {
+            console.log('Failed to initialize audio element');
             return;
           }
         }
         
-        if (isPlaying && audioContext.state === 'running') {
+        if (isPlaying && audioElement.paused) {
+          // Resume
+          await audioElement.play();
+          this.textContent = '♪ ON';
+          this.classList.remove('muted');
+          isPlaying = true;
+          console.log('Background music playing');
+        } else {
           // Pause
-          await audioContext.suspend();
+          await audioElement.pause();
           this.textContent = '♪ OFF';
           this.classList.add('muted');
           isPlaying = false;
           console.log('Background music paused');
-        } else {
-          // Resume or start
-          await audioContext.resume();
-          if (audioContext.state === 'running') {
-            this.textContent = '♪ ON';
-            this.classList.remove('muted');
-            isPlaying = true;
-            console.log('Background music playing');
-          } else {
-            console.log('Failed to resume audio context');
-          }
         }
       } catch (error) {
         console.log('Audio toggle error:', error);
@@ -1152,10 +1032,7 @@
     
     // Volume control
     document.getElementById('volume-slider').addEventListener('input', function() {
-      volume = this.value / 100;
-      if (masterGain) {
-        masterGain.gain.value = volume;
-      }
+      setPlaylistVolume(this.value / 100);
     });
     
     // Initialize audio on page load with better error handling and default to ON
@@ -1168,15 +1045,15 @@
       // Small delay to ensure page is fully loaded
       setTimeout(async () => {
         try {
-          if (!audioContext) {
+          if (!audioElement) {
             await initAudio();
-            if (audioContext && audioContext.state === 'running') {
+            if (audioElement && !audioElement.paused) {
               console.log('Background music auto-started successfully');
               // Music is already playing, keep the ON state
-            } else if (audioContext && audioContext.state === 'suspended') {
-              // Try to resume if suspended
-              await audioContext.resume();
-              if (audioContext.state === 'running') {
+            } else if (audioElement && audioElement.paused) {
+              // Try to resume if paused
+              await audioElement.play();
+              if (!audioElement.paused) {
                 console.log('Background music resumed successfully');
               } else {
                 console.log('Background music needs user interaction to start');
@@ -1197,14 +1074,14 @@
     // Initialize audio on first user interaction (fallback) - AGGRESSIVE AUTO-START
     document.addEventListener('click', async function initOnFirstClick() {
       try {
-        if (!audioContext) {
+        if (!audioElement) {
           await initAudio();
         }
         
         // Always try to start/resume audio on first click if not already playing
-        if (audioContext && audioContext.state !== 'running') {
-          await audioContext.resume();
-          if (audioContext.state === 'running') {
+        if (audioElement && audioElement.paused) {
+          await audioElement.play();
+          if (!audioElement.paused) {
             isPlaying = true;
             document.getElementById('audio-toggle').textContent = '♪ ON';
             document.getElementById('audio-toggle').classList.remove('muted');
@@ -1225,6 +1102,17 @@
       
       document.removeEventListener('click', initOnFirstClick);
     }, { once: true });
+    
+    // Simple visualizer for playlist (optional)
+    function updateVisualizer() {
+      const bars = document.querySelectorAll('.visualizer-bar');
+      bars.forEach((bar, index) => {
+        const delay = index * 0.1;
+        const height = isPlaying ? 10 + Math.sin(Date.now() * 0.001 + delay) * 30 : 5;
+        bar.style.height = height + 'px';
+        bar.style.opacity = isPlaying ? 0.3 + Math.sin(Date.now() * 0.002 + delay) * 0.5 : 0.2;
+      });
+    }
     
     // Update visualizer continuously
     setInterval(updateVisualizer, 50);
@@ -1754,9 +1642,10 @@
       const memoryText = document.getElementById('memory-text').textContent;
       if (memoryText) {
         // Force user interaction for speech synthesis
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        audioContext.resume();
-        narrateMemory(memoryText);
+        const audioElement = new Audio();
+        audioElement.src = 'audio/narration.mp3'; // Replace with your actual narration file
+        audioElement.volume = 0.9;
+        audioElement.play();
       }
     });
     
