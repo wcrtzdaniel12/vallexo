@@ -1127,6 +1127,29 @@
       }
     }
     
+    // Volume ducking system
+    let originalVolume = 0.5;
+    let isDucking = false;
+    
+    // Duck background music during voiceover
+    function duckBackgroundMusic() {
+      if (!isDucking) {
+        originalVolume = volume;
+        setVolume(0.1); // Reduce to 10%
+        isDucking = true;
+        console.log('Background music ducked to 10% for voiceover');
+      }
+    }
+    
+    // Restore background music volume after voiceover
+    function restoreBackgroundMusic() {
+      if (isDucking) {
+        setVolume(originalVolume);
+        isDucking = false;
+        console.log('Background music volume restored to', originalVolume);
+      }
+    }
+    
     // Audio controls with better state management
     document.getElementById('audio-toggle').addEventListener('click', async function() {
       try {
@@ -1564,6 +1587,9 @@
         // Add radio static effect immediately
         addRadioStaticEffect();
         
+        // Duck background music for voiceover
+        duckBackgroundMusic();
+        
         // Enhanced text for better narration
         const enhancedText = addNaturalPauses(memoryText);
         
@@ -1629,12 +1655,14 @@
           audio.onended = () => {
             console.log('OpenAI TTS narration ended');
             removeRadioStaticEffect();
+            restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl); // Clean up
           };
           
           audio.onerror = (error) => {
             console.error('OpenAI TTS audio error:', error);
             removeRadioStaticEffect();
+            restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl);
             alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
           };
@@ -1649,6 +1677,7 @@
       } catch (error) {
         console.error('Error in OpenAI TTS narration:', error);
         removeRadioStaticEffect();
+        restoreBackgroundMusic(); // Restore background music volume
         
         // Fallback to Web Speech API if OpenAI TTS fails
         console.log('Falling back to Web Speech API...');
@@ -1660,6 +1689,9 @@
     function fallbackToWebSpeech(memoryText) {
       if ('speechSynthesis' in window) {
         speechSynthesis.cancel();
+        
+        // Duck background music for voiceover
+        duckBackgroundMusic();
         
         const utterance = new SpeechSynthesisUtterance(memoryText);
         utterance.rate = 0.85;
@@ -1674,11 +1706,13 @@
         utterance.onend = () => {
           console.log('Fallback Web Speech narration ended');
           removeRadioStaticEffect();
+          restoreBackgroundMusic(); // Restore background music volume
         };
         
         utterance.onerror = (event) => {
           console.log('Fallback Web Speech error:', event);
           removeRadioStaticEffect();
+          restoreBackgroundMusic(); // Restore background music volume
           alert('Speech synthesis failed. Please try again.');
         };
         
