@@ -917,24 +917,38 @@
         masterGain.connect(audioContext.destination);
         masterGain.gain.value = volume;
         
-        // Create reverb
+        // Create reverb - ENHANCED CARETAKER-STYLE
         reverb = audioContext.createConvolver();
-        const reverbBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 2, audioContext.sampleRate);
+        const reverbBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 6, audioContext.sampleRate); // Longer reverb tail
         for (let channel = 0; channel < 2; channel++) {
           const channelData = reverbBuffer.getChannelData(channel);
           for (let i = 0; i < reverbBuffer.length; i++) {
-            channelData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioContext.sampleRate * 0.1));
+            // Create more complex reverb character
+            const decay = Math.exp(-i / (audioContext.sampleRate * 1.5)); // Slower decay
+            const noise = (Math.random() * 2 - 1) * decay;
+            const earlyReflection = i < audioContext.sampleRate * 0.1 ? Math.sin(i * 0.01) * decay * 0.3 : 0;
+            channelData[i] = noise + earlyReflection;
           }
         }
         reverb.buffer = reverbBuffer;
         
-        // Create delay
-        delay = audioContext.createDelay(2.0);
-        delay.delayTime.value = 0.3;
+        // Create delay with feedback for echo chamber effect
+        delay = audioContext.createDelay(3.0); // Longer delay time
+        const delayFeedback = audioContext.createGain();
+        const delayMix = audioContext.createGain();
         
-        // Connect effects
+        delay.delayTime.value = 0.8; // Longer echo
+        delayFeedback.gain.value = 0.4; // More feedback for haunting echoes
+        delayMix.gain.value = 0.3;
+        
+        // Create the delay feedback loop
+        delay.connect(delayFeedback);
+        delayFeedback.connect(delay);
+        delay.connect(delayMix);
+        delayMix.connect(reverb);
+        
+        // Connect effects to output
         reverb.connect(masterGain);
-        delay.connect(reverb);
         
         createLiminalSoundscape();
         updateVisualizer();
@@ -943,68 +957,114 @@
       }
     }
     
-    // Create the liminal space soundscape
+    // Create the liminal space soundscape - CARETAKER INSPIRED
     function createLiminalSoundscape() {
-      // Drone layer 1 - Low frequency hum
-      const drone1 = audioContext.createOscillator();
-      const droneGain1 = audioContext.createGain();
-      const droneFilter1 = audioContext.createBiquadFilter();
+      // Base nostalgic drone - like distant ballroom music
+      const baseDrone = audioContext.createOscillator();
+      const baseDroneGain = audioContext.createGain();
+      const baseDroneFilter = audioContext.createBiquadFilter();
       
-      drone1.frequency.value = 55;
-      drone1.type = 'sine';
-      droneGain1.gain.value = 0.1;
-      droneFilter1.type = 'lowpass';
-      droneFilter1.frequency.value = 200;
+      baseDrone.frequency.value = 220; // A3 - nostalgic frequency
+      baseDrone.type = 'sine';
+      baseDroneGain.gain.value = 0.08;
+      baseDroneFilter.type = 'lowpass';
+      baseDroneFilter.frequency.value = 800; // Muffled, distant quality
+      baseDroneFilter.Q.value = 1.5;
       
-      drone1.connect(droneFilter1);
-      droneFilter1.connect(droneGain1);
-      droneGain1.connect(delay);
+      baseDrone.connect(baseDroneFilter);
+      baseDroneFilter.connect(baseDroneGain);
+      baseDroneGain.connect(delay);
       
-      // Drone layer 2 - Mid frequency pad
-      const drone2 = audioContext.createOscillator();
-      const droneGain2 = audioContext.createGain();
-      const droneFilter2 = audioContext.createBiquadFilter();
+      // Harmonic layer - like faded waltz melodies
+      const harmonic = audioContext.createOscillator();
+      const harmonicGain = audioContext.createGain();
+      const harmonicFilter = audioContext.createBiquadFilter();
       
-      drone2.frequency.value = 110;
-      drone2.type = 'triangle';
-      droneGain2.gain.value = 0.05;
-      droneFilter2.type = 'lowpass';
-      droneFilter2.frequency.value = 400;
+      harmonic.frequency.value = 440; // A4 - harmonic to base
+      harmonic.type = 'triangle';
+      harmonicGain.gain.value = 0.04;
+      harmonicFilter.type = 'bandpass';
+      harmonicFilter.frequency.value = 600;
+      harmonicFilter.Q.value = 2.0;
       
-      drone2.connect(droneFilter2);
-      droneFilter2.connect(droneGain2);
-      droneGain2.connect(delay);
+      harmonic.connect(harmonicFilter);
+      harmonicFilter.connect(harmonicGain);
+      harmonicGain.connect(delay);
       
-      // Ambient layer - High frequency shimmer
-      const ambient = audioContext.createOscillator();
-      const ambientGain = audioContext.createGain();
-      const ambientFilter = audioContext.createBiquadFilter();
+      // Static/vinyl crackle layer
+      const staticNoise = audioContext.createBufferSource();
+      const staticGain = audioContext.createGain();
+      const staticFilter = audioContext.createBiquadFilter();
       
-      ambient.frequency.value = 880;
-      ambient.type = 'sine';
-      ambientGain.gain.value = 0.03;
-      ambientFilter.type = 'highpass';
-      ambientFilter.frequency.value = 800;
+      // Create noise buffer for vinyl crackle
+      const bufferSize = audioContext.sampleRate * 2;
+      const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * 0.1;
+      }
       
-      ambient.connect(ambientFilter);
-      ambientFilter.connect(ambientGain);
-      ambientGain.connect(delay);
+      staticNoise.buffer = noiseBuffer;
+      staticNoise.loop = true;
+      staticGain.gain.value = 0.02;
+      staticFilter.type = 'bandpass';
+      staticFilter.frequency.value = 3000; // High-frequency crackle
+      staticFilter.Q.value = 0.5;
+      
+      staticNoise.connect(staticFilter);
+      staticFilter.connect(staticGain);
+      staticGain.connect(reverb);
+      
+      // Sub-bass - deep memory resonance
+      const subBass = audioContext.createOscillator();
+      const subBassGain = audioContext.createGain();
+      const subBassFilter = audioContext.createBiquadFilter();
+      
+      subBass.frequency.value = 55; // Very low, felt more than heard
+      subBass.type = 'sine';
+      subBassGain.gain.value = 0.06;
+      subBassFilter.type = 'lowpass';
+      subBassFilter.frequency.value = 120;
+      
+      subBass.connect(subBassFilter);
+      subBassFilter.connect(subBassGain);
+      subBassGain.connect(delay);
       
       // Store oscillators for control
-      oscillators = [drone1, drone2, ambient];
-      filters = [droneFilter1, droneFilter2, ambientFilter];
+      oscillators = [baseDrone, harmonic, staticNoise, subBass];
+      filters = [baseDroneFilter, harmonicFilter, staticFilter, subBassFilter];
       
       // Start oscillators
-      oscillators.forEach(osc => osc.start());
+      baseDrone.start();
+      harmonic.start();
+      staticNoise.start();
+      subBass.start();
       
-      // Add subtle modulation
+      // Add Caretaker-style deterioration and modulation
       setInterval(() => {
         if (isPlaying) {
-          drone1.frequency.value = 55 + Math.sin(Date.now() * 0.0001) * 2;
-          drone2.frequency.value = 110 + Math.sin(Date.now() * 0.00015) * 3;
-          ambient.frequency.value = 880 + Math.sin(Date.now() * 0.0002) * 5;
+          // Slow, haunting modulation like deteriorating memories
+          const time = Date.now() * 0.00005; // Very slow modulation
+          
+          // Base drone: slowly drifts in pitch like a worn record
+          baseDrone.frequency.value = 220 + Math.sin(time) * 3 + Math.sin(time * 1.7) * 1.5;
+          
+          // Harmonic: creates unsettling intervals
+          harmonic.frequency.value = 440 + Math.sin(time * 0.8) * 8 + Math.sin(time * 1.3) * 3;
+          
+          // Filter sweeps for that "lost in time" feeling
+          baseDroneFilter.frequency.value = 800 + Math.sin(time * 0.6) * 200;
+          harmonicFilter.frequency.value = 600 + Math.sin(time * 0.9) * 150;
+          
+          // Sub-bass: very slow pulse like distant heartbeat
+          subBass.frequency.value = 55 + Math.sin(time * 0.3) * 5;
+          
+          // Occasionally adjust static intensity
+          if (Math.random() < 0.01) { // 1% chance per cycle
+            staticGain.gain.value = 0.01 + Math.random() * 0.03;
+          }
         }
-      }, 100);
+      }, 200); // Slower update rate for more organic feel
     }
     
     // Update audio visualizer
