@@ -1345,8 +1345,8 @@
     
     // Add natural pauses and emphasis to text - OPTIMIZED FOR CREDITS
     function addNaturalPauses(text) {
-      // Limit text length to save credits
-      const maxLength = 800; // Increased to allow full memory
+      // Limit text length to save credits  
+      const maxLength = 1200; // Increased to ensure full memory narration
       if (text.length > maxLength) {
         text = text.substring(0, maxLength) + '...';
         console.log('Text truncated to save credits:', text.length, 'characters');
