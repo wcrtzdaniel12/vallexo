@@ -1018,25 +1018,39 @@
       });
     }
     
-    // Audio controls
-    document.getElementById('audio-toggle').addEventListener('click', function() {
-      if (!audioContext) {
-        initAudio();
-        return;
-      }
-      
-      if (isPlaying) {
-        // Pause
-        audioContext.suspend();
-        this.textContent = '♪ OFF';
-        this.classList.add('muted');
-        isPlaying = false;
-      } else {
-        // Resume
-        audioContext.resume();
-        this.textContent = '♪ ON';
-        this.classList.remove('muted');
-        isPlaying = true;
+    // Audio controls with better state management
+    document.getElementById('audio-toggle').addEventListener('click', async function() {
+      try {
+        if (!audioContext) {
+          await initAudio();
+          if (!audioContext) {
+            console.log('Failed to initialize audio context');
+            return;
+          }
+        }
+        
+        if (isPlaying && audioContext.state === 'running') {
+          // Pause
+          await audioContext.suspend();
+          this.textContent = '♪ OFF';
+          this.classList.add('muted');
+          isPlaying = false;
+          console.log('Background music paused');
+        } else {
+          // Resume or start
+          await audioContext.resume();
+          if (audioContext.state === 'running') {
+            this.textContent = '♪ ON';
+            this.classList.remove('muted');
+            isPlaying = true;
+            console.log('Background music playing');
+          } else {
+            console.log('Failed to resume audio context');
+          }
+        }
+      } catch (error) {
+        console.log('Audio toggle error:', error);
+        this.textContent = '♪ ERROR';
       }
     });
     
@@ -1048,15 +1062,31 @@
       }
     });
     
-    // Initialize audio on page load
+    // Initialize audio on page load with better error handling
     window.addEventListener('load', function() {
       // Small delay to ensure page is fully loaded
-      setTimeout(() => {
-        if (!audioContext) {
-          initAudio();
-          isPlaying = true;
-          document.getElementById('audio-toggle').textContent = '♪ ON';
-          document.getElementById('audio-toggle').classList.remove('muted');
+      setTimeout(async () => {
+        try {
+          if (!audioContext) {
+            await initAudio();
+            if (audioContext && audioContext.state === 'running') {
+              isPlaying = true;
+              document.getElementById('audio-toggle').textContent = '♪ ON';
+              document.getElementById('audio-toggle').classList.remove('muted');
+              console.log('Background music auto-started successfully');
+            } else {
+              // Fallback - show as off if audio context didn't start
+              document.getElementById('audio-toggle').textContent = '♪ OFF';
+              document.getElementById('audio-toggle').classList.add('muted');
+              isPlaying = false;
+              console.log('Background music needs user interaction to start');
+            }
+          }
+        } catch (error) {
+          console.log('Auto-start failed, waiting for user interaction:', error);
+          document.getElementById('audio-toggle').textContent = '♪ OFF';
+          document.getElementById('audio-toggle').classList.add('muted');
+          isPlaying = false;
         }
       }, 1000);
     });
@@ -1373,7 +1403,7 @@
       });
       
       // Add natural pauses between sentences
-      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="200ms"/> ');
+      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="50ms"/> ');
       
       return enhanced;
     }
