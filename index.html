@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Memory Generator v2.0</title>
+      <title>Memory Generator v2.5 - FINAL TTS FIX</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1390,15 +1390,31 @@
         // Enhanced text for better narration
         const enhancedText = addNaturalPauses(memoryText);
         
+        // Sanitize text for JSON transmission
+        const sanitizedText = enhancedText
+          .replace(/\n/g, ' ')  // Replace newlines with spaces
+          .replace(/\r/g, ' ')  // Replace carriage returns with spaces
+          .replace(/\t/g, ' ')  // Replace tabs with spaces
+          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+          .trim();               // Remove leading/trailing spaces
+        
+        console.log('Sanitized text length:', sanitizedText.length);
+        
         // Call OpenAI TTS API via Supabase Edge Function
-        console.log('Calling OpenAI TTS edge function...');
-        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeech', {
+        console.log('🎙️ CALLING GENERATE SPEECH V2 WITH NEW API KEY');
+        console.log('📞 Endpoint: generateSpeechV2 (NOT generateSpeech)');
+        console.log('🔑 Expected: New API key should work');
+        console.log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=3&t=' + Date.now());
+        console.log('Request body:', JSON.stringify({ text: sanitizedText }));
+        
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=3&t=' + Date.now(), {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlobnN1b3ZxcGV3d3lxb2ZydGF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzYzMzc3MywiZXhwIjoyMDY5MjA5NzczfQ.pABYaslGn8LPxR0vlt3q2F4Y27hFxpmV74yG0Q53JHk'
           },
           body: JSON.stringify({
-            text: enhancedText
+            text: sanitizedText
           })
         });
         
