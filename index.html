@@ -1346,16 +1346,16 @@
     // Add natural pauses and emphasis to text - OPTIMIZED FOR CREDITS
     function addNaturalPauses(text) {
       // Limit text length to save credits
-      const maxLength = 500; // Reduce from unlimited
+      const maxLength = 800; // Increased to allow full memory
       if (text.length > maxLength) {
         text = text.substring(0, maxLength) + '...';
         console.log('Text truncated to save credits:', text.length, 'characters');
       }
       
-      // Add 1950s radio host instruction
-      let enhanced = `[Speaking like a mysterious late night show radio host in 1950s with a deep voice] ${text}`;
+      // DON'T add instruction to the text - let OpenAI TTS handle the voice style
+      let enhanced = text;
       
-      // Simplified SSML - less processing = fewer credits
+      // Clean up text formatting
       enhanced = enhanced
         .replace(/\./g, '. ')
         .replace(/,/g, ', ')
@@ -1364,8 +1364,7 @@
       // Only emphasize key words (reduced list)
       const keyWords = [
         'remember', 'memory', 'felt', 'saw', 'heard',
-        'moment', 'time', 'place', 'feeling', 'mysterious',
-        'night', 'radio', 'host', 'deep', 'voice'
+        'moment', 'time', 'place', 'feeling'
       ];
       
       keyWords.forEach(word => {
@@ -1373,8 +1372,8 @@
         enhanced = enhanced.replace(regex, `<emphasis level="moderate">${word}</emphasis>`);
       });
       
-      // Minimal pauses
-      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="300ms"/> ');
+      // Add natural pauses between sentences
+      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="500ms"/> ');
       
       return enhanced;
     }
