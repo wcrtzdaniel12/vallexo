@@ -1062,50 +1062,69 @@
       }
     });
     
-    // Initialize audio on page load with better error handling
+    // Initialize audio on page load with better error handling and default to ON
     window.addEventListener('load', function() {
+      // Set default state to ON
+      isPlaying = true;
+      document.getElementById('audio-toggle').textContent = '♪ ON';
+      document.getElementById('audio-toggle').classList.remove('muted');
+      
       // Small delay to ensure page is fully loaded
       setTimeout(async () => {
         try {
           if (!audioContext) {
             await initAudio();
             if (audioContext && audioContext.state === 'running') {
-              isPlaying = true;
-              document.getElementById('audio-toggle').textContent = '♪ ON';
-              document.getElementById('audio-toggle').classList.remove('muted');
               console.log('Background music auto-started successfully');
+              // Music is already playing, keep the ON state
+            } else if (audioContext && audioContext.state === 'suspended') {
+              // Try to resume if suspended
+              await audioContext.resume();
+              if (audioContext.state === 'running') {
+                console.log('Background music resumed successfully');
+              } else {
+                console.log('Background music needs user interaction to start');
+                // Keep showing ON state, will start on first interaction
+              }
             } else {
-              // Fallback - show as off if audio context didn't start
-              document.getElementById('audio-toggle').textContent = '♪ OFF';
-              document.getElementById('audio-toggle').classList.add('muted');
-              isPlaying = false;
               console.log('Background music needs user interaction to start');
+              // Keep showing ON state, will start on first interaction
             }
           }
         } catch (error) {
-          console.log('Auto-start failed, waiting for user interaction:', error);
-          document.getElementById('audio-toggle').textContent = '♪ OFF';
-          document.getElementById('audio-toggle').classList.add('muted');
-          isPlaying = false;
+          console.log('Auto-start failed, will start on user interaction:', error);
+          // Keep showing ON state, will start on first interaction
         }
-      }, 1000);
+      }, 500); // Reduced delay for faster initialization
     });
     
-    // Initialize audio on first user interaction (fallback)
-    document.addEventListener('click', function initOnFirstClick() {
-      if (!audioContext) {
-        initAudio();
-        isPlaying = true;
-        document.getElementById('audio-toggle').textContent = '♪ ON';
-        document.getElementById('audio-toggle').classList.remove('muted');
-      }
-      
-      // Test speech synthesis on first click
-      if ('speechSynthesis' in window) {
-        const testUtterance = new SpeechSynthesisUtterance('Radio test');
-        testUtterance.volume = 0;
-        speechSynthesis.speak(testUtterance);
-        console.log('Speech synthesis test completed');
+    // Initialize audio on first user interaction (fallback) - AGGRESSIVE AUTO-START
+    document.addEventListener('click', async function initOnFirstClick() {
+      try {
+        if (!audioContext) {
+          await initAudio();
+        }
+        
+        // Always try to start/resume audio on first click if not already playing
+        if (audioContext && audioContext.state !== 'running') {
+          await audioContext.resume();
+          if (audioContext.state === 'running') {
+            isPlaying = true;
+            document.getElementById('audio-toggle').textContent = '♪ ON';
+            document.getElementById('audio-toggle').classList.remove('muted');
+            console.log('Background music started on first user interaction');
+          }
+        }
+        
+        // Test speech synthesis on first click
+        if ('speechSynthesis' in window) {
+          const testUtterance = new SpeechSynthesisUtterance('Radio test');
+          testUtterance.volume = 0;
+          speechSynthesis.speak(testUtterance);
+          console.log('Speech synthesis test completed');
+        }
+      } catch (error) {
+        console.log('First click audio initialization failed:', error);
       }
       
       document.removeEventListener('click', initOnFirstClick);
@@ -1341,19 +1360,28 @@
       throw new Error('Failed to generate memory. Please try again later.');
     }
 
-    // Show memory section with fade-in and scroll
-    function showMemorySection(memoryText) {
+    // Show memory section with fade-in and scroll - AFTER voiceover is ready
+    async function showMemorySection(memoryText) {
+      console.log('Preparing memory section and voiceover...');
+      
       const section = document.getElementById('memory-section');
       const textEl = document.getElementById('memory-text');
       textEl.textContent = memoryText;
+      
+      // Start voiceover preparation while showing the section
+      try {
+        await narrateMemory(memoryText); // Wait for voiceover to be ready
+        console.log('Voiceover ready, showing memory section');
+      } catch (error) {
+        console.log('Voiceover failed, showing section anyway:', error);
+      }
+      
+      // Show the section
       section.classList.add('fade-in');
       section.classList.remove('opacity-0', 'pointer-events-none');
       setTimeout(() => {
         section.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
-      
-      // Narrate the memory with retro radio voice
-      narrateMemory(memoryText);
     }
     
     // Debug functions
@@ -1768,6 +1796,7 @@
         { text: 'SCANNING TIMELINE', status: 'LOCATING MEMORY FRAGMENTS...' },
         { text: 'DECODING SIGNALS', status: 'ANALYZING EMOTIONAL PATTERNS...' },
         { text: 'SYNCHRONIZING DATA', status: 'RECONSTRUCTING SCENES...' },
+        { text: 'PREPARING VOICEOVER', status: 'GENERATING AUDIO NARRATION...' },
         { text: 'FINALIZING MEMORY', status: 'RENDERING EXPERIENCE...' }
       ];
       
@@ -1810,8 +1839,9 @@
         
         try {
           const memory = await generateMemory(fullname, birthYear);
+          // Wait for both memory section display AND voiceover preparation
+          await showMemorySection(memory);
           hideLoadingOverlay();
-          showMemorySection(memory);
         } catch (error) {
           hideLoadingOverlay();
           // Show error in a new modal or overlay
