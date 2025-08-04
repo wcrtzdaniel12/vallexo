@@ -1337,10 +1337,10 @@
       const speechStatus = document.getElementById('speech-status');
       const voiceCount = document.getElementById('voice-count');
       
-      // Update to show OpenAI TTS status
-      speechStatus.textContent = 'OpenAI TTS: Active';
+      // Update to show OpenAI TTS direct frontend status
+      speechStatus.textContent = 'OpenAI TTS: Direct Frontend';
       voiceCount.textContent = 'Voice: Alloy (Radio)';
-      console.log('Using OpenAI TTS with Alloy voice for realistic voice synthesis');
+      console.log('Using OpenAI TTS directly from frontend with Alloy voice');
     }
     
     // Add natural pauses and emphasis to text - OPTIMIZED FOR CREDITS
@@ -1375,9 +1375,9 @@
       return enhanced;
     }
     
-    // OpenAI TTS realistic radio announcer narration
+    // OpenAI TTS realistic radio announcer narration (Direct Frontend Call)
     async function narrateMemory(memoryText) {
-      console.log('Attempting to narrate memory with OpenAI TTS:', memoryText.substring(0, 50) + '...');
+      console.log('Attempting to narrate memory with OpenAI TTS (Direct):', memoryText.substring(0, 50) + '...');
       
       try {
         // Add radio static effect immediately
@@ -1386,68 +1386,59 @@
         // Enhanced text for better narration
         const enhancedText = addNaturalPauses(memoryText);
         
-        // Call OpenAI TTS API via Supabase Edge Function
-        console.log('Calling OpenAI TTS edge function...');
-        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeech', {
+        // Call OpenAI TTS API directly from frontend
+        console.log('Calling OpenAI TTS API directly...');
+        const response = await fetch('https://api.openai.com/v1/audio/speech', {
           method: 'POST',
           headers: {
+            'Authorization': 'Bearer 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',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            text: enhancedText
+            model: 'tts-1',
+            input: enhancedText,
+            voice: 'alloy',
+            response_format: 'mp3',
+            speed: 0.9
           })
         });
         
         console.log('OpenAI TTS response status:', response.status);
         
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('OpenAI TTS error:', errorData);
-          throw new Error(`OpenAI TTS error: ${response.status} - ${JSON.stringify(errorData)}`);
+          const errorText = await response.text();
+          console.error('OpenAI TTS error:', errorText);
+          throw new Error(`OpenAI TTS error: ${response.status} - ${errorText}`);
         }
         
-        const data = await response.json();
-        console.log('OpenAI TTS success:', data);
+        // Get audio blob directly
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
         
-        if (data.audio) {
-          // Convert base64 to audio blob
-          const audioData = atob(data.audio);
-          const audioArray = new Uint8Array(audioData.length);
-          for (let i = 0; i < audioData.length; i++) {
-            audioArray[i] = audioData.charCodeAt(i);
-          }
-          
-          const audioBlob = new Blob([audioArray], { type: 'audio/mp3' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          
-          // Create and play audio
-          const audio = new Audio(audioUrl);
-          audio.volume = 0.9;
-          
-          audio.onplay = () => {
-            console.log('OpenAI TTS narration started');
-            updateDebugInfo();
-          };
-          
-          audio.onended = () => {
-            console.log('OpenAI TTS narration ended');
-            removeRadioStaticEffect();
-            URL.revokeObjectURL(audioUrl); // Clean up
-          };
-          
-          audio.onerror = (error) => {
-            console.error('OpenAI TTS audio error:', error);
-            removeRadioStaticEffect();
-            URL.revokeObjectURL(audioUrl);
-            alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
-          };
-          
-          // Start playing
-          await audio.play();
-          
-        } else {
-          throw new Error('No audio data received from OpenAI TTS');
-        }
+        // Create and play audio
+        const audio = new Audio(audioUrl);
+        audio.volume = 0.9;
+        
+        audio.onplay = () => {
+          console.log('OpenAI TTS narration started');
+          updateDebugInfo();
+        };
+        
+        audio.onended = () => {
+          console.log('OpenAI TTS narration ended');
+          removeRadioStaticEffect();
+          URL.revokeObjectURL(audioUrl); // Clean up
+        };
+        
+        audio.onerror = (error) => {
+          console.error('OpenAI TTS audio error:', error);
+          removeRadioStaticEffect();
+          URL.revokeObjectURL(audioUrl);
+          alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
+        };
+        
+        // Start playing
+        await audio.play();
         
       } catch (error) {
         console.error('Error in OpenAI TTS narration:', error);
