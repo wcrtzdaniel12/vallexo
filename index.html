@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Memory Generator v2.5 - FINAL TTS FIX</title>
+      <title>Memory Generator v2.6 - SERVICE ROLE FIX</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1404,10 +1404,10 @@
         console.log('🎙️ CALLING GENERATE SPEECH V2 WITH NEW API KEY');
         console.log('📞 Endpoint: generateSpeechV2 (NOT generateSpeech)');
         console.log('🔑 Expected: New API key should work');
-        console.log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=3&t=' + Date.now());
+        console.log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now());
         console.log('Request body:', JSON.stringify({ text: sanitizedText }));
         
-        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=3&t=' + Date.now(), {
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
