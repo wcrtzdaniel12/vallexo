@@ -973,10 +973,6 @@
   </div>
 
   <script>
-    // TTS pacing reference (must match Edge Function generateSpeechV2)
-    const OPENAI_TTS_SPEED = 1.0; // onyx @ 1.0x
-    const BASE_WORDS_PER_SEC = 2.6; // ~156 WPM
-    const ESTIMATED_WPS = BASE_WORDS_PER_SEC * OPENAI_TTS_SPEED;
     // TTS pacing reference (keep in sync with generateSpeechV2: voice onyx, speed 1.0)
     const OPENAI_TTS_SPEED = 1.0;
     // Onyx at speed 1.0 ≈ 150–170 WPM. Use 2.6 words/sec baseline for safer pacing
@@ -1686,21 +1682,22 @@
         
         console.log('Sanitized text length:', sanitizedText.length);
         
-        // Call OpenAI TTS API via Supabase Edge Function - SEGMENTED MODE
+        // Call OpenAI TTS API via Supabase Edge Function
         console.log('🎙️ CALLING GENERATE SPEECH V2 WITH NEW API KEY');
         console.log('📞 Endpoint: generateSpeechV2 (NOT generateSpeech)');
         console.log('🔑 Expected: New API key should work');
-        console.log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=5&t=' + Date.now());
-        const lines = splitMemoryIntoLines(memoryText);
-        console.log('Request body:', JSON.stringify({ text: sanitizedText, lines }));
+        console.log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now());
+        console.log('Request body:', JSON.stringify({ text: sanitizedText }));
         
-        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=5&t=' + Date.now(), {
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlobnN1b3ZxcGV3d3lxb2ZydGF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzYzMzc3MywiZXhwIjoyMDY5MjA5NzczfQ.pABYaslGn8LPxR0vlt3q2F4Y27hFxpmV74yG0Q53JHk'
           },
-          body: JSON.stringify({ text: sanitizedText, lines })
+          body: JSON.stringify({
+            text: sanitizedText
+          })
         });
         
         console.log('OpenAI TTS response status:', response.status);
@@ -1714,30 +1711,7 @@
         const data = await response.json();
         console.log('OpenAI TTS success:', data);
         
-        if (Array.isArray(data.audios)) {
-          // Segmented playback: play each line's audio sequentially and update captions
-          const clips = data.audios.map((b64) => {
-            if (!b64) return null;
-            const bin = atob(b64);
-            const arr = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-            return URL.createObjectURL(new Blob([arr], { type: 'audio/mp3' }));
-          });
-          const validClips = clips.filter(Boolean);
-          if (!validClips.length) throw new Error('No audio clips returned');
-
-          // Initialize segmented reveal overlay
-          const approxDur = Math.round(sanitizedText.split(/\s+/).filter(Boolean).length / Math.max(1, ESTIMATED_WPS));
-          startKenBurnsRevealSegmented(memoryText, approxDur);
-          duckBackgroundMusic();
-          addRadioStaticEffect();
-
-          await playClipsSequentially(validClips, lines);
-          removeRadioStaticEffect();
-          restoreBackgroundMusic();
-          stopKenBurnsReveal();
-
-        } else if (data.audio) {
+        if (data.audio) {
           // Convert base64 to audio blob
           const audioData = atob(data.audio);
           const audioArray = new Uint8Array(audioData.length);
@@ -1804,30 +1778,6 @@
         console.log('Falling back to Web Speech API...');
         fallbackToWebSpeech(memoryText);
       }
-    }
-
-    async function playClipsSequentially(urls, lines) {
-      return new Promise(async (resolve, reject) => {
-        try {
-          for (let i = 0; i < urls.length; i++) {
-            const url = urls[i];
-            const audio = new Audio(url);
-            // On each clip start, set caption line
-            audio.addEventListener('play', () => {
-              setCaptionIndex(i);
-            });
-            // Wait for playback
-            await new Promise((res, rej) => {
-              audio.onended = () => { URL.revokeObjectURL(url); res(null); };
-              audio.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
-              audio.play().catch(rej);
-            });
-          }
-          resolve(null);
-        } catch (e) {
-          reject(e);
-        }
-      });
     }
     
     // Fallback to Web Speech API
@@ -2361,31 +2311,6 @@
         }
       } catch (e) {
         console.warn('Reveal overlay error:', e);
-      }
-    }
-
-    // Segmented mode: initialize overlay without attaching any audio timers
-    function startKenBurnsRevealSegmented(memoryText, totalDurationSec) {
-      try {
-        const overlay = document.getElementById('reveal-overlay');
-        const caption = document.getElementById('reveal-caption');
-        const bg = document.getElementById('reveal-bg');
-        const paragraph = document.getElementById('memory-text');
-        if (!overlay || !caption || !bg) return;
-
-        overlay.classList.add('active');
-        caption.innerHTML = '';
-        if (paragraph) paragraph.classList.add('hidden-during-reveal');
-        cleanupRevealHandlers();
-
-        buildRevealState(memoryText);
-        if (!revealSync.lines.length) return;
-        setCaptionIndex(0);
-
-        const durSec = Math.max(8, Math.min(300, Number.isFinite(totalDurationSec) && totalDurationSec > 0 ? totalDurationSec : Math.round(revealSync.totalWords / Math.max(1, ESTIMATED_WPS))));
-        bg.style.animationDuration = Math.floor(durSec) + 's';
-      } catch (e) {
-        console.warn('Segmented reveal init error:', e);
       }
     }
 
