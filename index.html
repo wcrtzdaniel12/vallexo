@@ -1735,7 +1735,7 @@
             console.log('OpenAI TTS narration started');
             updateDebugInfo();
             // Start synchronized reveal
-            startKenBurnsReveal(memoryText, audio);
+            startKenBurnsReveal(memoryText, audio, null);
           };
           
           audio.onended = () => {
@@ -1789,7 +1789,7 @@
         utterance.onstart = () => {
           console.log('Fallback Web Speech narration started');
           updateDebugInfo();
-          startKenBurnsReveal(memoryText, null);
+          startKenBurnsReveal(memoryText, null, utterance);
         };
         
         utterance.onend = () => {
@@ -2148,13 +2148,65 @@
       return lines.filter(Boolean);
     }
 
-    let revealTimerHandles = [];
-    function clearRevealTimers() {
-      revealTimerHandles.forEach(h => clearTimeout(h));
-      revealTimerHandles = [];
+    // Real-time synced reveal state
+    let revealSync = {
+      audioEl: null,
+      utterance: null,
+      lines: [],
+      wordCounts: [],
+      cumulative: [],
+      totalWords: 0,
+      currentIdx: -1
+    };
+    let audioTimeHandler = null;
+    let estimateTimer = null;
+
+    function buildRevealState(text) {
+      const lines = splitMemoryIntoLines(text);
+      const wordCounts = lines.map(l => l.split(/\s+/).filter(Boolean).length || 1);
+      const cumulative = [];
+      let sum = 0;
+      for (const c of wordCounts) { sum += c; cumulative.push(sum); }
+      revealSync.lines = lines;
+      revealSync.wordCounts = wordCounts;
+      revealSync.cumulative = cumulative;
+      revealSync.totalWords = sum || lines.length;
+      revealSync.currentIdx = -1;
     }
 
-    function startKenBurnsReveal(memoryText, audioEl) {
+    function setCaptionIndex(idx) {
+      const caption = document.getElementById('reveal-caption');
+      if (!caption) return;
+      if (idx === revealSync.currentIdx) return;
+      const safeIdx = Math.max(0, Math.min(idx, revealSync.lines.length - 1));
+      revealSync.currentIdx = safeIdx;
+      const el = document.createElement('div');
+      el.className = 'reveal-line';
+      el.textContent = revealSync.lines[safeIdx] || '';
+      caption.innerHTML = '';
+      caption.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+    }
+
+    function setCaptionByWords(wordsSpoken) {
+      if (revealSync.totalWords <= 0) return;
+      let i = 0;
+      while (i < revealSync.cumulative.length && revealSync.cumulative[i] <= wordsSpoken) i++;
+      setCaptionIndex(i);
+    }
+
+    function cleanupRevealHandlers() {
+      if (revealSync.audioEl && audioTimeHandler) {
+        revealSync.audioEl.removeEventListener('timeupdate', audioTimeHandler);
+      }
+      audioTimeHandler = null;
+      if (estimateTimer) {
+        clearInterval(estimateTimer);
+        estimateTimer = null;
+      }
+    }
+
+    function startKenBurnsReveal(memoryText, audioEl, utterance) {
       try {
         const overlay = document.getElementById('reveal-overlay');
         const caption = document.getElementById('reveal-caption');
@@ -2164,56 +2216,69 @@
 
         overlay.classList.add('active');
         caption.innerHTML = '';
-        clearRevealTimers();
         if (paragraph) paragraph.classList.add('hidden-during-reveal');
+        cleanupRevealHandlers();
 
-        const lines = splitMemoryIntoLines(memoryText);
-        if (lines.length === 0) return;
+        // Build state
+        buildRevealState(memoryText);
+        if (!revealSync.lines.length) return;
+        setCaptionIndex(0);
 
-        // Compute per-line duration by word-weighted distribution over audio duration
-        const allWords = memoryText.split(/\s+/).filter(Boolean).length;
-        const estimatedSec = audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0
-          ? audioEl.duration
-          : Math.min(180, Math.max(6, Math.round(allWords * 0.28))); // ~280ms per word
-        const totalMs = Math.max(6000, estimatedSec * 1000);
-        // Ensure background animation duration is aligned
-        const bgDurSec = Math.max(6, Math.min(180, Math.floor(estimatedSec)));
-        bg.style.animationDuration = bgDurSec + 's';
-        const wordCounts = lines.map(l => l.split(/\s+/).filter(Boolean).length || 1);
-        const totalWords = wordCounts.reduce((a,b)=>a+b,0) || lines.length;
+        // Duration for Ken Burns
+        const words = revealSync.totalWords;
+        const fallbackSec = Math.min(240, Math.max(8, Math.round(words * 0.42))); // slower pacing
+        const durSec = (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0)
+          ? Math.max(8, Math.min(240, audioEl.duration))
+          : fallbackSec;
+        bg.style.animationDuration = Math.floor(durSec) + 's';
 
-        let t = 0;
-        lines.forEach((line, idx) => {
-          const portion = wordCounts[idx] / totalWords;
-          const dur = Math.max(1200, Math.floor(totalMs * portion));
-          const el = document.createElement('div');
-          el.className = 'reveal-line';
-          el.textContent = line;
-          // Schedule display
-          const showHandle = setTimeout(() => {
-            caption.innerHTML = '';
-            caption.appendChild(el);
-            requestAnimationFrame(() => el.classList.add('show'));
-          }, t);
-          revealTimerHandles.push(showHandle);
-          // Next start time
-          t += dur;
-        });
+        // Attach sync via audio time
+        revealSync.audioEl = audioEl || null;
+        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+          audioTimeHandler = () => {
+            if (!audioEl.duration || audioEl.duration <= 0) return;
+            const progress = Math.max(0, Math.min(1, audioEl.currentTime / audioEl.duration));
+            const wordsSpoken = Math.floor(progress * revealSync.totalWords);
+            setCaptionByWords(wordsSpoken);
+          };
+          audioEl.addEventListener('timeupdate', audioTimeHandler);
+        } else {
+          // Fallback estimated timer when no audio duration
+          const wordsPerSec = revealSync.totalWords / fallbackSec;
+          let startTs = performance.now();
+          estimateTimer = setInterval(() => {
+            const elapsedSec = (performance.now() - startTs) / 1000;
+            const wordsSpoken = Math.floor(elapsedSec * wordsPerSec);
+            setCaptionByWords(wordsSpoken);
+          }, 150);
+        }
 
-        // Do not auto-stop; rely on audio/web speech end events
+        // Web Speech boundary sync
+        revealSync.utterance = utterance || null;
+        if (utterance) {
+          utterance.onboundary = (event) => {
+            try {
+              const upto = (event.charIndex || 0);
+              const wordsSpoken = memoryText.slice(0, upto).trim().split(/\s+/).filter(Boolean).length;
+              setCaptionByWords(wordsSpoken);
+            } catch (_) {}
+          };
+        }
       } catch (e) {
         console.warn('Reveal overlay error:', e);
       }
     }
 
     function stopKenBurnsReveal() {
-      clearRevealTimers();
+      cleanupRevealHandlers();
       const overlay = document.getElementById('reveal-overlay');
       const caption = document.getElementById('reveal-caption');
       const paragraph = document.getElementById('memory-text');
       if (overlay) overlay.classList.remove('active');
       if (caption) caption.innerHTML = '';
       if (paragraph) paragraph.classList.remove('hidden-during-reveal');
+      // reset state
+      revealSync = { audioEl: null, utterance: null, lines: [], wordCounts: [], cumulative: [], totalWords: 0, currentIdx: -1 };
     }
   </script>
 </body>
