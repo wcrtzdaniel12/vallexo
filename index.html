@@ -973,11 +973,6 @@
   </div>
 
   <script>
-    // TTS pacing reference (keep in sync with generateSpeechV2: voice onyx, speed 1.0)
-    const OPENAI_TTS_SPEED = 1.0;
-    // Onyx at speed 1.0 ≈ 150–170 WPM. Use 2.6 words/sec baseline for safer pacing
-    const BASE_WORDS_PER_SEC = 2.6;
-    const ESTIMATED_WPS = BASE_WORDS_PER_SEC * OPENAI_TTS_SPEED;
     // Background Music System - Hybrid (Audio Files + Synthesized Fallback)
     let currentTrackIndex = 0;
     let audioElement = null;
@@ -1730,7 +1725,7 @@
           let boundaryTimes = null;
           audio.addEventListener('loadedmetadata', () => {
             const bg = document.getElementById('reveal-bg');
-            const dur = Math.max(6, Math.min(300, Math.floor(audio.duration || 20)));
+            const dur = Math.max(6, Math.min(240, Math.floor(audio.duration || 20)));
             if (bg) bg.style.animationDuration = dur + 's';
             if (Number.isFinite(audio.duration) && audio.duration > 0) {
               boundaryTimes = computeBoundaryTimesForLines(memoryText, audio.duration);
@@ -2155,15 +2150,19 @@
       return lines.filter(Boolean);
     }
 
-    // Compute stable, time-based boundaries per line using word counts + punctuation weighting
+    // Compute time boundaries for each line using total audio duration
+    // We weight by: word count, punctuation (.,!?), commas, semicolons/colons, and slight char-length factor
     function computeBoundaryTimesForLines(text, totalDurationSec) {
       const lines = splitMemoryIntoLines(text);
       if (!lines.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
       const weights = lines.map((l) => {
-        const words = l.trim().split(/\s+/).filter(Boolean).length;
-        const hasPause = /[.!?]$/.test(l.trim());
-        const punctBonus = hasPause ? 0.8 : 0.35; // stronger pause weight for sentence ends
-        return Math.max(1, words) + punctBonus;
+        const trimmed = l.trim();
+        const words = trimmed.split(/\s+/).filter(Boolean).length;
+        const commas = (trimmed.match(/,/g) || []).length;
+        const semis = (trimmed.match(/[;:]/g) || []).length;
+        const endPunct = /[.!?]$/.test(trimmed) ? 0.8 : 0.0; // stronger pause at sentence ends
+        const charFactor = Math.max(0, Math.min(0.5, trimmed.length / 120)); // small boost for long lines
+        return Math.max(1, words) + 0.35 * commas + 0.25 * semis + endPunct + charFactor;
       });
       const total = weights.reduce((a, b) => a + b, 0) || lines.length;
       const times = [0];
@@ -2263,9 +2262,10 @@
 
         // Duration for Ken Burns
         const words = revealSync.totalWords;
-        const fallbackSec = Math.min(300, Math.max(10, Math.round(words / Math.max(1, ESTIMATED_WPS))));
+        // Fallback pacing tuned for TTS speed=1.0 (~0.6s/word to avoid outpacing)
+        const fallbackSec = Math.min(300, Math.max(8, Math.round(words * 0.6)));
         const durSec = (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0)
-          ? Math.max(8, Math.min(300, audioEl.duration))
+          ? Math.max(8, Math.min(240, audioEl.duration))
           : fallbackSec;
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
@@ -2285,7 +2285,7 @@
           audioEl.addEventListener('timeupdate', audioTimeHandler);
         } else {
           // Fallback estimated timer when no audio duration
-          const wordsPerSec = ESTIMATED_WPS;
+          const wordsPerSec = revealSync.totalWords / fallbackSec;
           let startTs = performance.now();
           estimateTimer = setInterval(() => {
             const elapsedSec = (performance.now() - startTs) / 1000;
@@ -2295,7 +2295,7 @@
               const wordsSpoken = Math.floor(elapsedSec * wordsPerSec);
               setCaptionByWords(wordsSpoken);
             }
-          }, 150);
+          }, 100);
         }
 
         // Web Speech boundary sync
