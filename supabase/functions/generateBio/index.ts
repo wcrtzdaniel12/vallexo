@@ -1,3 +1,6 @@
+/* global Deno */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const Deno: any;
 // This function expects an .env file in the same directory with OPENAI_API_KEY=sk-xxx... for local and deployed environments.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -64,54 +67,29 @@ Create a deeply personal, emotionally-charged memory that stops readers mid-scro
 
 📌 RULESET
 1. Narrative POV
-Always write in second person (you) to feel personal.
+The reader is the main character. No names. No third-person narration. Drop them straight into the moment. It should feel like a recovered memory rather than a story.The scene should feel real
 
-The reader is the main character, dropped back into a memory they forgot they had.
-
-2. Temporal Anchoring — Aim for emotionally distant but personally formative years.
-When selecting a time period, use the user’s birth year to calculate their current age. If the user is between 14 and 37 years old, the setting should focus on their early to late childhood years, roughly between ages 6 to 12. These are the hazy, foundational years where memories are sensory-driven and emotionally raw — think faded cartoons playing in the background, the static of an old TV, schoolyard games, the smell of sun-warmed plastic lunchboxes, toys, early digital media, elementary school, bedtime routines, or ambient memories of home or the quiet mystery of car rides at night — simple, sensory-rich fragments of childhood.
-
-If the user is 38 to 80 years old, anchor the setting in their teenage years, a period often filled with formative experiences, personal awakenings, and emotional imprints — such as high school cultural trends, early romances, group of friends, hometown memories, pre-internet or early internet culture, distinct fashion/music phases, or formative personal experiences.
-
-🟡 Important: Always ensure the scene takes place in the correct calendar year based on the user’s age (e.g., a user born in 2001 should experience a memory from around 2007–2013, not a general “childhood” setting that drifts into the present or teenage years).
-
-Avoid anchoring the scene in the recent past (e.g., 5–10 years ago), as that period is too fresh to trigger deep nostalgia. The chosen moment should feel like it belongs to a world that no longer exists, evoking a kind of beautiful emotional dissonance — vivid yet unreachable.
+2. Temporal Anchoring — Use age to set the year accurately
+If user's birth year is between 1996 to 2011, anchor the scene back when they was 3 to 10 years old — early childhood.
+These memories are tactile, emotionally raw, and sensory-driven: memories with parents, activities in primary school and playmates, bonding with siblings or cousins, family vacations, special occasions, holidays, iconic places for kids like Chuck E. Cheese, etc, field trips, new friends and so much more
+If user's birth year is between 1945 to 1995, target the scene back when they was 11 to 17 years old — formative teenage years: Forgetting homework, chain emails, dial-up tones, substitute teacher, high school moments, awkward friendships, hang-out with friends, strange summer jobs, crushes and romance, prom night, early internet and so much more
 
 3. Structure & Flow
-Begin mid-moment — no greetings, no setup. As if the reader blinked and they’re there.
-
-End with a slight twist, unresolved feeling, or logic glitch — something dreamlike or subtly wrong.
-
+Begin mid-moment — no greetings, no setup. End with a slight twist, unresolved feeling, or logic glitch — something dreamlike or subtly wrong.
 Avoid exposition or “explaining the meaning.” Let the reader feel it.
 
 4. Sensory Detail
 Include at least 2 strong sensory cues (smell, texture, light, sound, etc.).
-
 Make these specific but universal — enough to evoke, not describe.
 
-5. Glitch in Memory/Reality
-Insert 1 minor surreal element or logic breach:
-
-Example: a phone ringing with no service, a door where there shouldn’t be one, a playlist playing from an unplugged device, a person who moved away long ago seen across the street.
-
-6. Emotional Core
+5.Emotional Core
 Focus on a single intimate moment: a gesture, object, promise, goodbye, or the sense of someone missing.
-
 Don’t label the emotion. Let it emerge through the image or action.
 
-7. Tone + Voice
-Poetic, minimal, and raw. Like a journal entry written under flickering light.
-
-No hashtags. No emojis. No titles. No quotation marks.
-
-Just the memory. Just the scene.
-
-8. Length
+6. Length
 6 to 12 short sentences.
 
-Favor fragments over long, polished prose.
-
-✅ OUTPUT SHOULD FEEL LIKE:
+✅ OUTPUT SHOULD FEEL LIKE THIS EXAMPLE:
 You wake up while the only DVD you had in the car was playing for the 14th time and have now made you a wretched attempt at falling asleep in the car while your parents drive you home from a long trip. 
 You hear them turn on their turn signal and open your eyes briefly to notice from the car window that you’ve turn onto a familiar street, you’re just slightly too hot - 
 You’re foot is falling asleep and you haven’t eaten anything with protein for hours not to mention you’re dying of thirst. The colors outside all look washed out. There isn’t a cloud discemable in the entire sky. 

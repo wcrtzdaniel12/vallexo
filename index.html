@@ -697,6 +697,70 @@
       0%, 100% { height: 10px; opacity: 0.3; }
       50% { height: 40px; opacity: 0.8; }
     }
+
+    /* Reveal Overlay (Ken Burns + Captions) */
+    .reveal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1600; /* Above radio-static */
+      display: none;
+      overflow: hidden;
+    }
+    .reveal-overlay.active { display: block; }
+    .reveal-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      transform-origin: center;
+      will-change: transform;
+      /* Animation set dynamically via JS for duration */
+      animation-name: kenburns-pan;
+      animation-timing-function: ease-in-out;
+      animation-fill-mode: forwards;
+    }
+    @keyframes kenburns-pan {
+      0% { transform: scale(1.05) translate3d(0, 0, 0); }
+      100% { transform: scale(1.15) translate3d(2%, 2%, 0); }
+    }
+    .reveal-overlay::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+    }
+    .reveal-caption {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(90vw, 900px);
+      text-align: center;
+      color: #e6ffff;
+      font-family: 'Playfair Display', serif;
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.25);
+      z-index: 1;
+      padding: 0 10px;
+    }
+    .reveal-line {
+      opacity: 0;
+      filter: blur(4px);
+      transition: opacity 700ms ease, filter 1200ms ease;
+      font-size: clamp(18px, 3.2vw, 34px);
+    }
+    .reveal-line.show {
+      opacity: 1;
+      filter: blur(0px);
+    }
   </style>
 </head>
 <body class="liminal-bg min-h-screen">
@@ -743,6 +807,12 @@
 
   <!-- Scanline Effect -->
   <div class="scanline"></div>
+
+  <!-- Reveal Overlay (Ken Burns + Captions) -->
+  <div id="reveal-overlay" class="reveal-overlay">
+    <div id="reveal-bg" class="reveal-bg" style="background-image: url('img/hallway1.png');"></div>
+    <div id="reveal-caption" class="reveal-caption"></div>
+  </div>
   
   <!-- Hero Section -->
   <section class="min-h-screen flex items-center justify-center px-4 relative" style="padding-top: 50px;">
@@ -797,6 +867,7 @@
           <button id="copy-memory" class="px-5 py-2 bg-white bg-opacity-10 border border-white/30 hover:bg-opacity-30 text-white rounded-lg transition-colors text-sm font-serif" style="backdrop-filter: blur(2px);">Copy</button>
         </div>
       </div>
+      
     </div>
   </section>
   <style>
@@ -1646,10 +1717,22 @@
           // Create and play audio
           const audio = new Audio(audioUrl);
           audio.volume = 0.9;
+
+          // Prepare reveal when metadata is ready
+          audio.addEventListener('loadedmetadata', () => {
+            // Set dynamic Ken Burns duration
+            const bg = document.getElementById('reveal-bg');
+            if (bg) {
+              const dur = Math.max(6, Math.min(120, Math.floor(audio.duration || 20))); // clamp 6-120s
+              bg.style.animationDuration = dur + 's';
+            }
+          });
           
           audio.onplay = () => {
             console.log('OpenAI TTS narration started');
             updateDebugInfo();
+            // Start synchronized reveal
+            startKenBurnsReveal(memoryText, audio);
           };
           
           audio.onended = () => {
@@ -1657,6 +1740,7 @@
             removeRadioStaticEffect();
             restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl); // Clean up
+            stopKenBurnsReveal();
           };
           
           audio.onerror = (error) => {
@@ -1665,6 +1749,7 @@
             restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl);
             alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
+            stopKenBurnsReveal();
           };
           
           // Start playing
@@ -1991,7 +2076,7 @@
         
         try {
           const memory = await generateMemory(fullname, birthYear);
-          // Wait for both memory section display AND voiceover preparation
+          // Start voice + UI
           await showMemorySection(memory);
           hideLoadingOverlay();
         } catch (error) {
@@ -2021,6 +2106,106 @@
         });
       });
     });
+    // -------- Ken Burns + Caption sequencing --------
+    function splitMemoryIntoLines(text) {
+      if (!text) return [];
+      // Split into sentences first
+      const raw = text
+        .replace(/\s+/g, ' ')
+        .split(/(?<=[.!?])\s+/);
+      const lines = [];
+      raw.forEach(sentence => {
+        if (sentence.length <= 80) {
+          lines.push(sentence.trim());
+        } else {
+          // Break long sentences by commas or spaces
+          const chunks = sentence.split(/,\s+/);
+          chunks.forEach(chunk => {
+            if (chunk.length <= 80) {
+              lines.push(chunk.trim());
+            } else {
+              // Hard wrap by words
+              const words = chunk.split(' ');
+              let current = '';
+              for (const w of words) {
+                if ((current + ' ' + w).trim().length > 80) {
+                  lines.push(current.trim());
+                  current = w;
+                } else {
+                  current = (current ? current + ' ' : '') + w;
+                }
+              }
+              if (current) lines.push(current.trim());
+            }
+          });
+        }
+      });
+      return lines.filter(Boolean);
+    }
+
+    let revealTimerHandles = [];
+    function clearRevealTimers() {
+      revealTimerHandles.forEach(h => clearTimeout(h));
+      revealTimerHandles = [];
+    }
+
+    function startKenBurnsReveal(memoryText, audioEl) {
+      try {
+        const overlay = document.getElementById('reveal-overlay');
+        const caption = document.getElementById('reveal-caption');
+        const bg = document.getElementById('reveal-bg');
+        if (!overlay || !caption || !bg) return;
+
+        overlay.classList.add('active');
+        caption.innerHTML = '';
+        clearRevealTimers();
+
+        const lines = splitMemoryIntoLines(memoryText);
+        if (lines.length === 0) return;
+
+        // Compute per-line duration by word-weighted distribution over audio duration
+        const totalMs = Math.max(6000, (audioEl?.duration || 20) * 1000);
+        // Ensure background animation duration is aligned even without audio metadata
+        const bgDurSec = Math.max(6, Math.min(120, Math.floor((audioEl?.duration || 20))));
+        bg.style.animationDuration = bgDurSec + 's';
+        const wordCounts = lines.map(l => l.split(/\s+/).filter(Boolean).length || 1);
+        const totalWords = wordCounts.reduce((a,b)=>a+b,0) || lines.length;
+
+        let t = 0;
+        lines.forEach((line, idx) => {
+          const portion = wordCounts[idx] / totalWords;
+          const dur = Math.max(1200, Math.floor(totalMs * portion));
+          const el = document.createElement('div');
+          el.className = 'reveal-line';
+          el.textContent = line;
+          // Schedule display
+          const showHandle = setTimeout(() => {
+            caption.innerHTML = '';
+            caption.appendChild(el);
+            requestAnimationFrame(() => el.classList.add('show'));
+          }, t);
+          revealTimerHandles.push(showHandle);
+          // Next start time
+          t += dur;
+        });
+
+        // Safety stop after audio ends
+        const stopHandle = setTimeout(() => {
+          stopKenBurnsReveal();
+        }, totalMs + 800);
+        revealTimerHandles.push(stopHandle);
+      } catch (e) {
+        console.warn('Reveal overlay error:', e);
+      }
+    }
+
+    function stopKenBurnsReveal() {
+      clearRevealTimers();
+      const overlay = document.getElementById('reveal-overlay');
+      const caption = document.getElementById('reveal-caption');
+      if (overlay) overlay.classList.remove('active');
+      if (caption) caption.innerHTML = '';
+    }
   </script>
 </body>
 </html> 
