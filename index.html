@@ -973,6 +973,11 @@
   </div>
 
   <script>
+    // TTS pacing reference (keep in sync with generateSpeechV2: voice onyx, speed 1.0)
+    const OPENAI_TTS_SPEED = 1.0;
+    // Onyx at speed 1.0 ≈ 150–170 WPM. Use 2.6 words/sec baseline for safer pacing
+    const BASE_WORDS_PER_SEC = 2.6;
+    const ESTIMATED_WPS = BASE_WORDS_PER_SEC * OPENAI_TTS_SPEED;
     // Background Music System - Hybrid (Audio Files + Synthesized Fallback)
     let currentTrackIndex = 0;
     let audioElement = null;
@@ -1722,12 +1727,13 @@
           audio.volume = 0.9;
 
           // Prepare reveal when metadata is ready
+          let boundaryTimes = null;
           audio.addEventListener('loadedmetadata', () => {
-            // Set dynamic Ken Burns duration
             const bg = document.getElementById('reveal-bg');
-            if (bg) {
-              const dur = Math.max(6, Math.min(120, Math.floor(audio.duration || 20))); // clamp 6-120s
-              bg.style.animationDuration = dur + 's';
+            const dur = Math.max(6, Math.min(240, Math.floor(audio.duration || 20)));
+            if (bg) bg.style.animationDuration = dur + 's';
+            if (Number.isFinite(audio.duration) && audio.duration > 0) {
+              boundaryTimes = computeBoundaryTimesForLines(memoryText, audio.duration);
             }
           });
           
@@ -1735,7 +1741,8 @@
             console.log('OpenAI TTS narration started');
             updateDebugInfo();
             // Start synchronized reveal
-            startKenBurnsReveal(memoryText, audio, null);
+            const bt = boundaryTimes && boundaryTimes.length ? boundaryTimes : (data.boundaryTimes || []);
+            startKenBurnsReveal(memoryText, audio, null, bt);
           };
           
           audio.onended = () => {
@@ -2148,6 +2155,27 @@
       return lines.filter(Boolean);
     }
 
+    // Compute stable, time-based boundaries per line using word counts + punctuation weighting
+    function computeBoundaryTimesForLines(text, totalDurationSec) {
+      const lines = splitMemoryIntoLines(text);
+      if (!lines.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
+      const weights = lines.map((l) => {
+        const words = l.trim().split(/\s+/).filter(Boolean).length;
+        const hasPause = /[.!?]$/.test(l.trim());
+        const punctBonus = hasPause ? 0.8 : 0.35; // stronger pause weight for sentence ends
+        return Math.max(1, words) + punctBonus;
+      });
+      const total = weights.reduce((a, b) => a + b, 0) || lines.length;
+      const times = [0];
+      let acc = 0;
+      for (let i = 0; i < weights.length - 1; i++) {
+        acc += weights[i];
+        times.push(Math.min(totalDurationSec, (acc / total) * totalDurationSec));
+      }
+      times.push(totalDurationSec);
+      return times;
+    }
+
     // Real-time synced reveal state
     let revealSync = {
       audioEl: null,
@@ -2195,6 +2223,14 @@
       setCaptionIndex(i);
     }
 
+    function setCaptionByTime(currentTimeSec) {
+      const boundaries = revealSync.boundaryTimes;
+      if (!Array.isArray(boundaries) || boundaries.length === 0) return;
+      let idx = 0;
+      while (idx + 1 < boundaries.length && currentTimeSec >= boundaries[idx + 1]) idx++;
+      setCaptionIndex(idx);
+    }
+
     function cleanupRevealHandlers() {
       if (revealSync.audioEl && audioTimeHandler) {
         revealSync.audioEl.removeEventListener('timeupdate', audioTimeHandler);
@@ -2206,7 +2242,7 @@
       }
     }
 
-    function startKenBurnsReveal(memoryText, audioEl, utterance) {
+    function startKenBurnsReveal(memoryText, audioEl, utterance, boundaryTimes) {
       try {
         const overlay = document.getElementById('reveal-overlay');
         const caption = document.getElementById('reveal-caption');
@@ -2221,14 +2257,15 @@
 
         // Build state
         buildRevealState(memoryText);
+        revealSync.boundaryTimes = Array.isArray(boundaryTimes) ? boundaryTimes : [];
         if (!revealSync.lines.length) return;
         setCaptionIndex(0);
 
         // Duration for Ken Burns
         const words = revealSync.totalWords;
-        const fallbackSec = Math.min(240, Math.max(8, Math.round(words * 0.42))); // slower pacing
+        const fallbackSec = Math.min(300, Math.max(10, Math.round(words / Math.max(1, ESTIMATED_WPS))));
         const durSec = (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0)
-          ? Math.max(8, Math.min(240, audioEl.duration))
+          ? Math.max(8, Math.min(300, audioEl.duration))
           : fallbackSec;
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
@@ -2237,19 +2274,27 @@
         if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
           audioTimeHandler = () => {
             if (!audioEl.duration || audioEl.duration <= 0) return;
-            const progress = Math.max(0, Math.min(1, audioEl.currentTime / audioEl.duration));
-            const wordsSpoken = Math.floor(progress * revealSync.totalWords);
-            setCaptionByWords(wordsSpoken);
+            if (Array.isArray(revealSync.boundaryTimes) && revealSync.boundaryTimes.length) {
+              setCaptionByTime(audioEl.currentTime);
+            } else {
+              const progress = Math.max(0, Math.min(1, audioEl.currentTime / audioEl.duration));
+              const wordsSpoken = Math.floor(progress * revealSync.totalWords);
+              setCaptionByWords(wordsSpoken);
+            }
           };
           audioEl.addEventListener('timeupdate', audioTimeHandler);
         } else {
           // Fallback estimated timer when no audio duration
-          const wordsPerSec = revealSync.totalWords / fallbackSec;
+          const wordsPerSec = ESTIMATED_WPS;
           let startTs = performance.now();
           estimateTimer = setInterval(() => {
             const elapsedSec = (performance.now() - startTs) / 1000;
-            const wordsSpoken = Math.floor(elapsedSec * wordsPerSec);
-            setCaptionByWords(wordsSpoken);
+            if (Array.isArray(revealSync.boundaryTimes) && revealSync.boundaryTimes.length) {
+              setCaptionByTime(elapsedSec);
+            } else {
+              const wordsSpoken = Math.floor(elapsedSec * wordsPerSec);
+              setCaptionByWords(wordsSpoken);
+            }
           }, 150);
         }
 
