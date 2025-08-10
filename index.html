@@ -3090,7 +3090,20 @@
           text: (seg.text || '').trim()
         })).filter(seg => seg.text.length > 0);
 
-        // Merge segments that have short gaps between them (less than 0.3 seconds)
+        // Analyze gaps and create adaptive segment merging based on actual pause patterns
+        const gaps = [];
+        for (let i = 0; i < rawSegments.length - 1; i++) {
+          gaps.push(rawSegments[i + 1].start - rawSegments[i].end);
+        }
+        
+        // Calculate adaptive thresholds based on actual pause distribution
+        gaps.sort((a, b) => a - b);
+        const medianGap = gaps[Math.floor(gaps.length / 2)] || 0.2;
+        const longPauseThreshold = Math.max(0.2, medianGap * 1.5); // Adaptive threshold
+        
+        console.log(`📊 Gap analysis: median=${medianGap.toFixed(3)}s, threshold=${longPauseThreshold.toFixed(3)}s`);
+        
+        // Create segments with adaptive merging and preserve pause timing
         const segments = [];
         let currentSegment = null;
         
@@ -3099,18 +3112,26 @@
           
           if (!currentSegment) {
             // Start new segment
-            currentSegment = { ...seg };
+            currentSegment = { 
+              ...seg, 
+              pauseAfter: i < rawSegments.length - 1 ? rawSegments[i + 1].start - seg.end : 0 
+            };
           } else {
             const gap = seg.start - currentSegment.end;
             
-            // If gap is less than 300ms, merge with current segment
-            if (gap < 0.3) {
+            // Use adaptive threshold based on actual pause patterns
+            if (gap < longPauseThreshold) {
+              // Short pause - merge segments but preserve the longest pause timing
               currentSegment.text += ' ' + seg.text;
               currentSegment.end = seg.end;
+              currentSegment.pauseAfter = i < rawSegments.length - 1 ? rawSegments[i + 1].start - seg.end : 0;
             } else {
-              // Gap is significant, finalize current segment and start new one
+              // Significant pause - finalize current segment and start new one
               segments.push(currentSegment);
-              currentSegment = { ...seg };
+              currentSegment = { 
+                ...seg, 
+                pauseAfter: i < rawSegments.length - 1 ? rawSegments[i + 1].start - seg.end : 0 
+              };
             }
           }
         }
@@ -3120,7 +3141,7 @@
           segments.push(currentSegment);
         }
 
-        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
+        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} adaptive segments`);
 
         if (!segments.length) {
           console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
@@ -3164,25 +3185,42 @@
             // Find which segment we should be showing based on adjusted current time
             let segmentIdx = -1; // Start with no segment
             
-            // Use a smaller transition lead since we now have longer, better-timed segments
-            const TRANSITION_LEAD = 0.02; // Switch 20ms before next segment for precise timing
-            
+            // Use adaptive transition timing based on actual pause lengths
             for (let i = 0; i < segments.length; i++) {
               const segmentStart = segments[i].start;
-              const nextSegmentStart = (i < segments.length - 1) ? segments[i + 1].start : segments[i].end;
+              const segmentEnd = segments[i].end;
+              const nextSegmentStart = (i < segments.length - 1) ? segments[i + 1].start : segmentEnd;
+              const pauseDuration = nextSegmentStart - segmentEnd;
               
-              // Show segment if we're in its time window, but transition earlier to next segment
-              if (currentTime >= segmentStart && currentTime < (nextSegmentStart - TRANSITION_LEAD)) {
+              // Adaptive transition lead based on pause length
+              // Longer pauses = earlier transition, shorter pauses = later transition
+              let transitionLead = 0.01; // Base transition lead
+              if (pauseDuration > 0.5) {
+                transitionLead = 0.05; // Longer lead for long pauses
+              } else if (pauseDuration > 0.2) {
+                transitionLead = 0.03; // Medium lead for medium pauses
+              } else if (pauseDuration > 0.1) {
+                transitionLead = 0.02; // Small lead for short pauses
+              }
+              
+              // Show segment if we're in its adaptive time window
+              if (currentTime >= segmentStart && currentTime < (nextSegmentStart - transitionLead)) {
                 segmentIdx = i;
                 break;
               }
             }
             
-            // If we didn't find a segment due to the transition lead, check if we should show the next one
+            // If we didn't find a segment due to the transition lead, check with adaptive timing
             if (segmentIdx === -1) {
               for (let i = 0; i < segments.length; i++) {
                 const segmentStart = segments[i].start;
-                if (currentTime >= (segmentStart - TRANSITION_LEAD) && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
+                const segmentEnd = segments[i].end;
+                const nextSegmentStart = (i < segments.length - 1) ? segments[i + 1].start : segmentEnd;
+                const pauseDuration = nextSegmentStart - segmentEnd;
+                
+                let transitionLead = pauseDuration > 0.3 ? 0.05 : (pauseDuration > 0.1 ? 0.02 : 0.01);
+                
+                if (currentTime >= (segmentStart - transitionLead) && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
                   segmentIdx = i;
                   break;
                 }
@@ -3208,8 +3246,9 @@
             if (segmentIdx !== revealSync.currentIdx) {
               const segmentText = segmentIdx >= 0 ? segments[segmentIdx]?.text?.trim() || '' : 'none';
               const expectedStart = segmentIdx >= 0 ? segments[segmentIdx]?.start?.toFixed(3) : 'n/a';
+              const pauseAfter = segmentIdx >= 0 ? segments[segmentIdx]?.pauseAfter?.toFixed(3) || '0.000' : 'n/a';
               console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(3)}s (raw: ${audioEl.currentTime.toFixed(3)}s)`);
-              console.log(`   Text: "${segmentText}" (expected at ${expectedStart}s)`);
+              console.log(`   Text: "${segmentText}" (starts: ${expectedStart}s, pause after: ${pauseAfter}s)`);
               setCaptionIndex(segmentIdx);
             }
           };
@@ -3238,15 +3277,20 @@
           }, Math.max(1000, avgSegmentDuration * 1000));
         }
 
-        console.log(`🎬 Ken Burns reveal started with ${segments.length} merged Whisper segments:`);
+        console.log(`🎬 Ken Burns reveal started with ${segments.length} adaptive Whisper segments:`);
         segments.forEach((seg, i) => {
           const duration = seg.end - seg.start;
-          const nextGap = i < segments.length - 1 ? segments[i + 1].start - seg.end : 0;
-          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${nextGap.toFixed(2)}s gap)`);
+          const pauseAfter = seg.pauseAfter || 0;
+          let transitionType = 'very short';
+          if (pauseAfter > 0.5) transitionType = 'long';
+          else if (pauseAfter > 0.2) transitionType = 'medium';
+          else if (pauseAfter > 0.1) transitionType = 'short';
+          
+          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${pauseAfter.toFixed(3)}s ${transitionType} pause)`);
         });
         const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
         console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
-        console.log(`🎵 Transition lead: 20ms early switching for precise timing`);
+        console.log(`🎵 Adaptive transitions: 10-50ms lead based on pause length (long pauses = earlier transitions)`);
         console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
