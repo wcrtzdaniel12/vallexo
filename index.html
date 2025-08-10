@@ -1723,21 +1723,31 @@
 
           // Prepare reveal when metadata is ready
           let boundaryTimes = null;
+          let boundaryPromise = null;
           audio.addEventListener('loadedmetadata', () => {
             const bg = document.getElementById('reveal-bg');
             const dur = Math.max(6, Math.min(240, Math.floor(audio.duration || 20)));
             if (bg) bg.style.animationDuration = dur + 's';
             if (Number.isFinite(audio.duration) && audio.duration > 0) {
-              boundaryTimes = computeBoundaryTimesForLines(memoryText, audio.duration);
+              // Try offline silence analysis for better boundaries
+              boundaryPromise = extractSilenceBoundariesFromBlob(audioBlob)
+                .then(raw => adaptBoundariesToLines(raw, splitMemoryIntoLines(memoryText).length, audio.duration))
+                .catch(() => computeBoundaryTimesForLines(memoryText, audio.duration));
             }
           });
           
-          audio.onplay = () => {
+          audio.onplay = async () => {
             console.log('OpenAI TTS narration started');
             updateDebugInfo();
             // Start synchronized reveal
-            const bt = boundaryTimes && boundaryTimes.length ? boundaryTimes : (data.boundaryTimes || []);
-            startKenBurnsReveal(memoryText, audio, null, bt);
+            try {
+              const btResolved = await (boundaryPromise || Promise.resolve(boundaryTimes));
+              const bt = Array.isArray(btResolved) && btResolved.length ? btResolved : computeBoundaryTimesForLines(memoryText, Math.max(6, audio.duration || 20));
+              startKenBurnsReveal(memoryText, audio, null, bt);
+            } catch (_) {
+              const bt = computeBoundaryTimesForLines(memoryText, Math.max(6, audio.duration || 20));
+              startKenBurnsReveal(memoryText, audio, null, bt);
+            }
           };
           
           audio.onended = () => {
@@ -2173,6 +2183,93 @@
       }
       times.push(totalDurationSec);
       return times;
+    }
+
+    // Offline silence detector using Web Audio API (no external services)
+    async function extractSilenceBoundariesFromBlob(audioBlob) {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * 60, 44100);
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      const channel = audioBuffer.getChannelData(0);
+      const sampleRate = audioBuffer.sampleRate;
+
+      // Parameters tuned for speech-like audio
+      const frameSize = Math.floor(sampleRate * 0.04); // 40ms frames
+      const hopSize = Math.floor(frameSize / 2);        // 20ms hop
+      const silenceThreshold = 0.02;                    // amplitude threshold
+      const minSilenceSec = 0.15;                       // min 150ms to count as boundary
+
+      const rms = (start) => {
+        let sum = 0;
+        for (let i = start; i < Math.min(start + frameSize, channel.length); i++) {
+          const v = channel[i];
+          sum += v * v;
+        }
+        return Math.sqrt(sum / frameSize);
+      };
+
+      const candidates = [];
+      let runStart = null;
+      for (let i = 0; i < channel.length; i += hopSize) {
+        const value = rms(i);
+        const t = i / sampleRate;
+        if (value < silenceThreshold) {
+          if (runStart === null) runStart = t;
+        } else {
+          if (runStart !== null) {
+            const dur = t - runStart;
+            if (dur >= minSilenceSec) candidates.push({ start: runStart, end: t });
+            runStart = null;
+          }
+        }
+      }
+      // If trailing silence
+      if (runStart !== null) {
+        const t = channel.length / sampleRate;
+        const dur = t - runStart;
+        if (dur >= minSilenceSec) candidates.push({ start: runStart, end: t });
+      }
+
+      // Use midpoints of silence regions as boundaries
+      const boundaries = [0];
+      for (const s of candidates) {
+        const mid = (s.start + s.end) / 2;
+        boundaries.push(mid);
+      }
+      boundaries.push(channel.length / sampleRate);
+      // Ensure sorted unique
+      boundaries.sort((a, b) => a - b);
+      const uniq = [];
+      for (let i = 0; i < boundaries.length; i++) {
+        if (i === 0 || boundaries[i] - boundaries[i - 1] > 0.05) uniq.push(boundaries[i]);
+      }
+      return uniq;
+    }
+
+    // Adapt raw time boundaries to match the number of lines
+    function adaptBoundariesToLines(boundaries, lineCount, totalDurationSec) {
+      if (!Array.isArray(boundaries) || boundaries.length < 3 || !lineCount) {
+        return [];
+      }
+      // Resample boundaries uniformly to lineCount+1
+      const out = [0];
+      for (let i = 1; i < lineCount; i++) {
+        const pos = (i / lineCount) * totalDurationSec;
+        // Snap to nearest boundary to keep phrase edges at silences
+        let nearest = boundaries[0];
+        let best = Math.abs(nearest - pos);
+        for (let j = 1; j < boundaries.length; j++) {
+          const d = Math.abs(boundaries[j] - pos);
+          if (d < best) { best = d; nearest = boundaries[j]; }
+        }
+        out.push(Math.max(0, Math.min(totalDurationSec, nearest)));
+      }
+      out.push(totalDurationSec);
+      // Ensure monotonic non-decreasing
+      for (let i = 1; i < out.length; i++) {
+        if (out[i] < out[i - 1]) out[i] = out[i - 1];
+      }
+      return out;
     }
 
     // Real-time synced reveal state
