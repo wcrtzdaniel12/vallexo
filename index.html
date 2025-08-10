@@ -332,6 +332,37 @@
       display: flex;
       opacity: 1;
     }
+
+    /* Extra nausea/vertigo layers */
+    .loading-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%);
+      mix-blend-mode: multiply;
+      animation: vignette-pulse 3.2s ease-in-out infinite;
+    }
+    .loading-overlay::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, rgba(0,255,255,0.03) 0px, rgba(0,255,255,0.03) 1px, transparent 2px, transparent 4px),
+        repeating-linear-gradient(90deg, rgba(255,0,255,0.02) 0px, rgba(255,0,255,0.02) 1px, transparent 2px, transparent 3px);
+      animation: grain-shift 0.8s steps(2,end) infinite;
+    }
+
+    @keyframes vignette-pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 0.95; }
+    }
+    @keyframes grain-shift {
+      0% { transform: translate3d(0,0,0); filter: hue-rotate(0deg) saturate(1); }
+      50% { transform: translate3d(1px,-1px,0); filter: hue-rotate(10deg) saturate(1.2); }
+      100% { transform: translate3d(0,0,0); filter: hue-rotate(0deg) saturate(1); }
+    }
     
     .loading-container {
       display: flex;
@@ -341,6 +372,16 @@
       width: 100%;
       height: 100%;
       position: relative;
+      will-change: transform, filter;
+      animation: vertigo-wobble 6.5s ease-in-out infinite;
+    }
+
+    @keyframes vertigo-wobble {
+      0%   { transform: perspective(900px) rotateX(0deg) rotateY(0deg) scale(1); filter: contrast(1) saturate(1); }
+      25%  { transform: perspective(900px) rotateX(6deg) rotateY(-3deg) scale(1.02); filter: contrast(1.1) saturate(1.1); }
+      50%  { transform: perspective(900px) rotateX(-5deg) rotateY(4deg) scale(1.03); filter: contrast(1.15) saturate(1.15) hue-rotate(4deg); }
+      75%  { transform: perspective(900px) rotateX(3deg) rotateY(2deg) scale(1.01); filter: contrast(1.05) saturate(1.05); }
+      100% { transform: perspective(900px) rotateX(0deg) rotateY(0deg) scale(1); filter: contrast(1) saturate(1); }
     }
     
     .loading-text {
@@ -351,6 +392,33 @@
       margin-bottom: 40px;
       text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
       animation: loading-pulse 2s ease-in-out infinite;
+    }
+
+    /* Glitch slices for nauseating feel */
+    .loading-text.glitch::before,
+    .loading-text.glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #00ffff;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .loading-text.glitch::before {
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+      text-shadow: -2px 0 #ff00ff;
+      animation: slice-shift 1.2s steps(2,end) infinite;
+    }
+    .loading-text.glitch::after {
+      clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+      text-shadow: 2px 0 #ffff00;
+      animation: slice-shift 1.1s steps(2,end) infinite reverse;
+    }
+    @keyframes slice-shift {
+      0% { transform: translate(-50%, 0); }
+      50% { transform: translate(calc(-50% + 2px), 1px); }
+      100% { transform: translate(-50%, 0); }
     }
     
     @keyframes loading-pulse {
@@ -374,6 +442,20 @@
       background-size: 300% 100%;
       animation: loading-flow 3s ease-in-out infinite, loading-move 8s linear infinite;
       border-radius: 2px;
+    }
+
+    /* Flash frame for discomfort effect */
+    .loading-flash {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.6), rgba(255,255,255,0) 60%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      animation: flash-pop 120ms ease-out forwards;
+    }
+    @keyframes flash-pop {
+      from { opacity: 0.8; filter: blur(0); }
+      to { opacity: 0; filter: blur(2px); }
     }
     
     @keyframes loading-flow {
@@ -461,6 +543,14 @@
     @keyframes matrix-fall {
       0% { transform: translateY(-100px); opacity: 1; }
       100% { transform: translateY(100vh); opacity: 0; }
+    }
+
+    @keyframes ring-wobble {
+      0%   { transform: translate(-50%, -50%) rotate(0deg) scale(1); top: 50%; left: 50%; }
+      25%  { transform: translate(-48%, -52%) rotate(5deg) scale(1.02); }
+      50%  { transform: translate(-51%, -49%) rotate(-4deg) scale(1.04); }
+      75%  { transform: translate(-52%, -51%) rotate(3deg) scale(1.01); }
+      100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
     }
     
     .loading-memory-fragments {
@@ -969,6 +1059,8 @@
       <div class="loading-status" id="loading-status">ACCESSING NEURAL PATHWAYS...</div>
       
       <div class="loading-memory-fragments" id="memory-fragments"></div>
+      <!-- Motion wobble ring -->
+      <div id="nausea-ring" style="position:absolute;width:60vmin;height:60vmin;border:1px dashed rgba(0,255,255,0.25);border-radius:50%;filter:blur(0.3px);animation: ring-wobble 7s ease-in-out infinite; pointer-events:none;"></div>
     </div>
   </div>
 
@@ -1996,6 +2088,28 @@
       
       // Update loading text and status
       updateLoadingText();
+
+      // Add glitch slices and subtle audio tremolo to intensify nausea vibe
+      try {
+        const txt = document.getElementById('loading-text');
+        if (txt) {
+          txt.classList.add('glitch');
+          txt.setAttribute('data-text', txt.textContent || 'RECONSTRUCTING MEMORY');
+        }
+        // Occasional flash pops
+        const flash = document.createElement('div');
+        flash.className = 'loading-flash';
+        overlay.appendChild(flash);
+        setTimeout(() => flash.remove(), 140);
+        // Loop flash pops
+        overlay._flashTimer && clearInterval(overlay._flashTimer);
+        overlay._flashTimer = setInterval(() => {
+          const f = document.createElement('div');
+          f.className = 'loading-flash';
+          overlay.appendChild(f);
+          setTimeout(() => f.remove(), 140);
+        }, 2200 + Math.random()*1200);
+      } catch (e) { /* no-op */ }
     }
     
     function hideLoadingOverlay() {
@@ -2009,6 +2123,14 @@
       // Clear memory fragments
       const fragments = document.getElementById('memory-fragments');
       fragments.innerHTML = '';
+
+      // Cleanup timers/effects
+      if (overlay && overlay._flashTimer) {
+        clearInterval(overlay._flashTimer);
+        overlay._flashTimer = null;
+      }
+      const txt = document.getElementById('loading-text');
+      if (txt) txt.classList.remove('glitch');
     }
     
     function startMatrixRain() {
@@ -2706,8 +2828,8 @@
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
         // Add timing compensation for TTS model characteristics (tts-1 with onyx voice at speed 1.0)
-        const AUDIO_OFFSET = 0.1; // 100ms offset to sync with actual audio start
-        const ONYX_COMPENSATION = 0.05; // Additional compensation for Onyx voice timing
+        const AUDIO_OFFSET = 0.02; // Reduced offset - voiceover was ahead by 1 line
+        const ONYX_COMPENSATION = -0.05; // Negative compensation to make captions appear earlier
 
         // Attach time-based sync using Whisper timing with audio offset compensation
         if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
