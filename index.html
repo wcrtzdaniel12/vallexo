@@ -2819,8 +2819,14 @@
 
         if (!revealSync.lines.length) return;
         
-        // Start with no caption, let the audio timing drive the first segment appearance
+        // Start with no caption, but check if first segment should appear immediately
         revealSync.currentIdx = -1;
+        
+        // If the first segment starts very early (within first 100ms), show it immediately
+        if (segments.length > 0 && segments[0].start <= 0.1) {
+          console.log(`🎵 First segment starts at ${segments[0].start.toFixed(3)}s - showing immediately`);
+          setCaptionIndex(0);
+        }
 
         // Duration for Ken Burns animation
         const totalDuration = segments.length > 0 ? segments[segments.length - 1].end : 10;
@@ -2828,8 +2834,8 @@
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
         // Add timing compensation for TTS model characteristics (tts-1 with onyx voice at speed 1.0)
-        const AUDIO_OFFSET = 0.02; // Reduced offset - voiceover was ahead by 1 line
-        const ONYX_COMPENSATION = -0.05; // Negative compensation to make captions appear earlier
+        const AUDIO_OFFSET = -0.1; // More aggressive negative offset to catch early segments
+        const ONYX_COMPENSATION = -0.15; // Stronger negative compensation for beginning sync
 
         // Attach time-based sync using Whisper timing with audio offset compensation
         if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
@@ -2851,9 +2857,14 @@
               }
             }
             
-            // If we haven't reached the first segment yet, don't show anything
+            // If we haven't reached the first segment yet but are very close, show the first segment
             if (segmentIdx === -1 && currentTime < segments[0].start) {
-              return; // Don't show any caption yet
+              // If we're within 200ms of the first segment, show it
+              if (segments[0].start - currentTime <= 0.2) {
+                segmentIdx = 0;
+              } else {
+                return; // Don't show any caption yet
+              }
             }
             
             // If we're past all segments, show the last one
@@ -2894,9 +2905,11 @@
 
         console.log(`🎬 Ken Burns reveal started with ${segments.length} Whisper segments:`);
         segments.forEach((seg, i) => {
-          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s)`);
+          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s)`);
         });
-        console.log(`🎵 Audio offset: +${AUDIO_OFFSET + ONYX_COMPENSATION}s for tts-1/onyx sync`);
+        const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
+        console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
+        console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
         // Fallback to regular reveal
