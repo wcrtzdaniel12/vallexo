@@ -1731,8 +1731,9 @@
             if (Number.isFinite(audio.duration) && audio.duration > 0) {
               const sentenceCount = splitMemoryIntoLines(memoryText).length;
               if (Array.isArray(data.segments) && data.segments.length) {
-                console.log('Using Whisper segments for caption timing');
-                boundaryPromise = Promise.resolve(boundariesFromWhisperSegments(data.segments, sentenceCount, audio.duration));
+                console.log('Using Whisper segments for caption timing (text-aligned)');
+                boundaryPromise = Promise.resolve(boundariesFromSegmentsAndText(data.segments, memoryText, audio.duration))
+                  .then(bt => (Array.isArray(bt) && bt.length ? bt : boundariesFromWhisperSegments(data.segments, sentenceCount, audio.duration)));
               } else {
                 console.log('No Whisper segments; using offline silence analysis with calibrated reading-time snapping');
                 boundaryPromise = extractSilenceBoundariesFromBlob(audioBlob)
@@ -2133,7 +2134,7 @@
       });
     });
     // -------- Ken Burns + Caption sequencing --------
-    // Build sentence-level boundaries from Whisper segments
+    // Build sentence-level boundaries from Whisper segments (uniform snap)
     function boundariesFromWhisperSegments(segments, sentenceCount, totalDurationSec) {
       try {
         if (!Array.isArray(segments) || !segments.length || !sentenceCount || !Number.isFinite(totalDurationSec)) {
@@ -2179,6 +2180,96 @@
       }
     }
 
+    // Build sentence-level boundaries by aligning Whisper segments to the actual sentence text
+    function boundariesFromSegmentsAndText(segments, fullText, totalDurationSec) {
+      try {
+        const sentences = splitMemoryIntoLines(fullText);
+        if (!Array.isArray(segments) || !segments.length || !sentences.length) return [];
+
+        const normalize = (s) => (s || '')
+          .toLowerCase()
+          // include all characters (we only collapse whitespace)
+          .replace(/\s+/g, ' ')                  // collapse whitespace
+          .trim();
+
+        const normSentences = sentences.map(normalize);
+        const segs = segments.map(s => ({
+          start: typeof s.start === 'number' ? s.start : 0,
+          end: typeof s.end === 'number' ? s.end : 0,
+          text: normalize(s.text)
+        }));
+
+        const boundaries = [0];
+        let sIdx = 0;
+        let accum = '';
+        let lastEnd = 0;
+
+        const MIN_SENT_DUR = 1.6; // guardrail minimum per chunk
+        const MAX_CLAMP = Math.max(6, totalDurationSec || 0);
+
+        for (let i = 0; i < segs.length && sIdx < normSentences.length; i++) {
+          const seg = segs[i];
+          accum += (accum ? ' ' : '') + seg.text;
+          lastEnd = Math.max(lastEnd, seg.end);
+          // Heuristic: advance when accumulated length reaches or exceeds sentence length * 0.9
+          const target = normSentences[sIdx];
+          if (!target || !accum) continue;
+          if (accum.length >= Math.max(1, Math.floor(target.length * 0.9))) {
+            // Set boundary at segment end for this sentence
+            const prev = boundaries[boundaries.length - 1];
+            const proposed = Math.max(prev + MIN_SENT_DUR, Math.min(MAX_CLAMP, lastEnd));
+            boundaries.push(proposed);
+            sIdx++;
+            accum = '';
+          }
+        }
+
+        // If we didn't fill all, distribute remaining evenly until totalDurationSec
+        if (sIdx < normSentences.length) {
+          const remaining = normSentences.length - sIdx;
+          const last = boundaries[boundaries.length - 1];
+          const restDur = Math.max(0, (Number.isFinite(totalDurationSec) ? totalDurationSec : last) - last);
+          const per = remaining > 0 ? Math.max(MIN_SENT_DUR, restDur / remaining) : 0;
+          for (; sIdx < normSentences.length; sIdx++) {
+            boundaries.push(Math.min(MAX_CLAMP, boundaries[boundaries.length - 1] + per));
+          }
+        }
+
+        // Ensure total ends at totalDurationSec when known
+        if (Number.isFinite(totalDurationSec) && totalDurationSec > 0) {
+          boundaries[boundaries.length - 1] = totalDurationSec;
+        }
+
+        // Ensure monotonic non-decreasing and correct count (sentences + 1)
+        for (let i = 1; i < boundaries.length; i++) {
+          if (boundaries[i] < boundaries[i - 1]) boundaries[i] = boundaries[i - 1];
+        }
+        const desiredLen = sentences.length + 1;
+        if (boundaries.length !== desiredLen) {
+          // Resample to desired length by linear interpolation
+          const out = [0];
+          const last = boundaries[boundaries.length - 1];
+          for (let i = 1; i < desiredLen - 1; i++) {
+            const target = (i / (desiredLen - 1)) * last;
+            // find nearest in boundaries
+            let nearest = boundaries[0];
+            let best = Math.abs(nearest - target);
+            for (let j = 1; j < boundaries.length; j++) {
+              const d = Math.abs(boundaries[j] - target);
+              if (d < best) { best = d; nearest = boundaries[j]; }
+            }
+            out.push(nearest);
+          }
+          out.push(last);
+          return out;
+        }
+        return boundaries;
+      } catch (e) {
+        console.warn('boundariesFromSegmentsAndText failed:', e);
+        return [];
+      }
+    }
+
     // Snap estimated boundaries to nearest detected silences for reliability
     function snapBoundariesToSilences(estimatedBoundaries, rawSilences, totalDurationSec) {
       try {
@@ -2212,12 +2303,25 @@
         return estimatedBoundaries;
       }
     }
+    // Fixed-width segmentation: group into 3–4 words per line (include all text)
     function splitMemoryIntoLines(text) {
       if (!text) return [];
-      // Sentence-only segmentation to avoid mid-sentence flips
       const raw = text.replace(/\s+/g, ' ').trim();
-      const parts = raw.split(/(?<=[.!?])\s+/);
-      return parts.map(s => s.trim()).filter(Boolean);
+      const words = raw.split(/\s+/).filter(Boolean);
+      const lines = [];
+      const TARGET = 4;
+      const MIN = 3;
+
+      for (let i = 0; i < words.length; i += TARGET) {
+        let chunk = words.slice(i, i + TARGET);
+        // If last chunk would be shorter than MIN, merge it with previous line
+        if (chunk.length < MIN && lines.length) {
+          const prev = lines.pop();
+          chunk = (prev + ' ' + chunk.join(' ')).trim().split(/\s+/);
+        }
+        lines.push(chunk.join(' '));
+      }
+      return lines;
     }
 
     // Compute time boundaries per sentence using reading-time model tied to TTS speed
@@ -2226,8 +2330,8 @@
       if (!sentences.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
 
       const TTS_SPEED = 1.0;         // must match generateSpeechV2
-      const WORDS_PER_SECOND = 2.0 * TTS_SPEED; // ~120 wpm at 1.0 (intentionally conservative)
-      const MIN_PER_SENTENCE = 1.8;  // do not flip faster than this per sentence
+      const WORDS_PER_SECOND = 1.6 * TTS_SPEED; // ~96 wpm at 1.0 (slower to avoid outpacing)
+      const MIN_PER_SENTENCE = 2.2;  // increase minimum display per sentence
       const BONUS_COMMA = 0.25;
       const BONUS_SEMI = 0.35;
       const BONUS_END = 0.5;
