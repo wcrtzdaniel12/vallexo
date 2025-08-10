@@ -1729,10 +1729,19 @@
             const dur = Math.max(6, Math.min(240, Math.floor(audio.duration || 20)));
             if (bg) bg.style.animationDuration = dur + 's';
             if (Number.isFinite(audio.duration) && audio.duration > 0) {
-              // Try offline silence analysis for better boundaries
-              boundaryPromise = extractSilenceBoundariesFromBlob(audioBlob)
-                .then(raw => adaptBoundariesToLines(raw, splitMemoryIntoLines(memoryText).length, audio.duration))
-                .catch(() => computeBoundaryTimesForLines(memoryText, audio.duration));
+              const sentenceCount = splitMemoryIntoLines(memoryText).length;
+              if (Array.isArray(data.segments) && data.segments.length) {
+                console.log('Using Whisper segments for caption timing');
+                boundaryPromise = Promise.resolve(boundariesFromWhisperSegments(data.segments, sentenceCount, audio.duration));
+              } else {
+                console.log('No Whisper segments; using offline silence analysis with calibrated reading-time snapping');
+                boundaryPromise = extractSilenceBoundariesFromBlob(audioBlob)
+                  .then(rawSilences => {
+                    const est = computeBoundaryTimesForLines(memoryText, audio.duration);
+                    return snapBoundariesToSilences(est, rawSilences, audio.duration);
+                  })
+                  .catch(() => computeBoundaryTimesForLines(memoryText, audio.duration));
+              }
             }
           });
           
@@ -2124,6 +2133,85 @@
       });
     });
     // -------- Ken Burns + Caption sequencing --------
+    // Build sentence-level boundaries from Whisper segments
+    function boundariesFromWhisperSegments(segments, sentenceCount, totalDurationSec) {
+      try {
+        if (!Array.isArray(segments) || !segments.length || !sentenceCount || !Number.isFinite(totalDurationSec)) {
+          return [];
+        }
+        // Construct cumulative boundaries from segments
+        const segBounds = [0];
+        for (let i = 0; i < segments.length; i++) {
+          const end = typeof segments[i].end === 'number' ? segments[i].end : 0;
+          if (Number.isFinite(end)) segBounds.push(Math.max(segBounds[segBounds.length - 1], end));
+        }
+        // Ensure final boundary equals total duration
+        const last = segBounds[segBounds.length - 1];
+        if (!Number.isFinite(last) || Math.abs(last - totalDurationSec) > 0.25) {
+          segBounds[segBounds.length - 1] = totalDurationSec;
+        }
+
+        // If we already have the exact count, return
+        if (segBounds.length === sentenceCount + 1) {
+          return segBounds;
+        }
+
+        // Otherwise resample to sentenceCount+1 evenly across time, snapping to nearest segment boundary
+        const out = [0];
+        for (let i = 1; i < sentenceCount; i++) {
+          const target = (i / sentenceCount) * totalDurationSec;
+          let nearest = segBounds[0];
+          let best = Math.abs(nearest - target);
+          for (let j = 1; j < segBounds.length; j++) {
+            const d = Math.abs(segBounds[j] - target);
+            if (d < best) { best = d; nearest = segBounds[j]; }
+          }
+          out.push(Math.max(0, Math.min(totalDurationSec, nearest)));
+        }
+        out.push(totalDurationSec);
+        for (let i = 1; i < out.length; i++) {
+          if (out[i] < out[i - 1]) out[i] = out[i - 1];
+        }
+        return out;
+      } catch (e) {
+        console.warn('boundariesFromWhisperSegments failed:', e);
+        return [];
+      }
+    }
+
+    // Snap estimated boundaries to nearest detected silences for reliability
+    function snapBoundariesToSilences(estimatedBoundaries, rawSilences, totalDurationSec) {
+      try {
+        if (!Array.isArray(estimatedBoundaries) || estimatedBoundaries.length < 2) return estimatedBoundaries || [];
+        if (!Array.isArray(rawSilences) || rawSilences.length < 2) return estimatedBoundaries;
+
+        const out = [];
+        for (let i = 0; i < estimatedBoundaries.length; i++) {
+          const t = estimatedBoundaries[i];
+          // Keep first and last untouched
+          if (i === 0 || i === estimatedBoundaries.length - 1) {
+            out.push(t);
+            continue;
+          }
+          // Find nearest raw silence
+          let nearest = rawSilences[0];
+          let best = Math.abs(nearest - t);
+          for (let j = 1; j < rawSilences.length; j++) {
+            const d = Math.abs(rawSilences[j] - t);
+            if (d < best) { best = d; nearest = rawSilences[j]; }
+          }
+          out.push(Math.max(0, Math.min(totalDurationSec, nearest)));
+        }
+        // Ensure monotonic non-decreasing
+        for (let i = 1; i < out.length; i++) {
+          if (out[i] < out[i - 1]) out[i] = out[i - 1];
+        }
+        return out;
+      } catch (e) {
+        console.warn('snapBoundariesToSilences failed:', e);
+        return estimatedBoundaries;
+      }
+    }
     function splitMemoryIntoLines(text) {
       if (!text) return [];
       // Sentence-only segmentation to avoid mid-sentence flips
