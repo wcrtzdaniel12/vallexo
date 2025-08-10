@@ -3167,8 +3167,8 @@
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
         // Add timing compensation for TTS model characteristics (tts-1 with onyx voice at speed 1.0)
-        const AUDIO_OFFSET = -0.1; // More aggressive negative offset to catch early segments
-        const ONYX_COMPENSATION = -0.15; // Stronger negative compensation for beginning sync
+        const AUDIO_OFFSET = -0.05; // Reduced negative offset - was too aggressive
+        const ONYX_COMPENSATION = -0.08; // Reduced compensation to prevent over-early timing
 
         // Attach time-based sync using Whisper timing with audio offset compensation
         if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
@@ -3180,8 +3180,8 @@
             // Find which segment we should be showing based on adjusted current time
             let segmentIdx = -1; // Start with no segment
             
-            // Use a smaller transition lead since we now have longer, better-timed segments
-            const TRANSITION_LEAD = 0.02; // Switch 20ms before next segment for precise timing
+            // Increase transition lead slightly to account for 50ms update frequency
+            const TRANSITION_LEAD = 0.08; // Switch 80ms before next segment to prevent delays
             
             for (let i = 0; i < segments.length; i++) {
               const segmentStart = segments[i].start;
@@ -3253,7 +3253,7 @@
             if (audioEl && !audioEl.paused && audioTimeHandler) {
               audioTimeHandler();
             }
-          }, 50); // Update every 50ms for smooth transitions
+          }, 30); // Update every 30ms for more responsive transitions
           
           // Store the timer to clean it up later
           revealSync.preciseTimer = preciseTimer;
@@ -3277,7 +3277,7 @@
         });
         const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
         console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
-        console.log(`🎵 Transition lead: 20ms early switching for precise timing`);
+        console.log(`🎵 Transition lead: 80ms early switching to prevent delays`);
         console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
