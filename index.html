@@ -1080,6 +1080,73 @@
     let usingAudioFiles = false;
     let audioContext = null;
     let synthesizedAudio = null;
+
+    // Generate Memory button sound effect
+    function playGenerateMemorySound() {
+      try {
+        if (!audioContext) {
+          console.log('No audio context for sound effect');
+          return;
+        }
+
+        const ctx = audioContext;
+        const now = ctx.currentTime;
+        
+        // Create a cyberpunk-inspired sound effect
+        // Layer 1: Sharp attack beep
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        
+        osc1.frequency.setValueAtTime(800, now);
+        osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+        osc1.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+        
+        gain1.gain.setValueAtTime(0, now);
+        gain1.gain.linearRampToValueAtTime(0.3, now + 0.01);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        
+        osc1.start(now);
+        osc1.stop(now + 0.2);
+        
+        // Layer 2: Retro computer beep
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        
+        osc2.frequency.setValueAtTime(1600, now + 0.1);
+        osc2.frequency.exponentialRampToValueAtTime(2400, now + 0.2);
+        
+        gain2.gain.setValueAtTime(0, now + 0.1);
+        gain2.gain.linearRampToValueAtTime(0.2, now + 0.11);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        
+        osc2.start(now + 0.1);
+        osc2.stop(now + 0.3);
+        
+        // Layer 3: Deep sub bass for impact
+        const osc3 = ctx.createOscillator();
+        const gain3 = ctx.createGain();
+        osc3.connect(gain3);
+        gain3.connect(ctx.destination);
+        
+        osc3.frequency.setValueAtTime(80, now);
+        osc3.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+        
+        gain3.gain.setValueAtTime(0, now);
+        gain3.gain.linearRampToValueAtTime(0.4, now + 0.02);
+        gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        
+        osc3.start(now);
+        osc3.stop(now + 0.4);
+        
+        console.log('🔊 Generate Memory sound effect played');
+      } catch (error) {
+        console.error('Error playing Generate Memory sound:', error);
+      }
+    }
     
     // Check if audio files exist
     async function checkAudioFiles() {
@@ -1301,9 +1368,9 @@
     function duckBackgroundMusic() {
       if (!isDucking) {
         originalVolume = volume;
-        setVolume(0.1); // Reduce to 10%
+        setVolume(0.05); // Reduce to 5% (50% of the previous 10%)
         isDucking = true;
-        console.log('Background music ducked to 10% for voiceover');
+        console.log('Background music ducked to 5% for voiceover');
       }
     }
     
@@ -2225,6 +2292,10 @@
     // Update form submit handler to show memory section
     document.getElementById('memory-form').addEventListener('submit', async function(e) {
       e.preventDefault();
+      
+      // Play sound effect for engagement
+      playGenerateMemorySound();
+      
       clearErrors();
       const fullname = document.getElementById('fullname').value.trim();
       const birthYear = parseInt(document.getElementById('birthYear').value, 10);
@@ -2846,14 +2917,29 @@
             
             // Find which segment we should be showing based on adjusted current time
             let segmentIdx = -1; // Start with no segment
+            
+            // Use a more aggressive transition - switch to next segment slightly before it actually starts
+            const TRANSITION_LEAD = 0.05; // Switch 50ms before next segment to prevent lag
+            
             for (let i = 0; i < segments.length; i++) {
               const segmentStart = segments[i].start;
               const nextSegmentStart = (i < segments.length - 1) ? segments[i + 1].start : segments[i].end;
               
-              // Show segment if we're in its time window
-              if (currentTime >= segmentStart && currentTime < nextSegmentStart) {
+              // Show segment if we're in its time window, but transition earlier to next segment
+              if (currentTime >= segmentStart && currentTime < (nextSegmentStart - TRANSITION_LEAD)) {
                 segmentIdx = i;
                 break;
+              }
+            }
+            
+            // If we didn't find a segment due to the transition lead, check if we should show the next one
+            if (segmentIdx === -1) {
+              for (let i = 0; i < segments.length; i++) {
+                const segmentStart = segments[i].start;
+                if (currentTime >= (segmentStart - TRANSITION_LEAD) && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
+                  segmentIdx = i;
+                  break;
+                }
               }
             }
             
@@ -2874,7 +2960,10 @@
             
             // Only update if we're in a different segment to avoid flickering
             if (segmentIdx !== revealSync.currentIdx) {
-              console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(2)}s (adjusted from ${audioEl.currentTime.toFixed(2)}s)`);
+              const segmentText = segmentIdx >= 0 ? segments[segmentIdx]?.text?.trim() || '' : 'none';
+              const expectedStart = segmentIdx >= 0 ? segments[segmentIdx]?.start?.toFixed(3) : 'n/a';
+              console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(3)}s (raw: ${audioEl.currentTime.toFixed(3)}s)`);
+              console.log(`   Text: "${segmentText}" (expected at ${expectedStart}s)`);
               setCaptionIndex(segmentIdx);
             }
           };
@@ -2909,6 +2998,7 @@
         });
         const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
         console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
+        console.log(`🎵 Transition lead: 50ms early switching to prevent segment lag`);
         console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
