@@ -3103,15 +3103,15 @@
           } else {
             const gap = seg.start - currentSegment.end;
             
-            // If gap is less than 150ms, merge with current segment
-            if (gap < 0.15) {
-              currentSegment.text += ' ' + seg.text;
-              currentSegment.end = seg.end;
-            } else {
-              // Gap is significant, finalize current segment and start new one
+            // Disable merging for now - keep all original segments
+            // if (gap < 0.05) {
+            //   currentSegment.text += ' ' + seg.text;
+            //   currentSegment.end = seg.end;
+            // } else {
+              // Always start new segment - no merging
               segments.push(currentSegment);
               currentSegment = { ...seg };
-            }
+            // }
           }
         }
         
