@@ -3083,44 +3083,14 @@
         if (paragraph) paragraph.classList.add('hidden-during-reveal');
         cleanupRevealHandlers();
 
-        // Use Whisper segments but merge short segments and only break on significant pauses
-        const rawSegments = whisperSegments.map(seg => ({
+        // Use Whisper segments directly without any merging
+        const segments = whisperSegments.map(seg => ({
           start: typeof seg.start === 'number' ? seg.start : 0,
           end: typeof seg.end === 'number' ? seg.end : 0,
           text: (seg.text || '').trim()
         })).filter(seg => seg.text.length > 0);
 
-        // Merge segments that have short gaps between them (less than 0.3 seconds)
-        const segments = [];
-        let currentSegment = null;
-        
-        for (let i = 0; i < rawSegments.length; i++) {
-          const seg = rawSegments[i];
-          
-          if (!currentSegment) {
-            // Start new segment
-            currentSegment = { ...seg };
-          } else {
-            const gap = seg.start - currentSegment.end;
-            
-            // Disable merging for now - keep all original segments
-            // if (gap < 0.05) {
-            //   currentSegment.text += ' ' + seg.text;
-            //   currentSegment.end = seg.end;
-            // } else {
-              // Always start new segment - no merging
-              segments.push(currentSegment);
-              currentSegment = { ...seg };
-            // }
-          }
-        }
-        
-        // Don't forget the last segment
-        if (currentSegment) {
-          segments.push(currentSegment);
-        }
-
-        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
+        console.log(`✅ Using ${segments.length} original Whisper segments (no merging)`);
 
         if (!segments.length) {
           console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
