@@ -2185,20 +2185,15 @@
     function computeBoundaryTimesForLines(text, totalDurationSec) {
       const lines = splitMemoryIntoLines(text);
       if (!lines.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
-      
-      // Much more conservative timing - slower line changes
       const weights = lines.map((l) => {
         const trimmed = l.trim();
         const words = trimmed.split(/\s+/).filter(Boolean).length;
         const commas = (trimmed.match(/,/g) || []).length;
         const semis = (trimmed.match(/[;:]/g) || []).length;
-        const endPunct = /[.!?]$/.test(trimmed) ? 1.5 : 0.0; // Much longer pause at sentence ends
-        const charFactor = Math.max(0, Math.min(0.8, trimmed.length / 100)); // Slightly longer for long lines
-        
-        // Increase base word timing significantly (0.7 seconds per word vs previous ~0.3)
-        return Math.max(2, words * 0.7) + 0.5 * commas + 0.4 * semis + endPunct + charFactor;
+        const endPunct = /[.!?]$/.test(trimmed) ? 0.8 : 0.0; // stronger pause at sentence ends
+        const charFactor = Math.max(0, Math.min(0.5, trimmed.length / 120)); // small boost for long lines
+        return Math.max(1, words) + 0.35 * commas + 0.25 * semis + endPunct + charFactor;
       });
-      
       const total = weights.reduce((a, b) => a + b, 0) || lines.length;
       const times = [0];
       let acc = 0;
@@ -2218,11 +2213,11 @@
       const channel = audioBuffer.getChannelData(0);
       const sampleRate = audioBuffer.sampleRate;
 
-      // More conservative parameters for TTS audio (which has fewer natural pauses)
-      const frameSize = Math.floor(sampleRate * 0.1);  // 100ms frames (longer)
-      const hopSize = Math.floor(frameSize / 2);        // 50ms hop
-      const silenceThreshold = 0.01;                    // Lower threshold (more sensitive)
-      const minSilenceSec = 0.4;                        // Longer minimum silence (400ms)
+      // Parameters tuned for speech-like audio
+      const frameSize = Math.floor(sampleRate * 0.04); // 40ms frames
+      const hopSize = Math.floor(frameSize / 2);        // 20ms hop
+      const silenceThreshold = 0.02;                    // amplitude threshold
+      const minSilenceSec = 0.15;                       // min 150ms to count as boundary
 
       const rms = (start) => {
         let sum = 0;
@@ -2255,35 +2250,19 @@
         if (dur >= minSilenceSec) candidates.push({ start: runStart, end: t });
       }
 
-      // Use midpoints of silence regions as boundaries, but limit the number
+      // Use midpoints of silence regions as boundaries
       const boundaries = [0];
       for (const s of candidates) {
         const mid = (s.start + s.end) / 2;
         boundaries.push(mid);
       }
       boundaries.push(channel.length / sampleRate);
-      
-      // Ensure sorted unique with minimum spacing
+      // Ensure sorted unique
       boundaries.sort((a, b) => a - b);
-      const uniq = [boundaries[0]];
-      for (let i = 1; i < boundaries.length; i++) {
-        if (boundaries[i] - uniq[uniq.length - 1] > 1.0) { // Minimum 1 second between boundaries
-          uniq.push(boundaries[i]);
-        }
+      const uniq = [];
+      for (let i = 0; i < boundaries.length; i++) {
+        if (i === 0 || boundaries[i] - boundaries[i - 1] > 0.05) uniq.push(boundaries[i]);
       }
-      
-      // Limit to reasonable number of boundaries to prevent rapid changes
-      const maxBoundaries = 8;
-      if (uniq.length > maxBoundaries) {
-        const step = (uniq.length - 1) / (maxBoundaries - 1);
-        const limited = [uniq[0]];
-        for (let i = 1; i < maxBoundaries - 1; i++) {
-          limited.push(uniq[Math.floor(i * step)]);
-        }
-        limited.push(uniq[uniq.length - 1]);
-        return limited;
-      }
-      
       return uniq;
     }
 
