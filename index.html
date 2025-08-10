@@ -3090,18 +3090,18 @@
           text: (seg.text || '').trim()
         })).filter(seg => seg.text.length > 0);
 
-        // Analyze gaps and create adaptive segment merging based on actual pause patterns
+        // Analyze gaps and create smart segment merging based on pause patterns
         const gaps = [];
         for (let i = 0; i < rawSegments.length - 1; i++) {
           gaps.push(rawSegments[i + 1].start - rawSegments[i].end);
         }
         
-        // Calculate adaptive thresholds based on actual pause distribution
+        // Use percentile-based thresholds instead of median to avoid over-merging
         gaps.sort((a, b) => a - b);
-        const medianGap = gaps[Math.floor(gaps.length / 2)] || 0.2;
-        const longPauseThreshold = Math.max(0.2, medianGap * 1.5); // Adaptive threshold
+        const p75Gap = gaps[Math.floor(gaps.length * 0.75)] || 0.25; // 75th percentile
+        const longPauseThreshold = Math.max(0.25, Math.min(0.6, p75Gap)); // Constrain between 250ms-600ms
         
-        console.log(`📊 Gap analysis: median=${medianGap.toFixed(3)}s, threshold=${longPauseThreshold.toFixed(3)}s`);
+        console.log(`📊 Gap analysis: 75th percentile=${p75Gap.toFixed(3)}s, threshold=${longPauseThreshold.toFixed(3)}s`);
         
         // Create segments with adaptive merging and preserve pause timing
         const segments = [];
@@ -3141,7 +3141,51 @@
           segments.push(currentSegment);
         }
 
-        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} adaptive segments`);
+        // Safety check: if we merged too aggressively (less than 3 segments), use a stricter threshold
+        if (segments.length < 3 && rawSegments.length > 6) {
+          console.log(`⚠️ Over-merged to ${segments.length} segments, retrying with stricter threshold`);
+          
+          // Retry with a much stricter threshold
+          const strictThreshold = 0.15; // Fixed 150ms threshold
+          const retrySegments = [];
+          let retryCurrentSegment = null;
+          
+          for (let i = 0; i < rawSegments.length; i++) {
+            const seg = rawSegments[i];
+            
+            if (!retryCurrentSegment) {
+              retryCurrentSegment = { 
+                ...seg, 
+                pauseAfter: i < rawSegments.length - 1 ? rawSegments[i + 1].start - seg.end : 0 
+              };
+            } else {
+              const gap = seg.start - retryCurrentSegment.end;
+              
+              if (gap < strictThreshold) {
+                retryCurrentSegment.text += ' ' + seg.text;
+                retryCurrentSegment.end = seg.end;
+                retryCurrentSegment.pauseAfter = i < rawSegments.length - 1 ? rawSegments[i + 1].start - seg.end : 0;
+              } else {
+                retrySegments.push(retryCurrentSegment);
+                retryCurrentSegment = { 
+                  ...seg, 
+                  pauseAfter: i < rawSegments.length - 1 ? rawSegments[i + 1].start - seg.end : 0 
+                };
+              }
+            }
+          }
+          
+          if (retryCurrentSegment) {
+            retrySegments.push(retryCurrentSegment);
+          }
+          
+          // Use the retry segments
+          segments.length = 0;
+          segments.push(...retrySegments);
+          console.log(`🔀 Retry: Merged ${rawSegments.length} raw segments into ${segments.length} segments with 150ms threshold`);
+        } else {
+          console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} adaptive segments`);
+        }
 
         if (!segments.length) {
           console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
