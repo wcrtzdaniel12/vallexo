@@ -2276,7 +2276,8 @@
       wordCounts: [],
       cumulative: [],
       totalWords: 0,
-      currentIdx: -1
+      currentIdx: -1,
+      lastChangeSec: -Infinity
     };
     let audioTimeHandler = null;
     let estimateTimer = null;
@@ -2306,6 +2307,9 @@
       caption.innerHTML = '';
       caption.appendChild(el);
       requestAnimationFrame(() => el.classList.add('show'));
+      if (revealSync.audioEl && Number.isFinite(revealSync.audioEl.currentTime)) {
+        revealSync.lastChangeSec = revealSync.audioEl.currentTime;
+      }
     }
 
     function setCaptionByWords(wordsSpoken) {
@@ -2321,6 +2325,10 @@
       let idx = 0;
       const hysteresis = 0.12;
       while (idx + 1 < boundaries.length && currentTimeSec >= (boundaries[idx + 1] + hysteresis)) idx++;
+      const MIN_SENTENCE_SEC = 2.4;
+      if (idx > revealSync.currentIdx && (currentTimeSec - revealSync.lastChangeSec) < MIN_SENTENCE_SEC) {
+        return;
+      }
       setCaptionIndex(idx);
     }
 
@@ -2417,7 +2425,7 @@
       if (caption) caption.innerHTML = '';
       if (paragraph) paragraph.classList.remove('hidden-during-reveal');
       // reset state
-      revealSync = { audioEl: null, utterance: null, lines: [], wordCounts: [], cumulative: [], totalWords: 0, currentIdx: -1 };
+      revealSync = { audioEl: null, utterance: null, lines: [], wordCounts: [], cumulative: [], totalWords: 0, currentIdx: -1, lastChangeSec: -Infinity };
     }
   </script>
 </body>
