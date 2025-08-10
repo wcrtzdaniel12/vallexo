@@ -552,6 +552,171 @@
       75%  { transform: translate(-52%, -51%) rotate(3deg) scale(1.01); }
       100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
     }
+
+    /* Emotional Outro Screen */
+    .outro-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 2s ease-in-out;
+    }
+
+    .outro-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .outro-background {
+      position: absolute;
+      inset: 0;
+      background: 
+        repeating-linear-gradient(0deg, rgba(0,255,255,0.02) 0px, rgba(0,255,255,0.02) 1px, transparent 2px, transparent 6px),
+        repeating-linear-gradient(90deg, rgba(255,0,255,0.01) 0px, rgba(255,0,255,0.01) 1px, transparent 2px, transparent 8px),
+        radial-gradient(circle at 30% 20%, rgba(0,255,255,0.05) 0%, transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(255,0,255,0.03) 0%, transparent 50%);
+      animation: static-noise 8s ease-in-out infinite;
+    }
+
+    @keyframes static-noise {
+      0%, 100% { filter: contrast(1) brightness(1); }
+      50% { filter: contrast(1.1) brightness(1.05) hue-rotate(2deg); }
+    }
+
+    .outro-content {
+      text-align: center;
+      max-width: 800px;
+      padding: 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .outro-message {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      line-height: 1.4;
+      color: #e0e0e0;
+      margin-bottom: 60px;
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    }
+
+    .glitch-word {
+      display: inline-block;
+      position: relative;
+      animation: word-flicker 4s ease-in-out infinite;
+      animation-delay: calc(var(--word-index, 0) * 0.2s);
+    }
+
+    .glitch-word:nth-child(1) { --word-index: 0; }
+    .glitch-word:nth-child(2) { --word-index: 1; }
+    .glitch-word:nth-child(3) { --word-index: 2; }
+    .glitch-word:nth-child(4) { --word-index: 3; }
+    .glitch-word:nth-child(5) { --word-index: 4; }
+    .glitch-word:nth-child(6) { --word-index: 5; }
+    .glitch-word:nth-child(7) { --word-index: 6; }
+    .glitch-word:nth-child(8) { --word-index: 7; }
+    .glitch-word:nth-child(9) { --word-index: 8; }
+    .glitch-word:nth-child(10) { --word-index: 9; }
+    .glitch-word:nth-child(12) { --word-index: 10; }
+    .glitch-word:nth-child(13) { --word-index: 11; }
+    .glitch-word:nth-child(14) { --word-index: 12; }
+    .glitch-word:nth-child(15) { --word-index: 13; }
+    .glitch-word:nth-child(16) { --word-index: 14; }
+    .glitch-word:nth-child(17) { --word-index: 15; }
+    .glitch-word:nth-child(18) { --word-index: 16; }
+
+    @keyframes word-flicker {
+      0%, 94%, 100% { 
+        opacity: 1; 
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        filter: brightness(1);
+      }
+      95%, 98% { 
+        opacity: 0.3; 
+        text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff;
+        filter: brightness(1.5) contrast(1.2);
+      }
+      96%, 97% { 
+        opacity: 0.8; 
+        text-shadow: -2px 0 #ffff00, 2px 0 #ff00ff;
+        filter: brightness(0.8) hue-rotate(10deg);
+      }
+    }
+
+    .outro-buttons {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+    }
+
+    .outro-btn {
+      background: linear-gradient(135deg, rgba(0,255,255,0.1) 0%, rgba(0,255,255,0.05) 100%);
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      padding: 15px 35px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .outro-btn:hover {
+      background: linear-gradient(135deg, rgba(0,255,255,0.2) 0%, rgba(0,255,255,0.1) 100%);
+      border-color: rgba(0, 255, 255, 0.6);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .outro-btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-glitch {
+      display: block;
+      position: relative;
+    }
+
+    .outro-btn:hover .btn-glitch::before,
+    .outro-btn:hover .btn-glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      width: 100%;
+      color: #00ffff;
+      animation: btn-glitch-anim 0.3s ease-in-out;
+    }
+
+    .outro-btn:hover .btn-glitch::before {
+      top: 0;
+      text-shadow: -2px 0 #ff00ff;
+      clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+    }
+
+    .outro-btn:hover .btn-glitch::after {
+      top: 0;
+      text-shadow: 2px 0 #ffff00;
+      clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+    }
+
+    @keyframes btn-glitch-anim {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-2px, 1px); }
+      40% { transform: translate(2px, -1px); }
+      60% { transform: translate(-1px, 2px); }
+      80% { transform: translate(1px, -2px); }
+    }
     
     .loading-memory-fragments {
       position: absolute;
@@ -905,6 +1070,41 @@
   <div id="reveal-overlay" class="reveal-overlay">
     <div id="reveal-bg" class="reveal-bg" style="background-image: url('img/hallway1.png');"></div>
     <div id="reveal-caption" class="reveal-caption"></div>
+  </div>
+
+  <!-- Emotional Outro Screen -->
+  <div id="outro-overlay" class="outro-overlay">
+    <div class="outro-background"></div>
+    <div class="outro-content">
+      <div class="outro-message" id="outro-message">
+        <span class="glitch-word">Sometimes…</span> 
+        <span class="glitch-word">the</span> 
+        <span class="glitch-word">places</span> 
+        <span class="glitch-word">that</span> 
+        <span class="glitch-word">shaped</span> 
+        <span class="glitch-word">us</span> 
+        <span class="glitch-word">are</span> 
+        <span class="glitch-word">just</span> 
+        <span class="glitch-word">shadows</span> 
+        <span class="glitch-word">now.</span>
+        <br><br>
+        <span class="glitch-word">But</span> 
+        <span class="glitch-word">you</span> 
+        <span class="glitch-word">felt</span> 
+        <span class="glitch-word">it</span> 
+        <span class="glitch-word">again,</span> 
+        <span class="glitch-word">didn't</span> 
+        <span class="glitch-word">you?</span>
+      </div>
+      <div class="outro-buttons">
+        <button class="outro-btn" id="share-btn">
+          <span class="btn-glitch">Share</span>
+        </button>
+        <button class="outro-btn" id="replay-btn">
+          <span class="btn-glitch">Replay</span>
+        </button>
+      </div>
+    </div>
   </div>
   
   <!-- Hero Section -->
@@ -1952,6 +2152,10 @@
             restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl); // Clean up
             stopKenBurnsReveal();
+            // Show emotional outro instead of returning to memory section
+            setTimeout(() => {
+              showOutroScreen();
+            }, 1000); // Small delay for smooth transition
           };
           
           audio.onerror = (error) => {
@@ -2008,6 +2212,10 @@
           removeRadioStaticEffect();
           restoreBackgroundMusic(); // Restore background music volume
           stopKenBurnsReveal();
+          // Show emotional outro instead of returning to memory section
+          setTimeout(() => {
+            showOutroScreen();
+          }, 1000); // Small delay for smooth transition
         };
         
         utterance.onerror = (event) => {
@@ -3057,6 +3265,91 @@
       if (paragraph) paragraph.classList.remove('hidden-during-reveal');
       // reset state
       revealSync = { audioEl: null, utterance: null, lines: [], wordCounts: [], cumulative: [], totalWords: 0, currentIdx: -1, lastChangeSec: -Infinity };
+    }
+
+    // Emotional outro screen functions
+    function showOutroScreen() {
+      console.log('🎭 Showing emotional outro screen');
+      const overlay = document.getElementById('outro-overlay');
+      if (overlay) {
+        overlay.classList.add('active');
+        
+        // Add staggered word animation
+        const words = overlay.querySelectorAll('.glitch-word');
+        words.forEach((word, index) => {
+          word.style.animationDelay = (index * 0.3) + 's';
+        });
+
+        // Add button functionality
+        const shareBtn = document.getElementById('share-btn');
+        const replayBtn = document.getElementById('replay-btn');
+        
+        if (shareBtn) {
+          shareBtn.onclick = () => {
+            console.log('🔗 Share button clicked');
+            shareMemory();
+          };
+          shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
+        }
+        
+        if (replayBtn) {
+          replayBtn.onclick = () => {
+            console.log('🔄 Replay button clicked');
+            replayExperience();
+          };
+          replayBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Replay');
+        }
+      }
+    }
+
+    function hideOutroScreen() {
+      const overlay = document.getElementById('outro-overlay');
+      if (overlay) {
+        overlay.classList.remove('active');
+      }
+    }
+
+    function shareMemory() {
+      // Share functionality - copy memory text to clipboard or open share dialog
+      const memoryText = document.getElementById('memory-text').textContent;
+      if (navigator.share) {
+        navigator.share({
+          title: 'My VALLEXO Memory',
+          text: memoryText,
+          url: window.location.href
+        }).catch(console.error);
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(memoryText).then(() => {
+          alert('Memory copied to clipboard!');
+        }).catch(() => {
+          // Fallback - show memory text in prompt
+          prompt('Copy this memory:', memoryText);
+        });
+      } else {
+        // Fallback - show memory text in prompt
+        prompt('Copy this memory:', memoryText);
+      }
+    }
+
+    function replayExperience() {
+      // Hide outro and restart the experience
+      hideOutroScreen();
+      
+      // Reset to initial state
+      const memorySection = document.getElementById('memory-section');
+      const modal = document.getElementById('memory-modal');
+      
+      if (memorySection) memorySection.style.display = 'none';
+      if (modal) modal.style.display = 'block';
+      
+      // Clear form
+      document.getElementById('fullname').value = '';
+      document.getElementById('birthYear').value = '';
+      
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      console.log('🔄 Experience restarted');
     }
   </script>
 </body>
