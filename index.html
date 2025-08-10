@@ -1084,9 +1084,15 @@
     // Generate Memory button sound effect
     function playGenerateMemorySound() {
       try {
+        // Create audio context if it doesn't exist
         if (!audioContext) {
-          console.log('No audio context for sound effect');
-          return;
+          try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('Created audio context for sound effect');
+          } catch (e) {
+            console.log('Could not create audio context for sound effect');
+            return;
+          }
         }
 
         const ctx = audioContext;
@@ -2869,12 +2875,44 @@
         if (paragraph) paragraph.classList.add('hidden-during-reveal');
         cleanupRevealHandlers();
 
-        // Use Whisper segments directly for text division
-        const segments = whisperSegments.map(seg => ({
+        // Use Whisper segments but merge short segments and only break on significant pauses
+        const rawSegments = whisperSegments.map(seg => ({
           start: typeof seg.start === 'number' ? seg.start : 0,
           end: typeof seg.end === 'number' ? seg.end : 0,
           text: (seg.text || '').trim()
         })).filter(seg => seg.text.length > 0);
+
+        // Merge segments that have short gaps between them (less than 0.3 seconds)
+        const segments = [];
+        let currentSegment = null;
+        
+        for (let i = 0; i < rawSegments.length; i++) {
+          const seg = rawSegments[i];
+          
+          if (!currentSegment) {
+            // Start new segment
+            currentSegment = { ...seg };
+          } else {
+            const gap = seg.start - currentSegment.end;
+            
+            // If gap is less than 300ms, merge with current segment
+            if (gap < 0.3) {
+              currentSegment.text += ' ' + seg.text;
+              currentSegment.end = seg.end;
+            } else {
+              // Gap is significant, finalize current segment and start new one
+              segments.push(currentSegment);
+              currentSegment = { ...seg };
+            }
+          }
+        }
+        
+        // Don't forget the last segment
+        if (currentSegment) {
+          segments.push(currentSegment);
+        }
+
+        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
 
         if (!segments.length) {
           console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
@@ -2918,8 +2956,8 @@
             // Find which segment we should be showing based on adjusted current time
             let segmentIdx = -1; // Start with no segment
             
-            // Use a more aggressive transition - switch to next segment slightly before it actually starts
-            const TRANSITION_LEAD = 0.05; // Switch 50ms before next segment to prevent lag
+            // Use a smaller transition lead since we now have longer, better-timed segments
+            const TRANSITION_LEAD = 0.02; // Switch 20ms before next segment for precise timing
             
             for (let i = 0; i < segments.length; i++) {
               const segmentStart = segments[i].start;
@@ -2992,13 +3030,15 @@
           }, Math.max(1000, avgSegmentDuration * 1000));
         }
 
-        console.log(`🎬 Ken Burns reveal started with ${segments.length} Whisper segments:`);
+        console.log(`🎬 Ken Burns reveal started with ${segments.length} merged Whisper segments:`);
         segments.forEach((seg, i) => {
-          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s)`);
+          const duration = seg.end - seg.start;
+          const nextGap = i < segments.length - 1 ? segments[i + 1].start - seg.end : 0;
+          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${nextGap.toFixed(2)}s gap)`);
         });
         const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
         console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
-        console.log(`🎵 Transition lead: 50ms early switching to prevent segment lag`);
+        console.log(`🎵 Transition lead: 20ms early switching for precise timing`);
         console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
