@@ -3150,10 +3150,9 @@
         const durSec = Math.max(8, Math.min(240, totalDuration));
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
-        // Improved timing compensation for TTS model characteristics (tts-1 with onyx voice at speed 1.0)
-        const AUDIO_OFFSET = -0.05; // Reduced general audio processing delay
-        const ONYX_COMPENSATION = -0.08; // Fine-tuned Onyx voice timing
-        const ADAPTIVE_LEAD = 0.12; // Base adaptive timing lead
+        // Add timing compensation for TTS model characteristics (tts-1 with onyx voice at speed 1.0)
+        const AUDIO_OFFSET = -0.1; // More aggressive negative offset to catch early segments
+        const ONYX_COMPENSATION = -0.15; // Stronger negative compensation for beginning sync
 
         // Attach time-based sync using Whisper timing with audio offset compensation
         if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
@@ -3162,52 +3161,79 @@
             if (!audioEl || audioEl.paused) return;
             const currentTime = audioEl.currentTime + AUDIO_OFFSET + ONYX_COMPENSATION;
             
-            // Find which segment we should be showing with adaptive timing
-            let segmentIdx = -1;
+            // Find which segment we should be showing based on adjusted current time
+            let segmentIdx = -1; // Start with no segment
             
-            // Determine the best segment to show with pause-aware timing
             for (let i = 0; i < segments.length; i++) {
               const segmentStart = segments[i].start;
+              const segmentEnd = segments[i].end;
+              const nextSegmentStart = (i < segments.length - 1) ? segments[i + 1].start : segments[i].end;
               
-              // Calculate adaptive timing offset based on pause characteristics
-              let adaptiveOffset = ADAPTIVE_LEAD;
+              // Calculate pause length after this segment
+              const pauseAfterSegment = (i < segments.length - 1) ? segments[i + 1].start - segmentEnd : 0;
               
-              if (i > 0) {
-                const pauseLength = segmentStart - segments[i-1].end;
-                
-                // Adaptive timing based on pause length for more natural feel:
-                if (pauseLength < 0.15) {
-                  // Very short pause (quick speech): Show text earlier
-                  adaptiveOffset = ADAPTIVE_LEAD + 0.07;
-                } else if (pauseLength < 0.3) {
-                  // Short pause: Slightly earlier timing
-                  adaptiveOffset = ADAPTIVE_LEAD + 0.04;
-                } else if (pauseLength < 0.6) {
-                  // Medium pause: Standard timing
-                  adaptiveOffset = ADAPTIVE_LEAD;
-                } else {
-                  // Long pause (dramatic): Show slightly later for natural flow
-                  adaptiveOffset = ADAPTIVE_LEAD - 0.05;
-                }
+              // Dynamic transition timing based on pause characteristics
+              let transitionLead = 0.02; // Base 20ms
+              
+              if (pauseAfterSegment < 0.2) {
+                // Very short pause: need earlier transition for seamless flow
+                transitionLead = 0.08; // 80ms early
+              } else if (pauseAfterSegment < 0.4) {
+                // Short pause: moderate early transition
+                transitionLead = 0.05; // 50ms early
+              } else if (pauseAfterSegment < 0.7) {
+                // Medium pause: slight early transition
+                transitionLead = 0.03; // 30ms early
+              } else if (pauseAfterSegment > 1.2) {
+                // Long pause: can wait longer, more dramatic timing
+                transitionLead = 0.01; // 10ms early
               }
               
-              // Check if we should show this segment
-              const adjustedStart = segmentStart - adaptiveOffset;
-              if (currentTime >= adjustedStart) {
+              // Show segment if we're in its time window, but transition earlier to next segment
+              if (currentTime >= segmentStart && currentTime < (nextSegmentStart - transitionLead)) {
                 segmentIdx = i;
-              } else {
                 break;
               }
             }
             
-            // Handle edge cases
+            // If we didn't find a segment due to the transition lead, check if we should show the next one
             if (segmentIdx === -1) {
-              // If we haven't reached the first segment yet but are close, show it
-              if (currentTime < segments[0].start && segments[0].start - currentTime <= 0.15) {
-                segmentIdx = 0;
+              for (let i = 0; i < segments.length; i++) {
+                const segmentStart = segments[i].start;
+                const segmentEnd = segments[i].end;
+                const pauseAfterSegment = (i < segments.length - 1) ? segments[i + 1].start - segmentEnd : 0;
+                
+                // Use same dynamic timing logic for early showing
+                let transitionLead = 0.02;
+                if (pauseAfterSegment < 0.2) {
+                  transitionLead = 0.08;
+                } else if (pauseAfterSegment < 0.4) {
+                  transitionLead = 0.05;
+                } else if (pauseAfterSegment < 0.7) {
+                  transitionLead = 0.03;
+                } else if (pauseAfterSegment > 1.2) {
+                  transitionLead = 0.01;
+                }
+                
+                if (currentTime >= (segmentStart - transitionLead) && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
+                  segmentIdx = i;
+                  break;
+                }
               }
-            } else if (segmentIdx >= segments.length) {
-              // Ensure we don't exceed array bounds
+            }
+            
+            // If we haven't reached the first segment yet but are very close, show the first segment
+            if (segmentIdx === -1 && currentTime < segments[0].start) {
+              // If we're within 200ms of the first segment, show it
+              if (segments[0].start - currentTime <= 0.2) {
+                segmentIdx = 0;
+              } else {
+                return; // Don't show any caption yet
+              }
+            }
+            
+            // If we're past all segments, show the last one
+            if (segmentIdx === -1 && currentTime >= segments[segments.length - 1].start) {
               segmentIdx = segments.length - 1;
             }
             
@@ -3215,17 +3241,11 @@
             if (segmentIdx !== revealSync.currentIdx) {
               const segmentText = segmentIdx >= 0 ? segments[segmentIdx]?.text?.trim() || '' : 'none';
               const expectedStart = segmentIdx >= 0 ? segments[segmentIdx]?.start?.toFixed(3) : 'n/a';
-              // Calculate and log adaptive timing info
-              let adaptiveInfo = '';
-              if (segmentIdx > 0 && segmentIdx < segments.length) {
-                const pauseLength = segments[segmentIdx].start - segments[segmentIdx-1].end;
-                adaptiveInfo = ` (pause: ${pauseLength.toFixed(3)}s)`;
-              }
-              
-              console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(3)}s (raw: ${audioEl.currentTime.toFixed(3)}s)${adaptiveInfo}`);
-              console.log(`   Text: "${segmentText}" (expected at ${expectedStart}s)`);
+              const pauseAfter = segmentIdx >= 0 && segmentIdx < segments.length - 1 ? 
+                (segments[segmentIdx + 1].start - segments[segmentIdx].end).toFixed(3) : '0.000';
+              console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(3)}s (raw: ${audioEl.currentTime.toFixed(3)}s)`);
+              console.log(`   Text: "${segmentText}" (expected at ${expectedStart}s, pause after: ${pauseAfter}s)`);
               setCaptionIndex(segmentIdx);
-              revealSync.currentIdx = segmentIdx;
             }
           };
           
@@ -3261,8 +3281,7 @@
         });
         const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
         console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
-        console.log(`🎵 Adaptive timing: Base lead ${ADAPTIVE_LEAD.toFixed(3)}s, adjusted by pause length`);
-        console.log(`🎵 Pause-aware timing: Short pauses (+70ms), Medium (base), Long (-50ms)`);
+        console.log(`🎵 Transition lead: 20ms early switching for precise timing`);
         console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
