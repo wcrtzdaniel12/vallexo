@@ -2126,37 +2126,57 @@
     // -------- Ken Burns + Caption sequencing --------
     function splitMemoryIntoLines(text) {
       if (!text) return [];
-      // Split into sentences first
-      const raw = text
-        .replace(/\s+/g, ' ')
-        .split(/(?<=[.!?])\s+/);
+      
+      // Clean text and split into sentences at proper boundaries
+      const cleanText = text.replace(/\s+/g, ' ').trim();
+      
+      // Split at sentence endings (. ! ?) followed by space and capital letter or end of string
+      const sentences = cleanText.split(/(?<=[.!?])\s+(?=[A-Z]|$)/).filter(Boolean);
+      
       const lines = [];
-      raw.forEach(sentence => {
-        if (sentence.length <= 80) {
-          lines.push(sentence.trim());
+      
+      sentences.forEach(sentence => {
+        const trimmed = sentence.trim();
+        if (!trimmed) return;
+        
+        // If sentence is short enough, use as-is
+        if (trimmed.length <= 85) {
+          lines.push(trimmed);
         } else {
-          // Break long sentences by commas or spaces
-          const chunks = sentence.split(/,\s+/);
-          chunks.forEach(chunk => {
-            if (chunk.length <= 80) {
-              lines.push(chunk.trim());
-            } else {
-              // Hard wrap by words
-              const words = chunk.split(' ');
-              let current = '';
-              for (const w of words) {
-                if ((current + ' ' + w).trim().length > 80) {
-                  lines.push(current.trim());
-                  current = w;
-                } else {
-                  current = (current ? current + ' ' : '') + w;
-                }
+          // For very long sentences, try to break at natural pause points
+          // Look for semicolons, colons, or em-dashes first
+          const naturalBreaks = trimmed.split(/(?<=[;:—–])\s+/);
+          
+          if (naturalBreaks.length > 1) {
+            // We found natural break points
+            naturalBreaks.forEach(segment => {
+              const seg = segment.trim();
+              if (seg.length <= 85) {
+                lines.push(seg);
+              } else {
+                // If still too long, break at commas
+                const commaBreaks = seg.split(/(?<=,)\s+/);
+                commaBreaks.forEach(commaSeg => {
+                  lines.push(commaSeg.trim());
+                });
               }
-              if (current) lines.push(current.trim());
+            });
+          } else {
+            // No natural breaks, try comma breaks
+            const commaBreaks = trimmed.split(/(?<=,)\s+/);
+            if (commaBreaks.length > 1) {
+              commaBreaks.forEach(commaSeg => {
+                lines.push(commaSeg.trim());
+              });
+            } else {
+              // Last resort: keep entire sentence as one line
+              // Better to have a long line than break mid-sentence
+              lines.push(trimmed);
             }
-          });
+          }
         }
       });
+      
       return lines.filter(Boolean);
     }
 
