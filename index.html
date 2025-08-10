@@ -1749,8 +1749,8 @@
           audio.onplay = async () => {
             console.log('OpenAI TTS narration started');
             updateDebugInfo();
-            // Force fixed 5s per line captions
-            revealSync.fixedSecondsPerLine = 5;
+            // Force fixed 2.5s per line captions
+            revealSync.fixedSecondsPerLine = 2.5;
             // Start synchronized reveal
             try {
               const btResolved = await (boundaryPromise || Promise.resolve(boundaryTimes));
@@ -1813,8 +1813,8 @@
         utterance.onstart = () => {
           console.log('Fallback Web Speech narration started');
           updateDebugInfo();
-          // Force fixed 5s per line captions
-          revealSync.fixedSecondsPerLine = 5;
+          // Force fixed 2.5s per line captions
+          revealSync.fixedSecondsPerLine = 2.5;
           startKenBurnsReveal(memoryText, null, utterance);
         };
         
