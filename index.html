@@ -2560,86 +2560,6 @@
       }
     }
 
-    function startKenBurnsRevealWithSegments(memoryText, audioEl, whisperSegments) {
-      try {
-        const overlay = document.getElementById('reveal-overlay');
-        const caption = document.getElementById('reveal-caption');
-        const bg = document.getElementById('reveal-bg');
-        const paragraph = document.getElementById('memory-text');
-        if (!overlay || !caption || !bg) return;
-
-        overlay.classList.add('active');
-        caption.innerHTML = '';
-        if (paragraph) paragraph.classList.add('hidden-during-reveal');
-        cleanupRevealHandlers();
-
-        // Use Whisper segments directly for text division
-        const segments = whisperSegments.map(seg => ({
-          start: typeof seg.start === 'number' ? seg.start : 0,
-          end: typeof seg.end === 'number' ? seg.end : 0,
-          text: (seg.text || '').trim()
-        })).filter(seg => seg.text.length > 0);
-
-        if (!segments.length) {
-          console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
-          startKenBurnsReveal(memoryText, audioEl, null, null);
-          return;
-        }
-
-        // Build reveal state from Whisper segments
-        revealSync.lines = segments.map(seg => seg.text);
-        revealSync.boundaryTimes = segments.map(seg => seg.start).concat([segments[segments.length - 1].end]);
-        revealSync.currentIdx = -1;
-        revealSync.audioEl = audioEl || null;
-
-        if (!revealSync.lines.length) return;
-        setCaptionIndex(0);
-
-        // Duration for Ken Burns animation
-        const totalDuration = segments.length > 0 ? segments[segments.length - 1].end : 10;
-        const durSec = Math.max(8, Math.min(240, totalDuration));
-        bg.style.animationDuration = Math.floor(durSec) + 's';
-
-        // Attach time-based sync using Whisper timing
-        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
-          audioTimeHandler = () => {
-            if (!audioEl || audioEl.paused) return;
-            const currentTime = audioEl.currentTime;
-            
-            // Find which segment we should be showing based on current time
-            let segmentIdx = 0;
-            for (let i = 0; i < segments.length; i++) {
-              if (currentTime >= segments[i].start && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
-                segmentIdx = i;
-                break;
-              }
-            }
-            setCaptionIndex(segmentIdx);
-          };
-          audioEl.addEventListener('timeupdate', audioTimeHandler);
-        } else if (utterance) {
-          // Fallback for Web Speech API
-          const avgSegmentDuration = totalDuration / segments.length;
-          let segmentIdx = 0;
-          estimateTimer = setInterval(() => {
-            if (segmentIdx < segments.length) {
-              setCaptionIndex(segmentIdx);
-              segmentIdx++;
-            }
-          }, avgSegmentDuration * 1000);
-        }
-
-        console.log(`🎬 Ken Burns reveal started with ${segments.length} Whisper segments:`, {
-          segmentTexts: segments.map(s => s.text),
-          timings: segments.map(s => `${s.start.toFixed(2)}-${s.end.toFixed(2)}s`)
-        });
-      } catch (error) {
-        console.error('Error in startKenBurnsRevealWithSegments:', error);
-        // Fallback to regular reveal
-        startKenBurnsReveal(memoryText, audioEl, null, null);
-      }
-    }
-
     function startKenBurnsReveal(memoryText, audioEl, utterance, boundaryTimes) {
       try {
         const overlay = document.getElementById('reveal-overlay');
@@ -2727,6 +2647,87 @@
         }
       } catch (e) {
         console.warn('Reveal overlay error:', e);
+      }
+    }
+
+    // Function to handle Ken Burns reveal using Whisper segments directly
+    function startKenBurnsRevealWithSegments(memoryText, audioEl, whisperSegments) {
+      try {
+        const overlay = document.getElementById('reveal-overlay');
+        const caption = document.getElementById('reveal-caption');
+        const bg = document.getElementById('reveal-bg');
+        const paragraph = document.getElementById('memory-text');
+        if (!overlay || !caption || !bg) return;
+
+        overlay.classList.add('active');
+        caption.innerHTML = '';
+        if (paragraph) paragraph.classList.add('hidden-during-reveal');
+        cleanupRevealHandlers();
+
+        // Use Whisper segments directly for text division
+        const segments = whisperSegments.map(seg => ({
+          start: typeof seg.start === 'number' ? seg.start : 0,
+          end: typeof seg.end === 'number' ? seg.end : 0,
+          text: (seg.text || '').trim()
+        })).filter(seg => seg.text.length > 0);
+
+        if (!segments.length) {
+          console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
+          startKenBurnsReveal(memoryText, audioEl, null, null);
+          return;
+        }
+
+        // Build reveal state from Whisper segments
+        revealSync.lines = segments.map(seg => seg.text);
+        revealSync.boundaryTimes = segments.map(seg => seg.start).concat([segments[segments.length - 1].end]);
+        revealSync.currentIdx = -1;
+        revealSync.audioEl = audioEl || null;
+
+        if (!revealSync.lines.length) return;
+        setCaptionIndex(0);
+
+        // Duration for Ken Burns animation
+        const totalDuration = segments.length > 0 ? segments[segments.length - 1].end : 10;
+        const durSec = Math.max(8, Math.min(240, totalDuration));
+        bg.style.animationDuration = Math.floor(durSec) + 's';
+
+        // Attach time-based sync using Whisper timing
+        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+          audioTimeHandler = () => {
+            if (!audioEl || audioEl.paused) return;
+            const currentTime = audioEl.currentTime;
+            
+            // Find which segment we should be showing based on current time
+            let segmentIdx = 0;
+            for (let i = 0; i < segments.length; i++) {
+              if (currentTime >= segments[i].start && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
+                segmentIdx = i;
+                break;
+              }
+            }
+            setCaptionIndex(segmentIdx);
+          };
+          audioEl.addEventListener('timeupdate', audioTimeHandler);
+        } else {
+          // Fallback timing when no audio element is available
+          const avgSegmentDuration = totalDuration / segments.length;
+          let segmentIdx = 0;
+          estimateTimer = setInterval(() => {
+            if (segmentIdx < segments.length) {
+              setCaptionIndex(segmentIdx);
+              segmentIdx++;
+            }
+          }, Math.max(1000, avgSegmentDuration * 1000));
+        }
+
+        console.log(`🎬 Ken Burns reveal started with ${segments.length} Whisper segments:`, {
+          segmentTexts: segments.map(s => s.text),
+          timings: segments.map(s => `${s.start.toFixed(2)}-${s.end.toFixed(2)}s`)
+        });
+      } catch (error) {
+        console.error('Error in startKenBurnsRevealWithSegments:', error);
+        // Fallback to regular reveal
+        startKenBurnsReveal(memoryText, audioEl, null, null);
       }
     }
 
