@@ -3083,14 +3083,60 @@
         if (paragraph) paragraph.classList.add('hidden-during-reveal');
         cleanupRevealHandlers();
 
-        // Use Whisper segments directly without any merging
-        const segments = whisperSegments.map(seg => ({
+        // Use Whisper segments but merge short segments and only break on significant pauses
+        const rawSegments = whisperSegments.map(seg => ({
           start: typeof seg.start === 'number' ? seg.start : 0,
           end: typeof seg.end === 'number' ? seg.end : 0,
           text: (seg.text || '').trim()
         })).filter(seg => seg.text.length > 0);
 
-        console.log(`✅ Using ${segments.length} original Whisper segments (no merging)`);
+        // Merge segments that have short gaps between them (less than 0.3 seconds)
+        const segments = [];
+        let currentSegment = null;
+        
+        for (let i = 0; i < rawSegments.length; i++) {
+          const seg = rawSegments[i];
+          
+          if (!currentSegment) {
+            // Start new segment
+            currentSegment = { ...seg };
+          } else {
+            const gap = seg.start - currentSegment.end;
+            
+            // If gap is less than 300ms, merge with current segment
+            if (gap < 0.3) {
+              currentSegment.text += ' ' + seg.text;
+              currentSegment.end = seg.end;
+            } else {
+              // Gap is significant, finalize current segment and start new one
+              segments.push(currentSegment);
+              currentSegment = { ...seg };
+            }
+          }
+        }
+        
+        // Don't forget the last segment
+        if (currentSegment) {
+          segments.push(currentSegment);
+        }
+
+        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
+        
+        // Log pause analysis for debugging sync issues
+        console.log('📊 Pause Analysis:');
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i];
+          const prevSeg = i > 0 ? segments[i - 1] : null;
+          const nextSeg = i < segments.length - 1 ? segments[i + 1] : null;
+          
+          const pauseBefore = prevSeg ? (seg.start - prevSeg.end).toFixed(3) : '0.000';
+          const pauseAfter = nextSeg ? (nextSeg.start - seg.end).toFixed(3) : '0.000';
+          const duration = (seg.end - seg.start).toFixed(3);
+          
+          console.log(`  Segment ${i}: "${seg.text.trim().substring(0, 40)}${seg.text.length > 40 ? '...' : ''}"`);
+          console.log(`    Duration: ${duration}s | Pause before: ${pauseBefore}s | Pause after: ${pauseAfter}s`);
+          console.log(`    Timing: ${seg.start.toFixed(3)}s → ${seg.end.toFixed(3)}s`);
+        }
 
         if (!segments.length) {
           console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
@@ -3178,8 +3224,23 @@
             if (segmentIdx !== revealSync.currentIdx) {
               const segmentText = segmentIdx >= 0 ? segments[segmentIdx]?.text?.trim() || '' : 'none';
               const expectedStart = segmentIdx >= 0 ? segments[segmentIdx]?.start?.toFixed(3) : 'n/a';
+              const timingDiff = segmentIdx >= 0 ? (currentTime - segments[segmentIdx].start).toFixed(3) : 'n/a';
+              const timingStatus = segmentIdx >= 0 ? 
+                (Math.abs(currentTime - segments[segmentIdx].start) < 0.05 ? '✅ Perfect' :
+                 currentTime > segments[segmentIdx].start ? `⚠️ Late by ${timingDiff}s` :
+                 `⚡ Early by ${Math.abs(parseFloat(timingDiff)).toFixed(3)}s`) : '';
+              
               console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(3)}s (raw: ${audioEl.currentTime.toFixed(3)}s)`);
-              console.log(`   Text: "${segmentText}" (expected at ${expectedStart}s)`);
+              console.log(`   Text: "${segmentText.substring(0, 50)}${segmentText.length > 50 ? '...' : ''}"`);
+              console.log(`   Expected: ${expectedStart}s | Actual: ${currentTime.toFixed(3)}s | ${timingStatus}`);
+              
+              // Log pause context for this transition
+              if (segmentIdx >= 0 && segmentIdx < segments.length) {
+                const prevSeg = segmentIdx > 0 ? segments[segmentIdx - 1] : null;
+                const pauseBeforeThis = prevSeg ? (segments[segmentIdx].start - prevSeg.end).toFixed(3) : '0.000';
+                console.log(`   Pause before this segment: ${pauseBeforeThis}s`);
+              }
+              
               setCaptionIndex(segmentIdx);
             }
           };
