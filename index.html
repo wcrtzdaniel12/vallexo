@@ -2132,26 +2132,50 @@
       return parts.map(s => s.trim()).filter(Boolean);
     }
 
-    // Compute time boundaries for each line using total audio duration
-    // We weight by: word count, punctuation (.,!?), commas, semicolons/colons, and slight char-length factor
+    // Compute time boundaries per sentence using reading-time model tied to TTS speed
     function computeBoundaryTimesForLines(text, totalDurationSec) {
-      const lines = splitMemoryIntoLines(text);
-      if (!lines.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
-      const weights = lines.map((l) => {
-        const trimmed = l.trim();
-        const words = trimmed.split(/\s+/).filter(Boolean).length;
-        const commas = (trimmed.match(/,/g) || []).length;
-        const semis = (trimmed.match(/[;:]/g) || []).length;
-        const endPunct = /[.!?]$/.test(trimmed) ? 0.8 : 0.0; // stronger pause at sentence ends
-        const charFactor = Math.max(0, Math.min(0.5, trimmed.length / 120)); // small boost for long lines
-        return Math.max(1, words) + 0.35 * commas + 0.25 * semis + endPunct + charFactor;
+      const sentences = splitMemoryIntoLines(text);
+      if (!sentences.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
+
+      const TTS_SPEED = 1.0;         // must match generateSpeechV2
+      const WORDS_PER_SECOND = 2.0 * TTS_SPEED; // ~120 wpm at 1.0 (intentionally conservative)
+      const MIN_PER_SENTENCE = 1.8;  // do not flip faster than this per sentence
+      const BONUS_COMMA = 0.25;
+      const BONUS_SEMI = 0.35;
+      const BONUS_END = 0.5;
+
+      // Raw durations per sentence
+      const baseDurations = sentences.map((s) => {
+        const t = s.trim();
+        const words = t.split(/\s+/).filter(Boolean).length;
+        const commas = (t.match(/,/g) || []).length;
+        const semis = (t.match(/[;:]/g) || []).length;
+        const endPunct = /[.!?]$/.test(t) ? BONUS_END : 0;
+        const est = (words / Math.max(0.1, WORDS_PER_SECOND)) + commas * BONUS_COMMA + semis * BONUS_SEMI + endPunct;
+        return Math.max(MIN_PER_SENTENCE, est);
       });
-      const total = weights.reduce((a, b) => a + b, 0) || lines.length;
+
+      // Fit to totalDurationSec while respecting per-sentence minimums
+      const minTotal = sentences.length * MIN_PER_SENTENCE;
+      let durations;
+      if (totalDurationSec <= minTotal) {
+        // Extremely short audio: distribute evenly at min
+        const per = totalDurationSec / sentences.length;
+        durations = new Array(sentences.length).fill(per);
+      } else {
+        const extras = baseDurations.map(d => d - MIN_PER_SENTENCE);
+        const sumExtras = extras.reduce((a,b)=>a+b,0) || 1;
+        const availExtras = totalDurationSec - minTotal;
+        const scale = availExtras / sumExtras;
+        durations = extras.map(e => MIN_PER_SENTENCE + e * scale);
+      }
+
+      // Build cumulative boundaries
       const times = [0];
       let acc = 0;
-      for (let i = 0; i < weights.length - 1; i++) {
-        acc += weights[i];
-        times.push(Math.min(totalDurationSec, (acc / total) * totalDurationSec));
+      for (let i = 0; i < durations.length - 1; i++) {
+        acc += durations[i];
+        times.push(Math.min(totalDurationSec, acc));
       }
       times.push(totalDurationSec);
       return times;
