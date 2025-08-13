@@ -3355,15 +3355,17 @@
       const dest = mixCtx.createMediaStreamDestination();
       try {
         const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
-        // Route only to recorder. Let element play to speakers normally.
+        // Route to recorder and to speakers via AudioContext
         voiceNode.connect(dest);
+        voiceNode.connect(mixCtx.destination);
       } catch (_) {}
       // Try to include background playlist if available
       try {
         if (usingAudioFiles && audioElement) {
           const bgNode = mixCtx.createMediaElementSource(audioElement);
-          // Route only to recorder. Let element play to speakers normally.
+          // Route to recorder and speakers via AudioContext
           bgNode.connect(dest);
+          bgNode.connect(mixCtx.destination);
         }
       } catch (_) {}
 
@@ -3372,7 +3374,14 @@
 
       // Compose stream (video from canvas + mixed audio)
       const stream = canvas.captureStream(30);
-      dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+      // Prefer addTrack, but if unsupported, merge via new MediaStream
+      try {
+        dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+      } catch (_) {
+        const merged = new MediaStream(stream.getVideoTracks().concat(dest.stream.getAudioTracks()));
+        stream.getTracks().forEach(tr => stream.removeTrack(tr));
+        merged.getTracks().forEach(tr => stream.addTrack(tr));
+      }
 
       const options = { mimeType: 'video/webm;codecs=vp9,opus' };
       const recorder = new MediaRecorder(stream, options);
@@ -3402,6 +3411,10 @@
       // Stop when voiceover ends
       const stopOnEnd = () => { try { stopExperienceRecording(); } catch (_) {} voiceAudioEl.removeEventListener('ended', stopOnEnd); };
       voiceAudioEl.addEventListener('ended', stopOnEnd);
+
+      // Ensure media elements play through (some browsers pause when element is used as source)
+      try { if (voiceAudioEl.paused) voiceAudioEl.play().catch(() => {}); } catch (_) {}
+      try { if (usingAudioFiles && audioElement && audioElement.paused && isPlaying) audioElement.play().catch(() => {}); } catch (_) {}
     }
 
     function drawRecordingFrame() {
