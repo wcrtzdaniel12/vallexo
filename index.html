@@ -1155,11 +1155,11 @@
         <!-- Integrated video player container -->
         <div class="w-full aspect-video rounded-xl overflow-hidden border border-cyan-400/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] bg-black/60" style="backdrop-filter: blur(6px);">
           <video id="memory-video" class="w-full h-full" controls playsinline></video>
-        </div>
+      </div>
         <div class="flex gap-3">
           <button id="download-memory" class="px-5 py-2 bg-cyan-500 bg-opacity-20 border border-cyan-400 hover:bg-opacity-40 text-cyan-300 rounded-lg transition-colors text-sm font-mono">Download</button>
           <button id="replay-inline" class="px-5 py-2 bg-white/10 border border-white/30 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-mono">Replay</button>
-        </div>
+      </div>
       </div>
     </div>
   </section>
@@ -3398,9 +3398,9 @@
         const blob = new Blob(chunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
-        experienceRecording.previewVideo = createOrGetPreviewVideo(url, width, height);
+        // Use only the integrated in-page player; do NOT create floating preview
+        experienceRecording.previewVideo = null;
         try {
-          // Feed integrated player
           const integrated = document.getElementById('memory-video');
           if (integrated) integrated.src = url;
         } catch (_) {}
@@ -3505,23 +3505,9 @@
       experienceRecording.ctx = null;
     }
 
+    // Deprecated: previously created a floating preview video. Now we use the integrated player only.
     function createOrGetPreviewVideo(url, width, height) {
-      let vid = document.getElementById('recorded-video');
-      if (!vid) {
-        vid = document.createElement('video');
-        vid.id = 'recorded-video';
-        vid.controls = true;
-        vid.style.position = 'fixed';
-        vid.style.right = '12px';
-        vid.style.bottom = '12px';
-        vid.style.zIndex = '10001';
-        vid.style.width = width + 'px';
-        vid.style.height = height + 'px';
-        vid.style.display = 'none';
-        document.body.appendChild(vid);
-      }
-      vid.src = url;
-      return vid;
+      return null;
     }
 
     // UI helpers for replay and share recorded video
