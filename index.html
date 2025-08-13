@@ -3152,41 +3152,37 @@
         }
         if (cur) microMerged.push(cur);
 
-        // 3) Split too-long segments by punctuation into subsegments with proportional timing
-        function splitLongSegment(seg) {
-          const maxChars = 140;
-          const maxDur = 4.5; // seconds
+        // 3) Enforce strict one-sentence-per-segment by splitting on sentence boundaries
+        function splitSegmentIntoSentences(seg) {
           const dur = Math.max(0.08, seg.end - seg.start);
           const t = (seg.text || '').trim();
           if (!t) return [seg];
-          const needsSplit = t.length > maxChars || dur > maxDur || /[.!?].+/.test(t.replace(/^[^.!?]*[.!?]\s*/, ''));
-          if (!needsSplit) return [seg];
-          // Split on sentence punctuation while keeping delimiters
-          const parts = t.split(/(?<=[.!?])\s+/).filter(Boolean);
-          if (parts.length <= 1) return [seg];
-          const lengths = parts.map(p => Math.max(1, p.length));
+          // Extract sentences (keeps terminal punctuation with each sentence)
+          const sentences = t.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+          const cleaned = sentences.map(s => s.trim()).filter(s => s.length > 0);
+          if (cleaned.length <= 1) return [seg];
+          const lengths = cleaned.map(p => Math.max(1, p.length));
           const total = lengths.reduce((a,b)=>a+b,0);
           let acc = seg.start;
           const out = [];
-          for (let i = 0; i < parts.length; i++) {
+          for (let i = 0; i < cleaned.length; i++) {
             const share = lengths[i] / total;
             const subDur = Math.max(0.12, dur * share);
             const sub = {
               start: acc,
               end: Math.min(seg.end, acc + subDur),
-              text: parts[i].trim()
+              text: cleaned[i]
             };
             out.push(sub);
             acc = sub.end;
           }
-          // Ensure last end aligns exactly
           if (out.length) out[out.length - 1].end = seg.end;
           return out;
         }
 
         const segments = [];
         for (const s of microMerged) {
-          const subs = splitLongSegment(s);
+          const subs = splitSegmentIntoSentences(s);
           for (const sub of subs) {
             if ((sub.text || '').length > 0 && (sub.end - sub.start) >= 0.08) {
               segments.push(sub);
