@@ -1120,7 +1120,7 @@
       
       <!-- Subtext -->
       <p class="font-inter text-lg md:text-xl lg:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed neon-pulse">
-        Pay $3 to remember something you never lived.
+        Pay $4 to remember something you never lived.
       </p>
       
       <!-- CTA Button -->
@@ -1128,7 +1128,7 @@
         onclick="openModal()"
         class="glitch-button font-mono bg-transparent border-2 border-cyan-400 text-cyan-400 px-12 py-6 text-xl md:text-2xl font-medium hover:bg-cyan-400 hover:text-gray-900 transition-all duration-500"
       >
-        Generate My Memory — $3
+        Generate My Memory — $4
       </button>
       
       <!-- Ambient Text -->
@@ -2943,6 +2943,8 @@
       if (revealSync.audioEl && Number.isFinite(revealSync.audioEl.currentTime)) {
         revealSync.lastChangeSec = revealSync.audioEl.currentTime;
       }
+      // Update recorder caption text if active
+      currentCaptionText = revealSync.lines[safeIdx] || '';
     }
 
     // Directly set caption text (for TextTrack cue-based sync)
@@ -2958,6 +2960,8 @@
       if (revealSync.audioEl && Number.isFinite(revealSync.audioEl.currentTime)) {
         revealSync.lastChangeSec = revealSync.audioEl.currentTime;
       }
+      // Update recorder caption text if active
+      currentCaptionText = text || '';
     }
 
     function setCaptionByWords(wordsSpoken) {
@@ -3044,6 +3048,8 @@
         // Attach sync via audio time
         revealSync.audioEl = audioEl || null;
         if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+          // Start in-browser recording of the experience
+          try { startExperienceRecording(audioEl, durSec); } catch (_) {}
           audioTimeHandler = () => {
             if (!audioEl.duration || audioEl.duration <= 0) return;
             if (Array.isArray(revealSync.boundaryTimes) && revealSync.boundaryTimes.length) {
@@ -3252,7 +3258,9 @@
               }
             } catch (_) {}
           };
-              } else {
+          // Start in-browser recording of the experience
+          try { startExperienceRecording(audioEl, durSec); } catch (_) {}
+        } else {
           // Fallback: lightweight timer-based sync by time window
           if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
             audioTimeHandler = () => {
@@ -3296,6 +3304,213 @@
       }
     }
 
+    // ---------- In-browser Experience Recorder (Canvas + Mixed Audio -> WebM) ----------
+    let currentCaptionText = '';
+    let experienceRecording = {
+      recorder: null,
+      chunks: [],
+      url: null,
+      canvas: null,
+      ctx: null,
+      drawId: null,
+      startTs: 0,
+      durationSec: 0,
+      bgImage: null,
+      previewVideo: null
+    };
+
+    function startExperienceRecording(voiceAudioEl, totalDurationSec) {
+      // Prepare canvas
+      const width = 1280, height = 720;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      canvas.style.position = 'fixed';
+      canvas.style.right = '12px';
+      canvas.style.bottom = '12px';
+      canvas.style.zIndex = '10';
+      canvas.style.opacity = '0'; // keep hidden
+      document.body.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      // Load background image from reveal-bg
+      const bgEl = document.getElementById('reveal-bg');
+      let bgUrl = '';
+      if (bgEl) {
+        const bi = getComputedStyle(bgEl).backgroundImage;
+        const m = bi && bi.match(/url\("?(.*?)"?\)/);
+        bgUrl = m && m[1] ? m[1] : '';
+      }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = bgUrl || 'img/hallway1.png';
+
+      // Build audio mix: voice + bgm (if available)
+      const mixCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const dest = mixCtx.createMediaStreamDestination();
+      try {
+        const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
+        voiceNode.connect(dest);
+      } catch (_) {}
+      // Try to include background playlist if available
+      try {
+        if (usingAudioFiles && audioElement) {
+          const bgNode = mixCtx.createMediaElementSource(audioElement);
+          bgNode.connect(dest);
+        }
+      } catch (_) {}
+
+      // Compose stream (video from canvas + mixed audio)
+      const stream = canvas.captureStream(30);
+      dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+
+      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      const recorder = new MediaRecorder(stream, options);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        experienceRecording.url = url;
+        experienceRecording.previewVideo = createOrGetPreviewVideo(url, width, height);
+        cleanupCanvas();
+      };
+
+      experienceRecording = {
+        recorder, chunks, url: null, canvas, ctx,
+        drawId: null, startTs: performance.now(), durationSec: totalDurationSec,
+        bgImage: img, previewVideo: null
+      };
+
+      // Start drawing once image is ready
+      img.onload = () => {
+        drawRecordingFrame();
+        recorder.start(100); // collect data every 100ms
+      };
+
+      // Stop when voiceover ends
+      const stopOnEnd = () => { try { stopExperienceRecording(); } catch (_) {} voiceAudioEl.removeEventListener('ended', stopOnEnd); };
+      voiceAudioEl.addEventListener('ended', stopOnEnd);
+    }
+
+    function drawRecordingFrame() {
+      const { ctx, canvas, startTs, durationSec, bgImage } = experienceRecording;
+      if (!ctx || !bgImage) return;
+      const width = canvas.clientWidth, height = canvas.clientHeight;
+      const now = performance.now();
+      const t = Math.max(0, Math.min(1, (now - startTs) / (durationSec * 1000)));
+
+      // Clear
+      ctx.clearRect(0, 0, width, height);
+
+      // Ken Burns: scale 1.05 -> 1.15, pan slight
+      const scale = 1.05 + 0.10 * t;
+      const panX = 0 + 0.02 * t * width;
+      const panY = 0 + 0.02 * t * height;
+      const imgW = bgImage.naturalWidth, imgH = bgImage.naturalHeight;
+      const aspectCanvas = width / height;
+      const aspectImg = imgW / imgH;
+      let drawW, drawH;
+      if (aspectImg > aspectCanvas) {
+        drawH = height * scale;
+        drawW = drawH * aspectImg;
+      } else {
+        drawW = width * scale;
+        drawH = drawW / aspectImg;
+      }
+      const dx = (width - drawW) / 2 + panX;
+      const dy = (height - drawH) / 2 + panY;
+      ctx.drawImage(bgImage, dx, dy, drawW, drawH);
+
+      // Dark overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, width, height);
+
+      // Caption text
+      const text = currentCaptionText || '';
+      ctx.fillStyle = '#e6ffff';
+      ctx.textAlign = 'center';
+      ctx.font = '32px Playfair Display, serif';
+      wrapAndDrawText(ctx, text, width / 2, height / 2, Math.min(900, width * 0.9));
+
+      experienceRecording.drawId = requestAnimationFrame(drawRecordingFrame);
+    }
+
+    function wrapAndDrawText(ctx, text, x, y, maxWidth) {
+      const words = (text || '').split(/\s+/);
+      const lines = [];
+      let line = '';
+      for (let i = 0; i < words.length; i++) {
+        const test = line ? line + ' ' + words[i] : words[i];
+        const metrics = ctx.measureText(test);
+        if (metrics.width > maxWidth && line) {
+          lines.push(line);
+          line = words[i];
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      const lineHeight = 42;
+      const startY = y - (lines.length - 1) * lineHeight / 2;
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], x, startY + i * lineHeight);
+      }
+    }
+
+    function stopExperienceRecording() {
+      try { if (experienceRecording.drawId) cancelAnimationFrame(experienceRecording.drawId); } catch (_) {}
+      try { if (experienceRecording.recorder && experienceRecording.recorder.state !== 'inactive') experienceRecording.recorder.stop(); } catch (_) {}
+    }
+
+    function cleanupCanvas() {
+      try { if (experienceRecording.canvas && experienceRecording.canvas.parentNode) experienceRecording.canvas.parentNode.removeChild(experienceRecording.canvas); } catch (_) {}
+      experienceRecording.canvas = null;
+      experienceRecording.ctx = null;
+    }
+
+    function createOrGetPreviewVideo(url, width, height) {
+      let vid = document.getElementById('recorded-video');
+      if (!vid) {
+        vid = document.createElement('video');
+        vid.id = 'recorded-video';
+        vid.controls = true;
+        vid.style.position = 'fixed';
+        vid.style.right = '12px';
+        vid.style.bottom = '12px';
+        vid.style.zIndex = '12';
+        vid.style.width = width + 'px';
+        vid.style.height = height + 'px';
+        vid.style.display = 'none';
+        document.body.appendChild(vid);
+      }
+      vid.src = url;
+      return vid;
+    }
+
+    // UI helpers for replay and share recorded video
+    function replayRecordedVideo() {
+      if (!experienceRecording.url || !experienceRecording.previewVideo) return alert('Video not ready yet.');
+      experienceRecording.previewVideo.style.display = 'block';
+      experienceRecording.previewVideo.currentTime = 0;
+      experienceRecording.previewVideo.play();
+    }
+
+    function shareRecordedVideo() {
+      if (!experienceRecording.url) return alert('Video not ready yet.');
+      const a = document.createElement('a');
+      a.href = experienceRecording.url;
+      a.download = 'vallexo-memory.webm';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
     function stopKenBurnsReveal() {
       cleanupRevealHandlers();
       const overlay = document.getElementById('reveal-overlay');
@@ -3328,7 +3543,12 @@
         if (shareBtn) {
           shareBtn.onclick = () => {
             console.log('🔗 Share button clicked');
-            shareMemory();
+            // Prefer downloading recorded video if available; fallback to text sharing
+            if (experienceRecording && experienceRecording.url) {
+              shareRecordedVideo();
+            } else {
+              shareMemory();
+            }
           };
           shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
         }
@@ -3336,7 +3556,12 @@
         if (replayBtn) {
           replayBtn.onclick = () => {
             console.log('🔄 Replay button clicked');
-            replayExperience();
+            // Prefer replaying recorded video if available; otherwise replay experience
+            if (experienceRecording && experienceRecording.url) {
+              replayRecordedVideo();
+            } else {
+              replayExperience();
+            }
           };
           replayBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Replay');
         }
