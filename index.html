@@ -1947,8 +1947,8 @@
       console.log('Preparing memory section and voiceover...');
       
       const section = document.getElementById('memory-section');
-      const textEl = document.getElementById('memory-text');
-      textEl.textContent = memoryText;
+      // Keep memory text in state (UI now uses integrated video player)
+      try { lastGeneratedMemory = memoryText || ''; } catch (_) {}
       
       // Start voiceover preparation while showing the section
       try {
@@ -2895,6 +2895,9 @@
       return out;
     }
 
+    // Store last generated memory for sharing when text node is hidden
+    let lastGeneratedMemory = '';
+
     // Real-time synced reveal state
     let revealSync = {
       audioEl: null,
@@ -3620,7 +3623,7 @@
 
     function shareMemory() {
       // Share functionality - copy memory text to clipboard or open share dialog
-      const memoryText = document.getElementById('memory-text').textContent;
+      const memoryText = (typeof lastGeneratedMemory === 'string' && lastGeneratedMemory) ? lastGeneratedMemory : (document.getElementById('memory-text')?.textContent || '');
       if (navigator.share) {
         navigator.share({
           title: 'My VALLEXO Memory',
