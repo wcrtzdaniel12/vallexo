@@ -3226,18 +3226,29 @@
           } catch (_) {}
           const track = audioEl.addTextTrack('captions', 'whisper-segments', 'en');
           track.mode = 'showing';
-          // Populate cues
+          // Populate cues with slight early-start and early-end adjustments for crisp transitions
+          const LEAD = 0.08;      // show next line ~80ms before audio starts
+          const END_TRIM = 0.06;  // end current line ~60ms before measured end
+          const NEXT_GUARD = 0.02;// keep tiny gap before next start
           for (let i = 0; i < segments.length; i++) {
-            const s = Math.max(0, segments[i].start);
-            const e = Math.max(s + 0.02, segments[i].end); // ensure non-zero duration
-            const cue = new CueClass(s, e, segments[i].text);
+            const sRaw = Math.max(0, segments[i].start);
+            const eRaw = Math.max(sRaw + 0.02, segments[i].end);
+            let sAdj = Math.max(0, sRaw - LEAD);
+            let eAdj = Math.max(sAdj + 0.02, eRaw - END_TRIM);
+            if (i < segments.length - 1) {
+              const nextStart = Math.max(0, segments[i + 1].start);
+              eAdj = Math.min(eAdj, nextStart - NEXT_GUARD);
+            }
+            if (eAdj <= sAdj) eAdj = sAdj + 0.02;
+            const cue = new CueClass(sAdj, eAdj, segments[i].text);
             try { track.addCue(cue); } catch (_) {}
           }
           revealSync.textTrack = track;
           // Immediate caption for current time
           try {
+            const LEAD = 0.08, END_TRIM = 0.06;
             const t = audioEl.currentTime;
-            const cur = segments.find(seg => t >= seg.start && t < seg.end);
+            const cur = segments.find(seg => t >= (Math.max(0, seg.start) - LEAD) && t < (Math.max(0.02, seg.end) - END_TRIM));
             if (cur) setCaptionText(cur.text);
           } catch (_) {}
           // React to cue changes
@@ -3253,14 +3264,17 @@
             } catch (_) {}
           };
         } else {
-          // Fallback: lightweight timer-based sync by time window
+          // Fallback: lightweight timer-based sync by time window (with lead/trim)
           if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
             audioTimeHandler = () => {
               if (!audioEl || audioEl.paused) return;
+              const LEAD = 0.08, END_TRIM = 0.06;
               const t = audioEl.currentTime;
               let idx = -1;
               for (let i = 0; i < segments.length; i++) {
-                if (t >= segments[i].start && t < segments[i].end) { idx = i; break; }
+                const s = Math.max(0, segments[i].start) - LEAD;
+                const e = Math.max(0.02, segments[i].end) - END_TRIM;
+                if (t >= s && t < e) { idx = i; break; }
               }
               if (idx !== -1 && idx !== revealSync.currentIdx) {
                 setCaptionText(segments[idx].text);
