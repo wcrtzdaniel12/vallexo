@@ -2312,22 +2312,34 @@
 
     // Integrated replay player controls
     const memoryVideoEl = document.getElementById('memory-video');
-    document.getElementById('replay-inline').addEventListener('click', function() {
-      if (memoryVideoEl && memoryVideoEl.src) {
-        memoryVideoEl.currentTime = 0;
-        memoryVideoEl.play();
-      }
-    });
-    document.getElementById('download-memory').addEventListener('click', function() {
-      if (experienceRecording && experienceRecording.url) {
-        const a = document.createElement('a');
-        a.href = experienceRecording.url;
-        a.download = 'vallexo-memory.webm';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-    });
+    const replayBtn = document.getElementById('replay-inline');
+    if (replayBtn) {
+      replayBtn.addEventListener('click', function() {
+        if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
+          memoryVideoEl.style.display = 'block';
+          memoryVideoEl.currentTime = 0;
+          memoryVideoEl.play();
+        } else if (experienceRecording && experienceRecording.url) {
+          memoryVideoEl.src = experienceRecording.url;
+          memoryVideoEl.style.display = 'block';
+          memoryVideoEl.play();
+        }
+      });
+    }
+    const downloadBtn = document.getElementById('download-memory');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', function() {
+        const url = (experienceRecording && experienceRecording.url) ? experienceRecording.url : (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
+        if (url) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'vallexo-memory.webm';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+      });
+    }
     
     // Initialize speech synthesis on page load
     window.addEventListener('load', function() {
@@ -3418,6 +3430,11 @@
       img.onload = () => {
         drawRecordingFrame();
         recorder.start(100); // collect data every 100ms
+        // Show integrated video container as soon as recording starts (placeholder black frame)
+        try {
+          const vid = document.getElementById('memory-video');
+          if (vid) vid.style.display = 'block';
+        } catch(_) {}
       };
 
       // Stop when voiceover ends
@@ -3523,12 +3540,14 @@
 
     function replayRecordedVideo() {
       whenRecordingReady(() => {
-        // Hide outro to reveal the video
+        // Hide outro to reveal the integrated player
         try { hideOutroScreen(); } catch (_) {}
-        const vid = experienceRecording.previewVideo;
-        vid.style.display = 'block';
-        vid.currentTime = 0;
-        vid.play();
+        const vid = document.getElementById('memory-video');
+        if (vid) {
+          vid.style.display = 'block';
+          vid.currentTime = 0;
+          vid.play();
+        }
       });
     }
 
