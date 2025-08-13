@@ -3502,7 +3502,7 @@
         vid.style.position = 'fixed';
         vid.style.right = '12px';
         vid.style.bottom = '12px';
-        vid.style.zIndex = '12';
+        vid.style.zIndex = '10001';
         vid.style.width = width + 'px';
         vid.style.height = height + 'px';
         vid.style.display = 'none';
@@ -3525,9 +3525,12 @@
 
     function replayRecordedVideo() {
       whenRecordingReady(() => {
-        experienceRecording.previewVideo.style.display = 'block';
-        experienceRecording.previewVideo.currentTime = 0;
-        experienceRecording.previewVideo.play();
+        // Hide outro to reveal the video
+        try { hideOutroScreen(); } catch (_) {}
+        const vid = experienceRecording.previewVideo;
+        vid.style.display = 'block';
+        vid.currentTime = 0;
+        vid.play();
       });
     }
 
