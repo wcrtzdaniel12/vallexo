@@ -3119,34 +3119,78 @@
           text: (seg.text || '').trim()
         })).filter(seg => seg.text.length > 0);
 
-        // Merge segments that have short gaps between them (less than 0.3 seconds)
-        const segments = [];
-        let currentSegment = null;
-        
+        // Build display segments with conservative merging and intelligent splitting
+        // 1) Normalize order and times
+        rawSegments.sort((a, b) => a.start - b.start);
+        for (const s of rawSegments) {
+          if (!Number.isFinite(s.start)) s.start = 0;
+          if (!Number.isFinite(s.end)) s.end = s.start + 0.1;
+          if (s.end < s.start) s.end = s.start + 0.1;
+        }
+
+        // 2) Merge only micro-segments: if either duration < 250ms and gap < 200ms
+        const microMerged = [];
+        let cur = null;
         for (let i = 0; i < rawSegments.length; i++) {
           const seg = rawSegments[i];
-          
-          if (!currentSegment) {
-            // Start new segment
-            currentSegment = { ...seg };
+          const dur = Math.max(0, seg.end - seg.start);
+          if (!cur) {
+            cur = { ...seg };
+            continue;
+          }
+          const gap = seg.start - cur.end;
+          const curDur = Math.max(0, cur.end - cur.start);
+          const shouldMerge = (gap >= 0 && gap < 0.2) && (dur < 0.25 || curDur < 0.25);
+          if (shouldMerge) {
+            cur.text = (cur.text + ' ' + seg.text).trim();
+            cur.end = Math.max(cur.end, seg.end);
           } else {
-            const gap = seg.start - currentSegment.end;
-            
-            // If gap is less than 300ms, merge with current segment
-            if (gap < 0.3) {
-              currentSegment.text += ' ' + seg.text;
-              currentSegment.end = seg.end;
-            } else {
-              // Gap is significant, finalize current segment and start new one
-              segments.push(currentSegment);
-              currentSegment = { ...seg };
-            }
+            microMerged.push(cur);
+            cur = { ...seg };
           }
         }
-        
-        // Don't forget the last segment
-        if (currentSegment) {
-          segments.push(currentSegment);
+        if (cur) microMerged.push(cur);
+
+        // 3) Split too-long segments by punctuation into subsegments with proportional timing
+        function splitLongSegment(seg) {
+          const maxChars = 140;
+          const maxDur = 4.5; // seconds
+          const dur = Math.max(0.08, seg.end - seg.start);
+          const t = (seg.text || '').trim();
+          if (!t) return [seg];
+          const needsSplit = t.length > maxChars || dur > maxDur || /[.!?].+/.test(t.replace(/^[^.!?]*[.!?]\s*/, ''));
+          if (!needsSplit) return [seg];
+          // Split on sentence punctuation while keeping delimiters
+          const parts = t.split(/(?<=[.!?])\s+/).filter(Boolean);
+          if (parts.length <= 1) return [seg];
+          const lengths = parts.map(p => Math.max(1, p.length));
+          const total = lengths.reduce((a,b)=>a+b,0);
+          let acc = seg.start;
+          const out = [];
+          for (let i = 0; i < parts.length; i++) {
+            const share = lengths[i] / total;
+            const subDur = Math.max(0.12, dur * share);
+            const sub = {
+              start: acc,
+              end: Math.min(seg.end, acc + subDur),
+              text: parts[i].trim()
+            };
+            out.push(sub);
+            acc = sub.end;
+          }
+          // Ensure last end aligns exactly
+          if (out.length) out[out.length - 1].end = seg.end;
+          return out;
+        }
+
+        const segments = [];
+        for (const s of microMerged) {
+          const subs = splitLongSegment(s);
+          for (const sub of subs) {
+            if ((sub.text || '').length > 0 && (sub.end - sub.start) >= 0.08) {
+              segments.push(sub);
+            }
+          }
         }
 
         console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
@@ -3180,8 +3224,8 @@
               document.body.appendChild(audioEl);
             }
           } catch (_) {}
-          const track = audioEl.addTextTrack('metadata', 'whisper-segments', 'en');
-          track.mode = 'hidden';
+          const track = audioEl.addTextTrack('captions', 'whisper-segments', 'en');
+          track.mode = 'showing';
           // Populate cues
           for (let i = 0; i < segments.length; i++) {
             const s = Math.max(0, segments[i].start);
