@@ -2901,7 +2901,8 @@
       totalWords: 0,
       currentIdx: -1,
       lastChangeSec: -Infinity,
-      fixedSecondsPerLine: null
+      fixedSecondsPerLine: null,
+      textTrack: null
     };
     let audioTimeHandler = null;
     let estimateTimer = null;
@@ -2944,6 +2945,21 @@
       }
     }
 
+    // Directly set caption text (for TextTrack cue-based sync)
+    function setCaptionText(text) {
+      const caption = document.getElementById('reveal-caption');
+      if (!caption) return;
+      const el = document.createElement('div');
+      el.className = 'reveal-line';
+      el.textContent = text || '';
+      caption.innerHTML = '';
+      caption.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      if (revealSync.audioEl && Number.isFinite(revealSync.audioEl.currentTime)) {
+        revealSync.lastChangeSec = revealSync.audioEl.currentTime;
+      }
+    }
+
     function setCaptionByWords(wordsSpoken) {
       if (revealSync.totalWords <= 0) return;
       let i = 0;
@@ -2977,6 +2993,19 @@
         clearInterval(revealSync.preciseTimer);
         revealSync.preciseTimer = null;
       }
+      // Remove TextTrack cues and listeners
+      try {
+        if (revealSync.textTrack) {
+          revealSync.textTrack.oncuechange = null;
+          if (revealSync.textTrack.cues) {
+            const cues = Array.from(revealSync.textTrack.cues);
+            cues.forEach(cue => {
+              try { revealSync.textTrack.removeCue(cue); } catch (_) {}
+            });
+          }
+        }
+      } catch (_) {}
+      revealSync.textTrack = null;
     }
 
     function startKenBurnsReveal(memoryText, audioEl, utterance, boundaryTimes) {
@@ -3121,22 +3150,6 @@
         }
 
         console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
-        
-        // Log pause analysis for debugging sync issues
-        console.log('📊 Pause Analysis:');
-        for (let i = 0; i < segments.length; i++) {
-          const seg = segments[i];
-          const prevSeg = i > 0 ? segments[i - 1] : null;
-          const nextSeg = i < segments.length - 1 ? segments[i + 1] : null;
-          
-          const pauseBefore = prevSeg ? (seg.start - prevSeg.end).toFixed(3) : '0.000';
-          const pauseAfter = nextSeg ? (nextSeg.start - seg.end).toFixed(3) : '0.000';
-          const duration = (seg.end - seg.start).toFixed(3);
-          
-          console.log(`  Segment ${i}: "${seg.text.trim().substring(0, 40)}${seg.text.length > 40 ? '...' : ''}"`);
-          console.log(`    Duration: ${duration}s | Pause before: ${pauseBefore}s | Pause after: ${pauseAfter}s`);
-          console.log(`    Timing: ${seg.start.toFixed(3)}s → ${seg.end.toFixed(3)}s`);
-        }
 
         if (!segments.length) {
           console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
@@ -3146,127 +3159,83 @@
 
         // Build reveal state from Whisper segments
         revealSync.lines = segments.map(seg => seg.text);
-        revealSync.boundaryTimes = segments.map(seg => seg.start).concat([segments[segments.length - 1].end]);
         revealSync.currentIdx = -1;
         revealSync.audioEl = audioEl || null;
 
         if (!revealSync.lines.length) return;
-        
-        // Start with no caption, but check if first segment should appear immediately
-        revealSync.currentIdx = -1;
-        
-        // If the first segment starts very early (within first 100ms), show it immediately
-        if (segments.length > 0 && segments[0].start <= 0.1) {
-          console.log(`🎵 First segment starts at ${segments[0].start.toFixed(3)}s - showing immediately`);
-          setCaptionIndex(0);
-        }
 
         // Duration for Ken Burns animation
         const totalDuration = segments.length > 0 ? segments[segments.length - 1].end : 10;
         const durSec = Math.max(8, Math.min(240, totalDuration));
         bg.style.animationDuration = Math.floor(durSec) + 's';
 
-        // Add timing compensation for TTS model characteristics (tts-1 with onyx voice at speed 1.0)
-        const AUDIO_OFFSET = -0.05; // Reduced negative offset - was too aggressive
-        const ONYX_COMPENSATION = -0.08; // Reduced compensation to prevent over-early timing
-
-        // Attach time-based sync using Whisper timing with audio offset compensation
-        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
-          
-          audioTimeHandler = () => {
-            if (!audioEl || audioEl.paused) return;
-            const currentTime = audioEl.currentTime + AUDIO_OFFSET + ONYX_COMPENSATION;
-            
-            // Find which segment we should be showing based on adjusted current time
-            let segmentIdx = -1; // Start with no segment
-            
-            // Increase transition lead slightly to account for 50ms update frequency
-            const TRANSITION_LEAD = 0.08; // Switch 80ms before next segment to prevent delays
-            
-            for (let i = 0; i < segments.length; i++) {
-              const segmentStart = segments[i].start;
-              const nextSegmentStart = (i < segments.length - 1) ? segments[i + 1].start : segments[i].end;
-              
-              // Show segment if we're in its time window, but transition earlier to next segment
-              if (currentTime >= segmentStart && currentTime < (nextSegmentStart - TRANSITION_LEAD)) {
-                segmentIdx = i;
-                break;
-              }
+        // Prefer browser-native TextTrack cues for precise, subtitle-grade sync
+        const CueClass = (window.VTTCue || window.TextTrackCue || window.WebKitTextTrackCue);
+        const canUseTextTracks = audioEl && typeof audioEl.addTextTrack === 'function' && CueClass;
+        if (canUseTextTracks) {
+          try {
+            // Ensure media element is attached to DOM for reliable TextTrack events
+            if (!audioEl.isConnected) {
+              audioEl.style.display = 'none';
+              document.body.appendChild(audioEl);
             }
-            
-            // If we didn't find a segment due to the transition lead, check if we should show the next one
-            if (segmentIdx === -1) {
-              for (let i = 0; i < segments.length; i++) {
-                const segmentStart = segments[i].start;
-                if (currentTime >= (segmentStart - TRANSITION_LEAD) && (i === segments.length - 1 || currentTime < segments[i + 1].start)) {
-                  segmentIdx = i;
-                  break;
-                }
-              }
-            }
-            
-            // If we haven't reached the first segment yet but are very close, show the first segment
-            if (segmentIdx === -1 && currentTime < segments[0].start) {
-              // If we're within 200ms of the first segment, show it
-              if (segments[0].start - currentTime <= 0.2) {
-                segmentIdx = 0;
+          } catch (_) {}
+          const track = audioEl.addTextTrack('metadata', 'whisper-segments', 'en');
+          track.mode = 'hidden';
+          // Populate cues
+          for (let i = 0; i < segments.length; i++) {
+            const s = Math.max(0, segments[i].start);
+            const e = Math.max(s + 0.02, segments[i].end); // ensure non-zero duration
+            const cue = new CueClass(s, e, segments[i].text);
+            try { track.addCue(cue); } catch (_) {}
+          }
+          revealSync.textTrack = track;
+          // Immediate caption for current time
+          try {
+            const t = audioEl.currentTime;
+            const cur = segments.find(seg => t >= seg.start && t < seg.end);
+            if (cur) setCaptionText(cur.text);
+          } catch (_) {}
+          // React to cue changes
+          track.oncuechange = () => {
+            try {
+              if (track.activeCues && track.activeCues.length > 0) {
+                const cue = track.activeCues[0];
+                setCaptionText(cue.text || '');
               } else {
-                return; // Don't show any caption yet
+                // Between cues: clear to avoid showing stale line
+                setCaptionIndex(-1);
               }
-            }
-            
-            // If we're past all segments, show the last one
-            if (segmentIdx === -1 && currentTime >= segments[segments.length - 1].start) {
-              segmentIdx = segments.length - 1;
-            }
-            
-            // Only update if we're in a different segment to avoid flickering
-            if (segmentIdx !== revealSync.currentIdx) {
-              const segmentText = segmentIdx >= 0 ? segments[segmentIdx]?.text?.trim() || '' : 'none';
-              const expectedStart = segmentIdx >= 0 ? segments[segmentIdx]?.start?.toFixed(3) : 'n/a';
-              const timingDiff = segmentIdx >= 0 ? (currentTime - segments[segmentIdx].start).toFixed(3) : 'n/a';
-              const timingStatus = segmentIdx >= 0 ? 
-                (Math.abs(currentTime - segments[segmentIdx].start) < 0.05 ? '✅ Perfect' :
-                 currentTime > segments[segmentIdx].start ? `⚠️ Late by ${timingDiff}s` :
-                 `⚡ Early by ${Math.abs(parseFloat(timingDiff)).toFixed(3)}s`) : '';
-              
-              console.log(`🎵 Segment change: ${revealSync.currentIdx} → ${segmentIdx} at ${currentTime.toFixed(3)}s (raw: ${audioEl.currentTime.toFixed(3)}s)`);
-              console.log(`   Text: "${segmentText.substring(0, 50)}${segmentText.length > 50 ? '...' : ''}"`);
-              console.log(`   Expected: ${expectedStart}s | Actual: ${currentTime.toFixed(3)}s | ${timingStatus}`);
-              
-              // Log pause context for this transition
-              if (segmentIdx >= 0 && segmentIdx < segments.length) {
-                const prevSeg = segmentIdx > 0 ? segments[segmentIdx - 1] : null;
-                const pauseBeforeThis = prevSeg ? (segments[segmentIdx].start - prevSeg.end).toFixed(3) : '0.000';
-                console.log(`   Pause before this segment: ${pauseBeforeThis}s`);
-              }
-              
-              setCaptionIndex(segmentIdx);
-            }
+            } catch (_) {}
           };
-          
-          // Use a higher frequency update for more precise timing
-          audioEl.addEventListener('timeupdate', audioTimeHandler);
-          
-          // Also add a secondary timer for even more precise updates
-          const preciseTimer = setInterval(() => {
-            if (audioEl && !audioEl.paused && audioTimeHandler) {
-              audioTimeHandler();
-            }
-          }, 30); // Update every 30ms for more responsive transitions
-          
-          // Store the timer to clean it up later
-          revealSync.preciseTimer = preciseTimer;
         } else {
-          // Fallback timing when no audio element is available
-          const avgSegmentDuration = totalDuration / segments.length;
-          let segmentIdx = 0;
-          estimateTimer = setInterval(() => {
-            if (segmentIdx < segments.length) {
-              setCaptionIndex(segmentIdx);
-              segmentIdx++;
-            }
-          }, Math.max(1000, avgSegmentDuration * 1000));
+          // Fallback: lightweight timer-based sync by time window
+          if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+            audioTimeHandler = () => {
+              if (!audioEl || audioEl.paused) return;
+              const t = audioEl.currentTime;
+              let idx = -1;
+              for (let i = 0; i < segments.length; i++) {
+                if (t >= segments[i].start && t < segments[i].end) { idx = i; break; }
+              }
+              if (idx !== -1 && idx !== revealSync.currentIdx) {
+                setCaptionText(segments[idx].text);
+                revealSync.currentIdx = idx;
+              }
+            };
+            audioEl.addEventListener('timeupdate', audioTimeHandler);
+            const preciseTimer = setInterval(() => {
+              if (audioEl && !audioEl.paused && audioTimeHandler) audioTimeHandler();
+            }, 40);
+            revealSync.preciseTimer = preciseTimer;
+          } else {
+            // No audio duration: fall back to equal segment pacing
+            const avg = totalDuration / segments.length;
+            let i = 0;
+            estimateTimer = setInterval(() => {
+              if (i < segments.length) { setCaptionText(segments[i].text); i++; }
+            }, Math.max(200, avg * 1000));
+          }
         }
 
         console.log(`🎬 Ken Burns reveal started with ${segments.length} merged Whisper segments:`);
@@ -3275,10 +3244,7 @@
           const nextGap = i < segments.length - 1 ? segments[i + 1].start - seg.end : 0;
           console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${nextGap.toFixed(2)}s gap)`);
         });
-        const totalOffset = AUDIO_OFFSET + ONYX_COMPENSATION;
-        console.log(`🎵 Audio offset: ${totalOffset >= 0 ? '+' : ''}${totalOffset.toFixed(3)}s for tts-1/onyx sync`);
-        console.log(`🎵 Transition lead: 80ms early switching to prevent delays`);
-        console.log(`🎵 First segment timing: ${segments[0]?.start.toFixed(3)}s (will ${segments[0]?.start <= 0.1 ? 'show immediately' : 'wait for audio timing'})`);
+        console.log('🎵 Using TextTrack cue synchronization when available for subtitle-grade timing');
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
         // Fallback to regular reveal
