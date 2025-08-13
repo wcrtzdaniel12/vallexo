@@ -3355,21 +3355,20 @@
       const dest = mixCtx.createMediaStreamDestination();
       try {
         const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
-        // Route to recorder and to speakers via context
+        // Route only to recorder. Let element play to speakers normally.
         voiceNode.connect(dest);
-        voiceNode.connect(mixCtx.destination);
-        // Avoid double playback through element
-        voiceAudioEl.muted = true;
       } catch (_) {}
       // Try to include background playlist if available
       try {
         if (usingAudioFiles && audioElement) {
           const bgNode = mixCtx.createMediaElementSource(audioElement);
+          // Route only to recorder. Let element play to speakers normally.
           bgNode.connect(dest);
-          bgNode.connect(mixCtx.destination);
-          audioElement.muted = true;
         }
       } catch (_) {}
+
+      // Ensure context is running
+      try { mixCtx.resume && mixCtx.resume(); } catch (_) {}
 
       // Compose stream (video from canvas + mixed audio)
       const stream = canvas.captureStream(30);
@@ -3385,8 +3384,6 @@
         experienceRecording.url = url;
         experienceRecording.previewVideo = createOrGetPreviewVideo(url, width, height);
         cleanupCanvas();
-        try { voiceAudioEl.muted = false; } catch (_) {}
-        try { if (audioElement) audioElement.muted = false; } catch (_) {}
         try { mixCtx.close(); } catch (_) {}
       };
 
