@@ -2096,8 +2096,9 @@
             if (Number.isFinite(audio.duration) && audio.duration > 0) {
               const sentenceCount = splitMemoryIntoLines(memoryText).length;
               if (Array.isArray(data.segments) && data.segments.length) {
-                console.log('Using Whisper segments for caption timing (text-aligned)');
-                boundaryPromise = Promise.resolve(boundariesFromSegmentsAndText(data.segments, memoryText, audio.duration))
+                console.log('Using Whisper segments for caption timing (sentence-aligned)');
+                boundaryPromise = Promise.resolve(computeSentenceBoundariesFromSegments(data.segments, memoryText, audio.duration))
+                  .then(bt => (Array.isArray(bt) && bt.length ? bt : boundariesFromSegmentsAndText(data.segments, memoryText, audio.duration)))
                   .then(bt => (Array.isArray(bt) && bt.length ? bt : boundariesFromWhisperSegments(data.segments, sentenceCount, audio.duration)));
               } else {
                 console.log('No Whisper segments; using offline silence analysis with calibrated reading-time snapping');
@@ -2701,6 +2702,103 @@
       }
     }
 
+    // Split text into sentences preserving terminal punctuation
+    function splitTextIntoSentences(text) {
+      if (!text) return [];
+      const sentences = (text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [])
+        .map(s => s.trim())
+        .filter(Boolean);
+      return sentences;
+    }
+
+    // Compute per-sentence boundaries using Whisper segments and the full text's sentence list
+    function computeSentenceBoundariesFromSegments(segments, fullText, totalDurationSec) {
+      try {
+        const sentences = splitTextIntoSentences(fullText);
+        if (!Array.isArray(segments) || !segments.length || !sentences.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) {
+          return [];
+        }
+
+        const normalize = (s) => (s || '')
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const normSentences = sentences.map(normalize);
+        const segs = segments.map(s => ({
+          start: typeof s.start === 'number' ? s.start : 0,
+          end: typeof s.end === 'number' ? s.end : 0,
+          text: normalize(s.text)
+        }));
+
+        const boundaries = [0];
+        let sIdx = 0;
+        let accum = '';
+        let lastEnd = 0;
+
+        const MIN_SENT_DUR = 0.9; // slightly under 1s per sentence allowed
+        const MAX_CLAMP = Math.max(6, totalDurationSec || 0);
+
+        for (let i = 0; i < segs.length && sIdx < normSentences.length; i++) {
+          const seg = segs[i];
+          accum += (accum ? ' ' : '') + seg.text;
+          lastEnd = Math.max(lastEnd, seg.end);
+          const target = normSentences[sIdx];
+          if (!target || !accum) continue;
+          // Advance when accumulated length reaches >= 95% of sentence length
+          if (accum.length >= Math.max(1, Math.floor(target.length * 0.95))) {
+            const prev = boundaries[boundaries.length - 1];
+            const proposed = Math.max(prev + MIN_SENT_DUR, Math.min(MAX_CLAMP, lastEnd));
+            boundaries.push(proposed);
+            sIdx++;
+            accum = '';
+          }
+        }
+
+        // Distribute any remaining sentences evenly across remaining time
+        if (sIdx < normSentences.length) {
+          const remaining = normSentences.length - sIdx;
+          const last = boundaries[boundaries.length - 1];
+          const restDur = Math.max(0, totalDurationSec - last);
+          const per = remaining > 0 ? Math.max(MIN_SENT_DUR, restDur / remaining) : 0;
+          for (; sIdx < normSentences.length; sIdx++) {
+            boundaries.push(Math.min(MAX_CLAMP, boundaries[boundaries.length - 1] + per));
+          }
+        }
+
+        // Ensure last boundary hits totalDurationSec
+        boundaries[boundaries.length - 1] = totalDurationSec;
+        // Monotonic
+        for (let i = 1; i < boundaries.length; i++) {
+          if (boundaries[i] < boundaries[i - 1]) boundaries[i] = boundaries[i - 1];
+        }
+
+        // Ensure count equals sentences + 1
+        const desiredLen = sentences.length + 1;
+        if (boundaries.length !== desiredLen) {
+          const out = [0];
+          const last = boundaries[boundaries.length - 1];
+          for (let i = 1; i < desiredLen - 1; i++) {
+            const target = (i / (desiredLen - 1)) * last;
+            // find nearest boundary
+            let nearest = boundaries[0];
+            let best = Math.abs(nearest - target);
+            for (let j = 1; j < boundaries.length; j++) {
+              const d = Math.abs(boundaries[j] - target);
+              if (d < best) { best = d; nearest = boundaries[j]; }
+            }
+            out.push(nearest);
+          }
+          out.push(last);
+          return out;
+        }
+        return boundaries;
+      } catch (e) {
+        console.warn('computeSentenceBoundariesFromSegments failed:', e);
+        return [];
+      }
+    }
+
     // Snap estimated boundaries to nearest detected silences for reliability
     function snapBoundariesToSilences(estimatedBoundaries, rawSilences, totalDurationSec) {
       try {
@@ -3227,6 +3325,7 @@
           const LEAD = 0.08;      // show next line ~80ms before audio starts
           const END_TRIM = 0.06;  // end current line ~60ms before measured end
           const NEXT_GUARD = 0.02;// keep tiny gap before next start
+          const sentenceLines = splitTextIntoSentences(memoryText);
           for (let i = 0; i < segments.length; i++) {
             const sRaw = Math.max(0, segments[i].start);
             const eRaw = Math.max(sRaw + 0.02, segments[i].end);
@@ -3237,7 +3336,8 @@
               eAdj = Math.min(eAdj, nextStart - NEXT_GUARD);
             }
             if (eAdj <= sAdj) eAdj = sAdj + 0.02;
-            const cue = new CueClass(sAdj, eAdj, segments[i].text);
+            const text = sentenceLines[i] || segments[i].text; // enforce one sentence per line
+            const cue = new CueClass(sAdj, eAdj, text);
             try { track.addCue(cue); } catch (_) {}
           }
           revealSync.textTrack = track;
