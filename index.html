@@ -1147,20 +1147,20 @@
     <div id="social-proof-container"></div>
   </section>
 
-  <!-- Dream Journal Memory Section (hidden by default) -->
+  <!-- Memory Replay Section (replaces text with integrated video player) -->
   <section id="memory-section" class="w-full flex justify-center opacity-0 pointer-events-none transition-opacity duration-1000" style="min-height: 300px;">
-    <div class="max-w-2xl w-full bg-black bg-opacity-90 rounded-3xl shadow-2xl p-10 mt-10 mb-10 flex flex-col items-center border border-white/20" style="font-family: 'Playfair Display', serif;">
-      <h2 class="text-3xl md:text-4xl font-bold mb-8 text-white text-center tracking-wide" style="letter-spacing:0.04em;">Here's what we remembered:</h2>
-      <div class="flex flex-col md:flex-row items-center w-full gap-4">
-        <p id="memory-text" class="text-xl md:text-2xl text-white text-center leading-relaxed md:leading-loose whitespace-pre-line flex-1" style="line-height:2.1; letter-spacing:0.01em;"></p>
-        <div class="flex flex-col gap-2 mt-4 md:mt-0 md:ml-4">
-          <button id="replay-narration" class="px-5 py-2 bg-cyan-500 bg-opacity-20 border border-cyan-400 hover:bg-opacity-40 text-cyan-300 rounded-lg transition-colors text-sm font-mono backdrop-filter: blur(2px);">
-            📻 Replay Narration
-          </button>
-          <button id="copy-memory" class="px-5 py-2 bg-white bg-opacity-10 border border-white/30 hover:bg-opacity-30 text-white rounded-lg transition-colors text-sm font-serif" style="backdrop-filter: blur(2px);">Copy</button>
+    <div class="max-w-4xl w-full bg-black bg-opacity-90 rounded-3xl shadow-2xl p-6 md:p-10 mt-10 mb-10 flex flex-col items-center border border-cyan-400/30" style="font-family: 'Playfair Display', serif;">
+      <h2 class="text-3xl md:text-4xl font-bold mb-6 md:mb-8 text-cyan-200 text-center tracking-wide" style="letter-spacing:0.06em;">Your Memory Replay</h2>
+      <div class="w-full flex flex-col items-center gap-4">
+        <!-- Integrated video player container -->
+        <div class="w-full aspect-video rounded-xl overflow-hidden border border-cyan-400/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] bg-black/60" style="backdrop-filter: blur(6px);">
+          <video id="memory-video" class="w-full h-full" controls playsinline></video>
+        </div>
+        <div class="flex gap-3">
+          <button id="download-memory" class="px-5 py-2 bg-cyan-500 bg-opacity-20 border border-cyan-400 hover:bg-opacity-40 text-cyan-300 rounded-lg transition-colors text-sm font-mono">Download</button>
+          <button id="replay-inline" class="px-5 py-2 bg-white/10 border border-white/30 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-mono">Replay</button>
+        </div>
       </div>
-      </div>
-      
     </div>
   </section>
   <style>
@@ -2310,18 +2310,22 @@
       }
     }
 
-    // Copy button logic
-    document.getElementById('copy-memory').addEventListener('click', function() {
-      const text = document.getElementById('memory-text').textContent;
-      navigator.clipboard.writeText(text);
+    // Integrated replay player controls
+    const memoryVideoEl = document.getElementById('memory-video');
+    document.getElementById('replay-inline').addEventListener('click', function() {
+      if (memoryVideoEl && memoryVideoEl.src) {
+        memoryVideoEl.currentTime = 0;
+        memoryVideoEl.play();
+      }
     });
-    
-    // Replay narration button logic
-    document.getElementById('replay-narration').addEventListener('click', function() {
-      const memoryText = document.getElementById('memory-text').textContent;
-      if (memoryText) {
-        // Replay the TTS narration
-        narrateMemory(memoryText);
+    document.getElementById('download-memory').addEventListener('click', function() {
+      if (experienceRecording && experienceRecording.url) {
+        const a = document.createElement('a');
+        a.href = experienceRecording.url;
+        a.download = 'vallexo-memory.webm';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
       }
     });
     
@@ -3262,9 +3266,9 @@
           try { startExperienceRecording(audioEl, durSec); } catch (_) {}
         } else {
           // Fallback: lightweight timer-based sync by time window
-          if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
-            audioTimeHandler = () => {
-              if (!audioEl || audioEl.paused) return;
+        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+          audioTimeHandler = () => {
+            if (!audioEl || audioEl.paused) return;
               const t = audioEl.currentTime;
               let idx = -1;
               for (let i = 0; i < segments.length; i++) {
@@ -3392,6 +3396,11 @@
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
         experienceRecording.previewVideo = createOrGetPreviewVideo(url, width, height);
+        try {
+          // Feed integrated player
+          const integrated = document.getElementById('memory-video');
+          if (integrated) integrated.src = url;
+        } catch (_) {}
         cleanupCanvas();
         try { mixCtx.close(); } catch (_) {}
       };
@@ -3470,7 +3479,7 @@
         if (metrics.width > maxWidth && line) {
           lines.push(line);
           line = words[i];
-        } else {
+              } else {
           line = test;
         }
       }
@@ -3581,7 +3590,7 @@
             if (experienceRecording && experienceRecording.url) {
               shareRecordedVideo();
             } else {
-              shareMemory();
+            shareMemory();
             }
           };
           shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
