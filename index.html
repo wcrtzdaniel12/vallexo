@@ -3526,9 +3526,10 @@
 
     // UI helpers for replay and share recorded video
     function whenRecordingReady(cb) {
-      if (experienceRecording.url && experienceRecording.previewVideo) return cb();
+      // Ready when a Blob URL is available (integrated player may or may not be set yet)
+      if (experienceRecording && experienceRecording.url) return cb();
       const waitId = setInterval(() => {
-        if (experienceRecording.url && experienceRecording.previewVideo) {
+        if (experienceRecording && experienceRecording.url) {
           clearInterval(waitId);
           cb();
         }
