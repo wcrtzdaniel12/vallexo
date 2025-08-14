@@ -2335,13 +2335,16 @@
       
       // Initialize integrated video player button handlers
       console.log('🔧 Setting up integrated player button handlers...');
-      const memoryVideoEl = document.getElementById('memory-video');
-      const replayBtn = document.getElementById('replay-inline');
-      const downloadBtn = document.getElementById('download-memory');
       
-      if (replayBtn) {
-        replayBtn.addEventListener('click', function() {
+      // Use event delegation to handle buttons that might be dynamically shown
+      document.addEventListener('click', function(event) {
+        const target = event.target;
+        
+        // Handle inline replay button
+        if (target.id === 'replay-inline' || target.closest('#replay-inline')) {
           console.log('🔄 Inline replay button clicked');
+          const memoryVideoEl = document.getElementById('memory-video');
+          
           if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
             console.log('🎥 Video has src, replaying from start');
             memoryVideoEl.currentTime = 0;
@@ -2353,19 +2356,17 @@
           } else {
             console.log('❌ No video source available for replay');
           }
-        });
-        console.log('✅ Replay button handler attached');
-      } else {
-        console.log('❌ Replay button not found');
-      }
-      
-      if (downloadBtn) {
-        downloadBtn.addEventListener('click', function() {
+        }
+        
+        // Handle inline download button
+        if (target.id === 'download-memory' || target.closest('#download-memory')) {
           console.log('⬇️ Inline download button clicked');
+          const memoryVideoEl = document.getElementById('memory-video');
           const url = (window.experienceRecording && window.experienceRecording.url) ? 
             window.experienceRecording.url : 
             (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
           console.log('📁 Download URL:', url);
+          
           if (url) {
             const a = document.createElement('a');
             a.href = url;
@@ -2377,11 +2378,50 @@
           } else {
             console.log('❌ No URL available for download');
           }
-        });
-        console.log('✅ Download button handler attached');
-      } else {
-        console.log('❌ Download button not found');
-      }
+        }
+      });
+      
+      console.log('✅ Event delegation handlers attached for integrated player buttons');
+      
+      // Also try to attach direct handlers as backup
+      setTimeout(() => {
+        const replayBtn = document.getElementById('replay-inline');
+        const downloadBtn = document.getElementById('download-memory');
+        
+        if (replayBtn) {
+          console.log('🔧 Direct replay button handler attached as backup');
+          replayBtn.onclick = function() {
+            console.log('🔄 Direct replay button clicked');
+            const memoryVideoEl = document.getElementById('memory-video');
+            if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
+              memoryVideoEl.currentTime = 0;
+              memoryVideoEl.play();
+            } else if (window.experienceRecording && window.experienceRecording.url) {
+              memoryVideoEl.src = window.experienceRecording.url;
+              memoryVideoEl.play();
+            }
+          };
+        }
+        
+        if (downloadBtn) {
+          console.log('🔧 Direct download button handler attached as backup');
+          downloadBtn.onclick = function() {
+            console.log('⬇️ Direct download button clicked');
+            const memoryVideoEl = document.getElementById('memory-video');
+            const url = (window.experienceRecording && window.experienceRecording.url) ? 
+              window.experienceRecording.url : 
+              (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
+            if (url) {
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'vallexo-memory.webm';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }
+          };
+        }
+      }, 1000);
     });
     
     // Keyboard shortcuts
