@@ -2084,6 +2084,7 @@
           });
           
           audio.onplay = async () => {
+            console.log('🎵 Live audio playback started successfully');
             console.log('OpenAI TTS narration started');
             updateDebugInfo();
             // Start synchronized reveal
@@ -2130,15 +2131,6 @@
             }, 1000); // Small delay for smooth transition
           };
           
-          // Add user-friendly message about recording status
-          audio.onplay = () => {
-            console.log('🎵 Live audio playback started successfully');
-          };
-          
-          audio.onerror = (error) => {
-            console.log('🔇 Live audio playback failed, but recording continues:', error);
-          };
-          
           audio.onerror = (error) => {
             console.error('OpenAI TTS audio error:', error);
             removeRadioStaticEffect();
@@ -2153,9 +2145,57 @@
             await audio.play();
           } catch (playError) {
             if (playError.name === 'NotAllowedError') {
-              console.log('🔇 Audio autoplay blocked - this is normal, recording will continue');
-              // Don't show error to user - this is expected behavior
-              // The recording will still work even if live audio is blocked
+              console.log('🔇 Audio autoplay blocked - requesting user interaction');
+              // Show user-friendly message and request interaction
+              const interactionMsg = document.createElement('div');
+              interactionMsg.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                border: 2px solid cyan;
+                color: cyan;
+                padding: 20px;
+                border-radius: 10px;
+                font-family: monospace;
+                text-align: center;
+                z-index: 10000;
+                max-width: 400px;
+              `;
+              interactionMsg.innerHTML = `
+                <div style="margin-bottom: 15px;">🔇 Browser requires interaction</div>
+                <div style="font-size: 14px; margin-bottom: 20px;">Click anywhere to start narration</div>
+                <div style="font-size: 12px; color: #888;">Recording will capture everything</div>
+              `;
+              document.body.appendChild(interactionMsg);
+              
+              // Wait for user interaction then retry
+              const startNarration = async () => {
+                try {
+                  await audio.play();
+                  interactionMsg.remove();
+                  document.removeEventListener('click', startNarration);
+                } catch (retryError) {
+                  console.error('Retry failed:', retryError);
+                  interactionMsg.remove();
+                  document.removeEventListener('click', startNarration);
+                }
+              };
+              
+              document.addEventListener('click', startNarration, { once: true });
+              
+              // Also add a timeout fallback - if user doesn't interact in 10 seconds, 
+              // we'll try to start the narration flow anyway
+              setTimeout(() => {
+                if (interactionMsg.parentNode) {
+                  interactionMsg.remove();
+                  document.removeEventListener('click', startNarration);
+                  console.log('⏰ Timeout reached - attempting to continue narration flow');
+                  // The narration flow should continue even without audio playing
+                }
+              }, 10000);
+              
             } else {
               console.error('Audio playback error:', playError);
               throw playError; // Re-throw other errors
