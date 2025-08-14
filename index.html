@@ -1921,33 +1921,59 @@
       //   '/functions/v1/generateBio'
       // ];
       
-      for (const url of urls) {
-        try {
-          const requestBody = { name, birthYear };
-          console.log('Sending to Supabase function:', requestBody);
-          
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-          });
-          if (!response.ok) {
-            console.warn(`Failed with ${url}: ${response.status}`);
+      let lastError = null;
+      const maxRetries = 2;
+      
+      for (let retry = 0; retry <= maxRetries; retry++) {
+        for (const url of urls) {
+          try {
+            const requestBody = { name, birthYear };
+            console.log(`🔄 Attempt ${retry + 1}/${maxRetries + 1} to generate memory via:`, url);
+            console.log('📝 Request payload:', requestBody);
+            
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody)
+            });
+            
+            console.log('📡 Response status:', response.status, response.statusText);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.warn(`❌ HTTP error with ${url}: ${response.status} - ${errorText}`);
+              lastError = new Error(`HTTP ${response.status}: ${errorText}`);
+              continue;
+            }
+            
+            const data = await response.json();
+            console.log('✅ Response from Supabase function:', data);
+            
+            if (data && data.memory) {
+              console.log('🎉 Memory generated successfully:', data.memory.substring(0, 100) + '...');
+              return data.memory;
+            } else {
+              console.warn('⚠️ No memory in response data:', data);
+              lastError = new Error('No memory returned from API');
+              continue;
+            }
+          } catch (error) {
+            console.warn(`❌ Network/parsing error with ${url}:`, error);
+            lastError = error;
             continue;
           }
-          const data = await response.json();
-          console.log('Response from Supabase function:', data);
-          if (data.memory) {
-            return data.memory;
-          } else {
-            throw new Error('No memory returned');
-          }
-        } catch (error) {
-          console.warn(`Error with ${url}:`, error);
-          continue;
+        }
+        
+        // If we get here, all URLs failed for this retry
+        if (retry < maxRetries) {
+          console.log(`⏳ Retry ${retry + 1} failed, waiting before next attempt...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1))); // Exponential backoff
         }
       }
-      throw new Error('Failed to generate memory. Please try again later.');
+      
+      // If we get here, all retries failed
+      console.error('💥 All memory generation attempts failed after retries. Last error:', lastError);
+      throw new Error(`Failed to generate memory after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`);
     }
 
     // Show memory section with fade-in and scroll - AFTER voiceover is ready
@@ -2654,14 +2680,30 @@
         showLoadingOverlay();
         
         try {
+          console.log('🚀 Starting memory generation for:', fullname, birthYear);
           const memory = await generateMemory(fullname, birthYear);
+          console.log('✅ Memory generation completed successfully');
+          
           // Start voice + UI
           await showMemorySection(memory);
           hideLoadingOverlay();
         } catch (error) {
           hideLoadingOverlay();
-          // Show error in a new modal or overlay
-          alert('Failed to generate memory. Please try again.');
+          console.error('💥 Memory generation failed:', error);
+          
+          // Show more specific error message
+          let errorMessage = 'Failed to generate memory. ';
+          if (error.message.includes('HTTP')) {
+            errorMessage += 'Server error - please try again in a moment.';
+          } else if (error.message.includes('Network')) {
+            errorMessage += 'Network error - please check your connection.';
+          } else if (error.message.includes('No memory returned')) {
+            errorMessage += 'API returned empty response - please try again.';
+          } else {
+            errorMessage += 'Please try again.';
+          }
+          
+          alert(errorMessage);
         }
       }
     });
