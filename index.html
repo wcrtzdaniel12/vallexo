@@ -1392,10 +1392,20 @@
       }
     }
     
-    // Initialize synthesized audio fallback
+    // Initialize synthesized audio fallback (lazy initialization)
     async function initSynthesizedAudio() {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Only create AudioContext after user interaction
+        if (!audioContext || audioContext.state === 'suspended') {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          
+          // Ensure context is resumed after user interaction
+          if (audioContext.state === 'suspended') {
+            console.log('🔇 AudioContext suspended - waiting for user interaction');
+            return false; // Will be resumed later
+          }
+        }
+        
         const masterGain = audioContext.createGain();
         masterGain.connect(audioContext.destination);
         masterGain.gain.value = volume;
@@ -2142,7 +2152,7 @@
           
           // Start playing with proper error handling
           try {
-            await audio.play();
+          await audio.play();
           } catch (playError) {
             if (playError.name === 'NotAllowedError') {
               console.log('🔇 Audio autoplay blocked - requesting user interaction');
@@ -2369,6 +2379,38 @@
       console.log('🔧 Setting up integrated player button handlers...');
       
       console.log('✅ No integrated player buttons - download only via outro screen');
+      
+      // Add global user interaction handler to resume AudioContexts
+      const resumeAudioContexts = () => {
+        console.log('👆 User interaction detected - resuming AudioContexts');
+        
+        // Resume main audio context
+        if (window.audioContext && window.audioContext.state === 'suspended') {
+          window.audioContext.resume().then(() => {
+            console.log('✅ Main AudioContext resumed');
+          }).catch(err => {
+            console.log('❌ Failed to resume main AudioContext:', err);
+          });
+        }
+        
+        // Resume synthesized audio if available
+        if (window.synthesizedAudio && window.synthesizedAudio.drone && !window.synthesizedAudio.started) {
+          try {
+            window.synthesizedAudio.drone.start();
+            window.synthesizedAudio.started = true;
+            console.log('✅ Synthesized audio started');
+          } catch (err) {
+            console.log('❌ Failed to start synthesized audio:', err);
+          }
+        }
+      };
+      
+      // Listen for user interactions to resume audio
+      ['click', 'touchstart', 'keydown'].forEach(eventType => {
+        document.addEventListener(eventType, resumeAudioContexts, { once: true });
+      });
+      
+      console.log('🎵 AudioContext resume handlers attached');
     });
     
     // Keyboard shortcuts
@@ -3381,37 +3423,58 @@
       img.crossOrigin = 'anonymous';
       img.src = bgUrl || 'img/hallway1.png';
 
-      // Build audio mix: voice + bgm (if available)
-      const mixCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const dest = mixCtx.createMediaStreamDestination();
+      // Build audio mix: voice + bgm (if available) - lazy AudioContext creation
+      let mixCtx = null;
+      let dest = null;
+      
+      // Only create AudioContext after user interaction
       try {
-        const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
-        // Route to recorder and to speakers via AudioContext
-        voiceNode.connect(dest);
-        voiceNode.connect(mixCtx.destination);
-      } catch (_) {}
-      // Try to include background playlist if available
-      try {
-        if (usingAudioFiles && audioElement) {
-          const bgNode = mixCtx.createMediaElementSource(audioElement);
-          // Route to recorder and speakers via AudioContext
-          bgNode.connect(dest);
-          bgNode.connect(mixCtx.destination);
+        mixCtx = new (window.AudioContext || window.webkitAudioContext)();
+        dest = mixCtx.createMediaStreamDestination();
+        
+        // Ensure context is resumed
+        if (mixCtx.state === 'suspended') {
+          console.log('🔇 Mix AudioContext suspended - will resume on user interaction');
         }
-      } catch (_) {}
+      } catch (error) {
+        console.log('Failed to create mix AudioContext:', error);
+        // Continue without audio mixing if context creation fails
+      }
+      // Only try to route audio if AudioContext was created successfully
+      if (mixCtx && dest) {
+        try {
+          const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
+          // Route to recorder and to speakers via AudioContext
+          voiceNode.connect(dest);
+          voiceNode.connect(mixCtx.destination);
+        } catch (_) {}
+        
+        // Try to include background playlist if available
+        try {
+          if (usingAudioFiles && audioElement) {
+            const bgNode = mixCtx.createMediaElementSource(audioElement);
+            // Route to recorder and speakers via AudioContext
+            bgNode.connect(dest);
+            bgNode.connect(mixCtx.destination);
+          }
+        } catch (_) {}
 
-      // Ensure context is running
-      try { mixCtx.resume && mixCtx.resume(); } catch (_) {}
+        // Ensure context is running
+        try { mixCtx.resume && mixCtx.resume(); } catch (_) {}
+      }
 
       // Compose stream (video from canvas + mixed audio)
       const stream = canvas.captureStream(30);
-      // Prefer addTrack, but if unsupported, merge via new MediaStream
-      try {
-        dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
-      } catch (_) {
-        const merged = new MediaStream(stream.getVideoTracks().concat(dest.stream.getAudioTracks()));
-        stream.getTracks().forEach(tr => stream.removeTrack(tr));
-        merged.getTracks().forEach(tr => stream.addTrack(tr));
+      
+      // Add audio tracks if available, otherwise just video
+      if (dest && dest.stream) {
+        try {
+          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+        } catch (_) {
+          const merged = new MediaStream(stream.getVideoTracks().concat(dest.stream.getAudioTracks()));
+          stream.getTracks().forEach(tr => stream.removeTrack(tr));
+          merged.getTracks().forEach(tr => stream.addTrack(tr));
+        }
       }
 
       const options = { mimeType: 'video/webm;codecs=vp9,opus' };
@@ -3498,7 +3561,7 @@
       if (aspectImg > aspectCanvas) {
         drawH = height * scale;
         drawW = drawH * aspectImg;
-      } else {
+              } else {
         drawW = width * scale;
         drawH = drawW / aspectImg;
       }
