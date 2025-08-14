@@ -2130,6 +2130,15 @@
             }, 1000); // Small delay for smooth transition
           };
           
+          // Add user-friendly message about recording status
+          audio.onplay = () => {
+            console.log('🎵 Live audio playback started successfully');
+          };
+          
+          audio.onerror = (error) => {
+            console.log('🔇 Live audio playback failed, but recording continues:', error);
+          };
+          
           audio.onerror = (error) => {
             console.error('OpenAI TTS audio error:', error);
             removeRadioStaticEffect();
@@ -2139,8 +2148,19 @@
             stopKenBurnsReveal();
           };
           
-          // Start playing
-          await audio.play();
+          // Start playing with proper error handling
+          try {
+            await audio.play();
+          } catch (playError) {
+            if (playError.name === 'NotAllowedError') {
+              console.log('🔇 Audio autoplay blocked - this is normal, recording will continue');
+              // Don't show error to user - this is expected behavior
+              // The recording will still work even if live audio is blocked
+            } else {
+              console.error('Audio playback error:', playError);
+              throw playError; // Re-throw other errors
+            }
+          }
           
         } else {
           throw new Error('No audio data received from OpenAI TTS');
@@ -3287,6 +3307,10 @@
     };
 
     function startExperienceRecording(voiceAudioEl, totalDurationSec) {
+      // Show user-friendly notification about recording
+      console.log('🎬 Starting experience recording...');
+      console.log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
+      
       // Prepare canvas
       const width = 1280, height = 720;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -3376,6 +3400,32 @@
       img.onload = () => {
         drawRecordingFrame();
         recorder.start(100); // collect data every 100ms
+        
+        // Show brief notification that recording is active
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(0, 255, 255, 0.1);
+          border: 1px solid rgba(0, 255, 255, 0.3);
+          color: cyan;
+          padding: 10px 15px;
+          border-radius: 5px;
+          font-family: monospace;
+          font-size: 12px;
+          z-index: 10000;
+          backdrop-filter: blur(5px);
+        `;
+        notification.textContent = '🎬 Recording Active';
+        document.body.appendChild(notification);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 3000);
       };
 
       // Stop when voiceover ends
