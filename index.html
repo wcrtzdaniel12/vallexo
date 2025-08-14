@@ -1100,9 +1100,7 @@
         <button class="outro-btn" id="share-btn">
           <span class="btn-glitch">Share</span>
         </button>
-        <button class="outro-btn" id="replay-btn">
-          <span class="btn-glitch">Replay</span>
-        </button>
+
       </div>
     </div>
   </div>
@@ -1147,33 +1145,7 @@
     <div id="social-proof-container"></div>
   </section>
 
-  <!-- Memory Replay Section (replaces text with integrated video player) -->
-  <section id="memory-section" class="w-full flex justify-center opacity-0 pointer-events-none transition-opacity duration-1000" style="min-height: 300px;">
-    <div class="max-w-4xl w-full bg-black bg-opacity-90 rounded-3xl shadow-2xl p-6 md:p-10 mt-10 mb-10 flex flex-col items-center border border-cyan-400/30" style="font-family: 'Playfair Display', serif;">
-      <h2 class="text-3xl md:text-4xl font-bold mb-6 md:mb-8 text-cyan-200 text-center tracking-wide" style="letter-spacing:0.06em;">Your Memory Replay</h2>
-      <div class="w-full flex flex-col items-center gap-4">
-        <!-- Integrated video player container -->
-        <div class="w-full aspect-video rounded-xl overflow-hidden border border-cyan-400/40 shadow-[0_0_30px_rgba(0,255,255,0.15)] bg-black/60" style="backdrop-filter: blur(6px);">
-          <video id="memory-video" class="w-full h-full" controls playsinline></video>
-      </div>
-        <div class="flex gap-3">
-          <button id="download-memory" class="px-5 py-2 bg-cyan-500 bg-opacity-20 border border-cyan-400 hover:bg-opacity-40 text-cyan-300 rounded-lg transition-colors text-sm font-mono">Download</button>
-          <button id="replay-inline" class="px-5 py-2 bg-white/10 border border-white/30 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-mono">Replay</button>
-      </div>
-      </div>
-    </div>
-  </section>
-  <style>
-    @keyframes fade-in-memory {
-      from { opacity: 0; transform: translateY(40px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    #memory-section.fade-in {
-      opacity: 1 !important;
-      pointer-events: auto;
-      animation: fade-in-memory 1.2s cubic-bezier(0.4,0,0.2,1);
-    }
-  </style>
+
 
   <!-- Memory Ticker -->
   <div class="ticker">
@@ -2152,7 +2124,7 @@
             restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl); // Clean up
             stopKenBurnsReveal();
-            // Show emotional outro instead of returning to memory section
+            // Recording is complete, user can download via outro screen
             setTimeout(() => {
               showOutroScreen();
             }, 1000); // Small delay for smooth transition
@@ -2212,7 +2184,7 @@
           removeRadioStaticEffect();
           restoreBackgroundMusic(); // Restore background music volume
           stopKenBurnsReveal();
-          // Show emotional outro instead of returning to memory section
+          // Recording is complete, user can download via outro screen
           setTimeout(() => {
             showOutroScreen();
           }, 1000); // Small delay for smooth transition
@@ -2336,92 +2308,7 @@
       // Initialize integrated video player button handlers
       console.log('🔧 Setting up integrated player button handlers...');
       
-      // Use event delegation to handle buttons that might be dynamically shown
-      document.addEventListener('click', function(event) {
-        const target = event.target;
-        
-        // Handle inline replay button
-        if (target.id === 'replay-inline' || target.closest('#replay-inline')) {
-          console.log('🔄 Inline replay button clicked');
-          const memoryVideoEl = document.getElementById('memory-video');
-          
-          if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
-            console.log('🎥 Video has src, replaying from start');
-            memoryVideoEl.currentTime = 0;
-            memoryVideoEl.play();
-          } else if (window.experienceRecording && window.experienceRecording.url) {
-            console.log('🎥 Setting video src from recording URL');
-            memoryVideoEl.src = window.experienceRecording.url;
-            memoryVideoEl.play();
-          } else {
-            console.log('❌ No video source available for replay');
-          }
-        }
-        
-        // Handle inline download button
-        if (target.id === 'download-memory' || target.closest('#download-memory')) {
-          console.log('⬇️ Inline download button clicked');
-          const memoryVideoEl = document.getElementById('memory-video');
-          const url = (window.experienceRecording && window.experienceRecording.url) ? 
-            window.experienceRecording.url : 
-            (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
-          console.log('📁 Download URL:', url);
-          
-          if (url) {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'vallexo-memory.webm';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            console.log('✅ Download initiated');
-          } else {
-            console.log('❌ No URL available for download');
-          }
-        }
-      });
-      
-      console.log('✅ Event delegation handlers attached for integrated player buttons');
-      
-      // Also try to attach direct handlers as backup
-      setTimeout(() => {
-        const replayBtn = document.getElementById('replay-inline');
-        const downloadBtn = document.getElementById('download-memory');
-        
-        if (replayBtn) {
-          console.log('🔧 Direct replay button handler attached as backup');
-          replayBtn.onclick = function() {
-            console.log('🔄 Direct replay button clicked');
-            const memoryVideoEl = document.getElementById('memory-video');
-            if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
-              memoryVideoEl.currentTime = 0;
-              memoryVideoEl.play();
-            } else if (window.experienceRecording && window.experienceRecording.url) {
-              memoryVideoEl.src = window.experienceRecording.url;
-              memoryVideoEl.play();
-            }
-          };
-        }
-        
-        if (downloadBtn) {
-          console.log('🔧 Direct download button handler attached as backup');
-          downloadBtn.onclick = function() {
-            console.log('⬇️ Direct download button clicked');
-            const memoryVideoEl = document.getElementById('memory-video');
-            const url = (window.experienceRecording && window.experienceRecording.url) ? 
-              window.experienceRecording.url : 
-              (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
-            if (url) {
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'vallexo-memory.webm';
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-            }
-          };
-        }
-      }, 1000);
+      console.log('✅ No integrated player buttons - download only via outro screen');
     });
     
     // Keyboard shortcuts
@@ -3471,12 +3358,8 @@
         const blob = new Blob(chunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
-        // Use only the integrated in-page player; do NOT create floating preview
+        // Recording complete - no preview needed
         experienceRecording.previewVideo = null;
-        try {
-          const integrated = document.getElementById('memory-video');
-          if (integrated) integrated.src = url;
-        } catch (_) {}
         cleanupCanvas();
         try { mixCtx.close(); } catch (_) {}
         // After recording is ready, show outro and enable responsive controls
@@ -3597,18 +3480,7 @@
       }, 250);
     }
 
-    function replayRecordedVideo() {
-      whenRecordingReady(() => {
-        // Hide outro to reveal the integrated player
-        try { hideOutroScreen(); } catch (_) {}
-        const vid = document.getElementById('memory-video');
-        if (vid) {
-          vid.style.display = 'block';
-          vid.currentTime = 0;
-          vid.play();
-        }
-      });
-    }
+
 
     function shareRecordedVideo() {
       whenRecordingReady(() => {
@@ -3648,7 +3520,6 @@
 
         // Add button functionality
         const shareBtn = document.getElementById('share-btn');
-        const replayBtn = document.getElementById('replay-btn');
         
         if (shareBtn) {
           shareBtn.onclick = () => {
@@ -3664,18 +3535,7 @@
           shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
         }
         
-        if (replayBtn) {
-          replayBtn.onclick = () => {
-            console.log('🔄 Replay button clicked');
-            // Prefer replaying recorded video if available; otherwise wait for readiness
-            if (experienceRecording && experienceRecording.url) {
-              replayRecordedVideo();
-            } else {
-              whenRecordingReady(() => replayRecordedVideo());
-            }
-          };
-          replayBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Replay');
-        }
+
       }
     }
 
@@ -3708,26 +3568,7 @@
       }
     }
 
-    function replayExperience() {
-      // Hide outro and restart the experience
-      hideOutroScreen();
-      
-      // Reset to initial state
-      const memorySection = document.getElementById('memory-section');
-      const modal = document.getElementById('memory-modal');
-      
-      if (memorySection) memorySection.style.display = 'none';
-      if (modal) modal.style.display = 'block';
-      
-      // Clear form
-      document.getElementById('fullname').value = '';
-      document.getElementById('birthYear').value = '';
-      
-      // Scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      
-      console.log('🔄 Experience restarted');
-    }
+
   </script>
 </body>
 </html> 
