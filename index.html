@@ -1120,7 +1120,7 @@
       
       <!-- Subtext -->
       <p class="font-inter text-lg md:text-xl lg:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed neon-pulse">
-        Pay $5 to remember something you never lived.
+        Pay $6 to remember something you never lived.
       </p>
       
       <!-- CTA Button -->
@@ -1128,7 +1128,7 @@
         onclick="openModal()"
         class="glitch-button font-mono bg-transparent border-2 border-cyan-400 text-cyan-400 px-12 py-6 text-xl md:text-2xl font-medium hover:bg-cyan-400 hover:text-gray-900 transition-all duration-500"
       >
-        Generate My Memory — $5
+        Generate My Memory — $6
       </button>
       
       <!-- Ambient Text -->
@@ -2310,46 +2310,7 @@
       }
     }
 
-    // Integrated replay player controls
-    const memoryVideoEl = document.getElementById('memory-video');
-    const replayBtn = document.getElementById('replay-inline');
-    if (replayBtn) {
-      replayBtn.addEventListener('click', function() {
-        console.log('🔄 Inline replay button clicked');
-        if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
-          console.log('🎥 Video has src, replaying from start');
-          memoryVideoEl.style.display = 'block';
-          memoryVideoEl.currentTime = 0;
-          memoryVideoEl.play();
-        } else if (experienceRecording && experienceRecording.url) {
-          console.log('🎥 Setting video src from recording URL');
-          memoryVideoEl.src = experienceRecording.url;
-          memoryVideoEl.style.display = 'block';
-          memoryVideoEl.play();
-        } else {
-          console.log('❌ No video source available for replay');
-        }
-      });
-    }
-    const downloadBtn = document.getElementById('download-memory');
-    if (downloadBtn) {
-      downloadBtn.addEventListener('click', function() {
-        console.log('⬇️ Inline download button clicked');
-        const url = (experienceRecording && experienceRecording.url) ? experienceRecording.url : (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
-        console.log('📁 Download URL:', url);
-        if (url) {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'vallexo-memory.webm';
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          console.log('✅ Download initiated');
-        } else {
-          console.log('❌ No URL available for download');
-        }
-      });
-    }
+
     
     // Initialize speech synthesis on page load
     window.addEventListener('load', function() {
@@ -2370,6 +2331,56 @@
           );
           console.log('Natural-sounding voices available:', naturalVoices.map(v => v.name));
         }, 2000);
+      }
+      
+      // Initialize integrated video player button handlers
+      console.log('🔧 Setting up integrated player button handlers...');
+      const memoryVideoEl = document.getElementById('memory-video');
+      const replayBtn = document.getElementById('replay-inline');
+      const downloadBtn = document.getElementById('download-memory');
+      
+      if (replayBtn) {
+        replayBtn.addEventListener('click', function() {
+          console.log('🔄 Inline replay button clicked');
+          if (memoryVideoEl && (memoryVideoEl.src || memoryVideoEl.currentSrc)) {
+            console.log('🎥 Video has src, replaying from start');
+            memoryVideoEl.currentTime = 0;
+            memoryVideoEl.play();
+          } else if (window.experienceRecording && window.experienceRecording.url) {
+            console.log('🎥 Setting video src from recording URL');
+            memoryVideoEl.src = window.experienceRecording.url;
+            memoryVideoEl.play();
+          } else {
+            console.log('❌ No video source available for replay');
+          }
+        });
+        console.log('✅ Replay button handler attached');
+      } else {
+        console.log('❌ Replay button not found');
+      }
+      
+      if (downloadBtn) {
+        downloadBtn.addEventListener('click', function() {
+          console.log('⬇️ Inline download button clicked');
+          const url = (window.experienceRecording && window.experienceRecording.url) ? 
+            window.experienceRecording.url : 
+            (memoryVideoEl?.src || memoryVideoEl?.currentSrc || '');
+          console.log('📁 Download URL:', url);
+          if (url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'vallexo-memory.webm';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            console.log('✅ Download initiated');
+          } else {
+            console.log('❌ No URL available for download');
+          }
+        });
+        console.log('✅ Download button handler attached');
+      } else {
+        console.log('❌ Download button not found');
       }
     });
     
