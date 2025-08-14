@@ -8,7 +8,33 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+  <!-- Tone.js will be loaded only when needed to prevent AudioContext warnings -->
+  <script>
+    // Lazy load Tone.js to prevent AudioContext warnings
+    window.loadToneJS = function() {
+      if (window.Tone) return Promise.resolve(window.Tone);
+      
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js';
+        script.onload = () => {
+          console.log('🎵 Tone.js loaded on demand');
+          resolve(window.Tone);
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+    
+    // Prevent any Tone.js usage until explicitly loaded
+    window.Tone = {
+      start: () => Promise.resolve(),
+      context: null,
+      loaded: false
+    };
+    
+    console.log('🔧 Tone.js loading deferred - will load on user interaction');
+  </script>
   <style>
     @keyframes glitch {
       0% { transform: translate(0); }
@@ -2383,6 +2409,35 @@
       // Add global user interaction handler to resume AudioContexts
       const resumeAudioContexts = () => {
         console.log('👆 User interaction detected - resuming AudioContexts');
+        
+        // Initialize Tone.js properly on user interaction
+        if (window.Tone && !window.Tone.loaded) {
+          try {
+            window.loadToneJS().then(() => {
+              console.log('✅ Tone.js loaded and ready');
+              // Resume Tone.js context if it exists
+              if (window.Tone.context && window.Tone.context.state === 'suspended') {
+                return window.Tone.context.resume();
+              }
+            }).then(() => {
+              console.log('✅ Tone.js AudioContext resumed');
+            }).catch(err => {
+              console.log('❌ Tone.js initialization failed:', err);
+            });
+          } catch (err) {
+            console.log('❌ Tone.js resume failed:', err);
+          }
+        } else if (window.Tone && window.Tone.context && window.Tone.context.state === 'suspended') {
+          try {
+            window.Tone.context.resume().then(() => {
+              console.log('✅ Tone.js AudioContext resumed');
+            }).catch(err => {
+              console.log('❌ Failed to resume Tone.js AudioContext:', err);
+            });
+          } catch (err) {
+            console.log('❌ Tone.js resume failed:', err);
+          }
+        }
         
         // Resume main audio context
         if (window.audioContext && window.audioContext.state === 'suspended') {
