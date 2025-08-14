@@ -3418,6 +3418,8 @@
         } catch (_) {}
         cleanupCanvas();
         try { mixCtx.close(); } catch (_) {}
+        // After recording is ready, show outro and enable responsive controls
+        try { showOutroScreen(); } catch (_) {}
       };
 
       experienceRecording = {
@@ -3430,11 +3432,6 @@
       img.onload = () => {
         drawRecordingFrame();
         recorder.start(100); // collect data every 100ms
-        // Show integrated video container as soon as recording starts (placeholder black frame)
-        try {
-          const vid = document.getElementById('memory-video');
-          if (vid) vid.style.display = 'block';
-        } catch(_) {}
       };
 
       // Stop when voiceover ends
@@ -3598,7 +3595,8 @@
             if (experienceRecording && experienceRecording.url) {
               shareRecordedVideo();
             } else {
-            shareMemory();
+              // If recording not ready yet, wait briefly then retry
+              whenRecordingReady(() => shareRecordedVideo());
             }
           };
           shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
@@ -3607,12 +3605,12 @@
         if (replayBtn) {
           replayBtn.onclick = () => {
             console.log('🔄 Replay button clicked');
-          // Prefer replaying recorded video if available; otherwise replay experience
-          if (experienceRecording && experienceRecording.url) {
-            replayRecordedVideo();
-          } else {
-            replayExperience();
-          }
+            // Prefer replaying recorded video if available; otherwise wait for readiness
+            if (experienceRecording && experienceRecording.url) {
+              replayRecordedVideo();
+            } else {
+              whenRecordingReady(() => replayRecordedVideo());
+            }
           };
           replayBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Replay');
         }
