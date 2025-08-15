@@ -1005,46 +1005,55 @@
       overflow: hidden;
     }
     
-    /* Parallax layers for live 2.5D effect */
+    /* Optimized parallax layers for smooth performance */
     .parallax-layer {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: -10%;
+      left: -10%;
       width: 120%;
       height: 120%;
       background-size: cover;
       background-position: center;
-      will-change: transform, filter;
+      background-attachment: fixed;
+      will-change: transform;
       transform-origin: center;
+      backface-visibility: hidden;
+      perspective: 1000px;
+      transform: translateZ(0); /* Force GPU acceleration */
     }
     
     .parallax-layer.far {
-      filter: blur(8px);
-      opacity: 0.3;
+      filter: blur(6px); /* Reduced blur for performance */
+      opacity: 0.4;
       z-index: 1;
+      transform: translateZ(0) scale3d(1.2, 1.2, 1);
     }
     
     .parallax-layer.mid {
-      filter: blur(4px);
-      opacity: 0.5;
+      filter: blur(3px); /* Reduced blur for performance */
+      opacity: 0.6;
       z-index: 2;
+      transform: translateZ(0) scale3d(1.1, 1.1, 1);
     }
     
     .parallax-layer.main {
       filter: none;
       opacity: 1.0;
       z-index: 3;
+      transform: translateZ(0) scale3d(1.05, 1.05, 1);
     }
     
-    /* Floating particles for atmospheric effect */
+    /* Optimized floating particles */
     .parallax-particle {
       position: absolute;
-      width: 4px;
-      height: 4px;
-      background: rgba(230, 255, 255, 0.2);
+      width: 3px;
+      height: 3px;
+      background: rgba(230, 255, 255, 0.15);
       border-radius: 50%;
       pointer-events: none;
       will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
     }
     .reveal-overlay::after {
       content: '';
@@ -3775,20 +3784,39 @@
       try { if (usingAudioFiles && audioElement && audioElement.paused && isPlaying) audioElement.play().catch(() => {}); } catch (_) {}
     }
 
+    // Performance detection for adaptive quality
+    let isLowPerformance = false;
+    function detectPerformance() {
+      // Simple performance detection based on device capabilities
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const hasLimitedMemory = navigator.deviceMemory && navigator.deviceMemory < 4;
+      const hasSlowConnection = navigator.connection && navigator.connection.effectiveType && 
+                               (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
+      
+      isLowPerformance = isMobile || hasLimitedMemory || hasSlowConnection;
+      console.log('📱 Performance mode:', isLowPerformance ? 'Low (mobile/limited)' : 'High (desktop)');
+      return isLowPerformance;
+    }
+
     // Enhanced 2.5D Parallax for Live Experience
     function setupLive2_5DParallax(backgroundUrl) {
       const revealBg = document.getElementById('reveal-bg');
       if (!revealBg) return;
       
+      // Detect performance capabilities
+      detectPerformance();
+      
       // Clear existing content
       revealBg.innerHTML = '';
       
-      // Create parallax layers
-      const layers = [
-        { className: 'far', scale: 1.2, speed: 0.5 },
-        { className: 'mid', scale: 1.1, speed: 0.8 },
-        { className: 'main', scale: 1.05, speed: 1.0 }
-      ];
+      // Adaptive layer setup based on performance
+      const layers = isLowPerformance ? 
+        [{ className: 'main', scale: 1.05, speed: 1.0 }] : // Single layer for low performance
+        [
+          { className: 'far', scale: 1.2, speed: 0.5 },
+          { className: 'mid', scale: 1.1, speed: 0.8 },
+          { className: 'main', scale: 1.05, speed: 1.0 }
+        ];
       
       layers.forEach(layer => {
         const div = document.createElement('div');
@@ -3799,8 +3827,9 @@
         revealBg.appendChild(div);
       });
       
-      // Create floating particles
-      for (let i = 0; i < 15; i++) {
+      // Create adaptive number of particles based on performance
+      const particleCount = isLowPerformance ? 0 : 4; // No particles on low performance devices
+      for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.className = 'parallax-particle';
         
@@ -3811,6 +3840,13 @@
         
         particle.style.left = x + '%';
         particle.style.top = y + '%';
+        particle.style.position = 'absolute';
+        particle.style.width = '3px';
+        particle.style.height = '3px';
+        particle.style.background = 'rgba(230, 255, 255, 0.15)';
+        particle.style.borderRadius = '50%';
+        particle.style.pointerEvents = 'none';
+        particle.style.willChange = 'transform';
         particle.dataset.depth = (i % 3) / 3;
         particle.dataset.seed = seed;
         
@@ -3820,48 +3856,56 @@
       console.log('✨ Live 2.5D parallax layers created');
     }
     
+    // Optimized animation with throttling and RAF
+    let lastAnimationTime = 0;
+    let animationFrameId = null;
+    
     function animateLive2_5DParallax(progress) {
+      // More aggressive throttling on low performance devices
+      const throttleDelay = isLowPerformance ? 33 : 16; // 30fps vs 60fps
+      const now = performance.now();
+      if (now - lastAnimationTime < throttleDelay) return;
+      lastAnimationTime = now;
+      
       const revealBg = document.getElementById('reveal-bg');
       if (!revealBg) return;
       
-      const layers = revealBg.querySelectorAll('.parallax-layer');
-      const particles = revealBg.querySelectorAll('.parallax-particle');
+      // Skip expensive animations on low performance devices
+      if (isLowPerformance) {
+        // Simple Ken Burns zoom only
+        const layer = revealBg.querySelector('.parallax-layer.main');
+        if (layer) {
+          const scale = 1.05 + 0.08 * progress; // Reduced scaling range
+          layer.style.transform = `scale(${scale})`;
+        }
+        return;
+      }
       
-      // Animate parallax layers
-      layers.forEach(layer => {
-        const speed = parseFloat(layer.dataset.speed);
-        const baseScale = parseFloat(layer.style.transform.match(/scale\(([\d.]+)\)/)?.[1] || 1.05);
-        
-        // Progressive zoom with Ken Burns effect
-        const scale = baseScale + 0.15 * progress;
-        
-        // Parallax movement - smooth oscillation
-        const time = progress * Math.PI * 2;
-        const parallaxX = Math.sin(time) * 3 * speed; // 3% max movement
-        const parallaxY = Math.cos(time * 1.5) * 2 * speed; // 2% max movement
-        
-        layer.style.transform = `scale(${scale}) translate3d(${parallaxX}%, ${parallaxY}%, 0)`;
-      });
+      // Cancel previous animation frame
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
       
-      // Animate floating particles
-      particles.forEach(particle => {
-        const depth = parseFloat(particle.dataset.depth);
-        const seed = parseFloat(particle.dataset.seed);
-        const speed = 0.3 + depth * 0.7;
+      // Use requestAnimationFrame for smooth animation on high performance devices
+      animationFrameId = requestAnimationFrame(() => {
+        const layers = revealBg.querySelectorAll('.parallax-layer');
         
-        // Particle movement
-        const time = progress * Math.PI * 2;
-        const particleX = Math.sin(time * speed + seed * 10) * 4 * (1 - depth);
-        const particleY = Math.cos(time * 1.3 * speed + seed * 15) * 3 * (1 - depth);
-        
-        // Size and opacity based on depth
-        const size = 2 + depth * 6;
-        const opacity = 0.1 + depth * 0.3;
-        
-        particle.style.transform = `translate3d(${particleX}px, ${particleY}px, 0)`;
-        particle.style.width = size + 'px';
-        particle.style.height = size + 'px';
-        particle.style.opacity = opacity;
+        // Animate all layers with reduced intensity
+        layers.forEach((layer, index) => {
+          const speed = parseFloat(layer.dataset.speed) || 1;
+          const baseScale = 1.05 + (index * 0.03); // Reduced layer separation
+          
+          // Simplified calculations
+          const scale = baseScale + 0.08 * progress; // Reduced scaling range
+          
+          // Gentler parallax movement
+          const time = progress * 6.28; // 2*PI pre-calculated
+          const parallaxX = Math.sin(time) * 1.5 * speed; // Further reduced movement
+          const parallaxY = Math.cos(time * 1.2) * 0.8 * speed; // Further reduced movement
+          
+          // Optimized transform
+          layer.style.transform = `scale3d(${scale}, ${scale}, 1) translate3d(${parallaxX}%, ${parallaxY}%, 0)`;
+        });
       });
     }
     
