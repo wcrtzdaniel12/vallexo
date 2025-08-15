@@ -1423,7 +1423,7 @@
       try {
         // Only create AudioContext after user interaction
         if (!audioContext || audioContext.state === 'suspended') {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
           
           // Ensure context is resumed after user interaction
           if (audioContext.state === 'suspended') {
@@ -1925,44 +1925,44 @@
       const maxRetries = 2;
       
       for (let retry = 0; retry <= maxRetries; retry++) {
-        for (const url of urls) {
-          try {
-            const requestBody = { name, birthYear };
+      for (const url of urls) {
+        try {
+          const requestBody = { name, birthYear };
             console.log(`🔄 Attempt ${retry + 1}/${maxRetries + 1} to generate memory via:`, url);
             console.log('📝 Request payload:', requestBody);
-            
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(requestBody)
-            });
+          
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
             
             console.log('📡 Response status:', response.status, response.statusText);
             
-            if (!response.ok) {
+          if (!response.ok) {
               const errorText = await response.text();
               console.warn(`❌ HTTP error with ${url}: ${response.status} - ${errorText}`);
               lastError = new Error(`HTTP ${response.status}: ${errorText}`);
-              continue;
-            }
+            continue;
+          }
             
-            const data = await response.json();
+          const data = await response.json();
             console.log('✅ Response from Supabase function:', data);
             
             if (data && data.memory) {
               console.log('🎉 Memory generated successfully:', data.memory.substring(0, 100) + '...');
-              return data.memory;
-            } else {
+            return data.memory;
+          } else {
               console.warn('⚠️ No memory in response data:', data);
               lastError = new Error('No memory returned from API');
               continue;
-            }
-          } catch (error) {
+          }
+        } catch (error) {
             console.warn(`❌ Network/parsing error with ${url}:`, error);
             lastError = error;
-            continue;
-          }
+          continue;
         }
+      }
         
         // If we get here, all URLs failed for this retry
         if (retry < maxRetries) {
@@ -2276,7 +2276,7 @@
         // Fallback to Web Speech API if OpenAI TTS fails
         console.log('🔄 Falling back to Web Speech API...');
         try {
-          fallbackToWebSpeech(memoryText);
+        fallbackToWebSpeech(memoryText);
         } catch (fallbackError) {
           console.error('❌ Fallback to Web Speech API also failed:', fallbackError);
           // Don't re-throw - we want to continue with the UI even if audio fails
@@ -2677,7 +2677,7 @@
       
       // Play sound effect for engagement
       try {
-        playGenerateMemorySound();
+      playGenerateMemorySound();
       } catch (soundError) {
         console.warn('🔇 Sound effect failed:', soundError);
       }
@@ -2718,7 +2718,7 @@
         }
         
         try {
-          showLoadingOverlay();
+        showLoadingOverlay();
           console.log('✅ Loading overlay shown');
         } catch (overlayError) {
           console.warn('⚠️ Loading overlay failed:', overlayError);
@@ -2739,7 +2739,7 @@
           console.error('💥 Error stack:', error.stack);
           
           try {
-            hideLoadingOverlay();
+          hideLoadingOverlay();
           } catch (hideError) {
             console.warn('⚠️ Hide loading overlay failed:', hideError);
           }
@@ -3635,7 +3635,7 @@
         if (!MediaRecorder.isTypeSupported('video/mp4')) {
           options = { mimeType: 'video/webm;codecs=vp9,opus' };
           console.log('📱 MP4 not supported, falling back to WebM');
-        } else {
+              } else {
           console.log('📱 Using MP4 format for better compatibility');
           console.log('📱 Recording in 9:16 aspect ratio (720x1280) for mobile optimization');
         }
@@ -3703,6 +3703,102 @@
       try { if (usingAudioFiles && audioElement && audioElement.paused && isPlaying) audioElement.play().catch(() => {}); } catch (_) {}
     }
 
+    // 2.5D Parallax background renderer with depth layers
+    function draw2_5DParallaxBackground(ctx, bgImage, width, height, t) {
+      if (!bgImage) return;
+      
+      // Create multiple parallax layers for 2.5D effect
+      const layers = [
+        { scale: 1.2, speed: 0.5, opacity: 0.3, blur: 8 },    // Far background layer (slow, blurred)
+        { scale: 1.1, speed: 0.8, opacity: 0.5, blur: 4 },    // Mid background layer
+        { scale: 1.05, speed: 1.0, opacity: 1.0, blur: 0 }    // Main layer (sharp, full opacity)
+      ];
+      
+      layers.forEach((layer, index) => {
+        // Calculate parallax movement for this layer
+        const parallaxX = Math.sin(t * Math.PI * 2) * 30 * layer.speed; // Horizontal oscillation
+        const parallaxY = Math.cos(t * Math.PI * 1.5) * 20 * layer.speed; // Vertical oscillation
+        
+        // Ken Burns zoom with layer-specific scaling
+        const baseScale = layer.scale + 0.15 * t; // Gradual zoom
+        
+        // Calculate image dimensions
+        const imgW = bgImage.naturalWidth, imgH = bgImage.naturalHeight;
+        const aspectCanvas = width / height;
+        const aspectImg = imgW / imgH;
+        
+        let drawW, drawH;
+        if (aspectImg > aspectCanvas) {
+          drawH = height * baseScale;
+          drawW = drawH * aspectImg;
+        } else {
+          drawW = width * baseScale;
+          drawH = drawW / aspectImg;
+        }
+        
+        // Position with parallax offset
+        const dx = (width - drawW) / 2 + parallaxX;
+        const dy = (height - drawH) / 2 + parallaxY;
+        
+        // Save context for layer-specific effects
+        ctx.save();
+        
+        // Apply blur for depth of field effect
+        if (layer.blur > 0) {
+          ctx.filter = `blur(${layer.blur}px)`;
+        }
+        
+        // Apply opacity for layering effect
+        ctx.globalAlpha = layer.opacity;
+        
+        // Draw the layer
+        ctx.drawImage(bgImage, dx, dy, drawW, drawH);
+        
+        // Restore context
+        ctx.restore();
+      });
+      
+      // Add subtle particle effects for extra depth
+      drawParallaxParticles(ctx, width, height, t);
+    }
+    
+    // Subtle particle system for enhanced 2.5D effect
+    function drawParallaxParticles(ctx, width, height, t) {
+      ctx.save();
+      
+      // Create floating particles at different depths
+      const particleCount = 15;
+      for (let i = 0; i < particleCount; i++) {
+        const seed = i * 0.618033988749; // Golden ratio for distribution
+        const depth = (i % 3) / 3; // 3 depth layers
+        const speed = 0.3 + depth * 0.7; // Closer particles move faster
+        
+        // Particle position with parallax movement
+        const baseX = (seed * width) % width;
+        const baseY = ((seed * 1.618033988749 * height) % height);
+        const parallaxX = Math.sin(t * Math.PI * 2 * speed + seed * 10) * 40 * (1 - depth);
+        const parallaxY = Math.cos(t * Math.PI * 1.3 * speed + seed * 15) * 30 * (1 - depth);
+        
+        const x = baseX + parallaxX;
+        const y = baseY + parallaxY;
+        
+        // Particle properties based on depth
+        const size = 1 + depth * 3; // Closer particles are bigger
+        const opacity = 0.1 + depth * 0.2; // Closer particles are more visible
+        const brightness = 100 + depth * 155; // Closer particles are brighter
+        
+        // Draw particle
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = `rgba(${brightness}, ${brightness + 20}, ${brightness + 40}, ${opacity})`;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      ctx.restore();
+    }
+
     function drawRecordingFrame() {
       const { ctx, canvas, startTs, durationSec, bgImage } = experienceRecording;
       if (!ctx || !bgImage) return;
@@ -3715,30 +3811,8 @@
       // Clear canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Ken Burns effect optimized for 9:16 mobile aspect ratio
-      const scale = 1.05 + 0.10 * t;
-      const panX = 0 + 0.02 * t * width;
-      const panY = 0 + 0.02 * t * height;
-      
-      // Handle background image scaling for 9:16
-      const imgW = bgImage.naturalWidth, imgH = bgImage.naturalHeight;
-      const aspectCanvas = width / height; // Should be 0.5625 (9:16)
-      const aspectImg = imgW / imgH;
-      
-      let drawW, drawH;
-      if (aspectImg > aspectCanvas) {
-        // Image is wider than canvas - fit to height
-        drawH = height * scale;
-        drawW = drawH * aspectImg;
-      } else {
-        // Image is taller than canvas - fit to width
-        drawW = width * scale;
-        drawH = drawW / aspectImg;
-      }
-      
-      const dx = (width - drawW) / 2 + panX;
-      const dy = (height - drawH) / 2 + panY;
-      ctx.drawImage(bgImage, dx, dy, drawW, drawH);
+      // 2.5D Parallax effect with multiple layers
+      draw2_5DParallaxBackground(ctx, bgImage, width, height, t);
 
       // Dark overlay for better text readability
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
