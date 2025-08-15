@@ -1000,9 +1000,9 @@
       background-size: cover;
       background-position: center;
       transform-origin: center;
-      will-change: transform;
-      /* Enhanced 2.5D parallax effect controlled by JavaScript */
+      /* Static background for smooth live experience - parallax only in video */
       overflow: hidden;
+      transition: none; /* Remove any transitions for instant performance */
     }
     
     /* Optimized parallax layers for smooth performance */
@@ -3798,62 +3798,21 @@
       return isLowPerformance;
     }
 
-    // Enhanced 2.5D Parallax for Live Experience
+    // Simplified static background for live experience (parallax only in video)
     function setupLive2_5DParallax(backgroundUrl) {
       const revealBg = document.getElementById('reveal-bg');
       if (!revealBg) return;
       
-      // Detect performance capabilities
-      detectPerformance();
-      
       // Clear existing content
       revealBg.innerHTML = '';
       
-      // Adaptive layer setup based on performance
-      const layers = isLowPerformance ? 
-        [{ className: 'main', scale: 1.05, speed: 1.0 }] : // Single layer for low performance
-        [
-          { className: 'far', scale: 1.2, speed: 0.5 },
-          { className: 'mid', scale: 1.1, speed: 0.8 },
-          { className: 'main', scale: 1.05, speed: 1.0 }
-        ];
+      // Set simple static background for smooth performance
+      revealBg.style.backgroundImage = `url(${backgroundUrl})`;
+      revealBg.style.backgroundSize = 'cover';
+      revealBg.style.backgroundPosition = 'center';
+      revealBg.style.transform = 'scale(1.05)'; // Slight zoom for visual interest
       
-      layers.forEach(layer => {
-        const div = document.createElement('div');
-        div.className = `parallax-layer ${layer.className}`;
-        div.style.backgroundImage = `url(${backgroundUrl})`;
-        div.style.transform = `scale(${layer.scale})`;
-        div.dataset.speed = layer.speed;
-        revealBg.appendChild(div);
-      });
-      
-      // Create adaptive number of particles based on performance
-      const particleCount = isLowPerformance ? 0 : 4; // No particles on low performance devices
-      for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'parallax-particle';
-        
-        // Random positioning using golden ratio
-        const seed = i * 0.618033988749;
-        const x = (seed * 100) % 100;
-        const y = ((seed * 1.618033988749 * 100) % 100);
-        
-        particle.style.left = x + '%';
-        particle.style.top = y + '%';
-        particle.style.position = 'absolute';
-        particle.style.width = '3px';
-        particle.style.height = '3px';
-        particle.style.background = 'rgba(230, 255, 255, 0.15)';
-        particle.style.borderRadius = '50%';
-        particle.style.pointerEvents = 'none';
-        particle.style.willChange = 'transform';
-        particle.dataset.depth = (i % 3) / 3;
-        particle.dataset.seed = seed;
-        
-        revealBg.appendChild(particle);
-      }
-      
-      console.log('✨ Live 2.5D parallax layers created');
+      console.log('📱 Static background set for live experience (parallax saved for video)');
     }
     
     // Optimized animation with throttling and RAF
@@ -3861,55 +3820,14 @@
     let animationFrameId = null;
     
     function animateLive2_5DParallax(progress) {
-      // More aggressive throttling on low performance devices
-      const throttleDelay = isLowPerformance ? 33 : 16; // 30fps vs 60fps
-      const now = performance.now();
-      if (now - lastAnimationTime < throttleDelay) return;
-      lastAnimationTime = now;
-      
-      const revealBg = document.getElementById('reveal-bg');
-      if (!revealBg) return;
-      
-      // Skip expensive animations on low performance devices
-      if (isLowPerformance) {
-        // Simple Ken Burns zoom only
-        const layer = revealBg.querySelector('.parallax-layer.main');
-        if (layer) {
-          const scale = 1.05 + 0.08 * progress; // Reduced scaling range
-          layer.style.transform = `scale(${scale})`;
-        }
-        return;
-      }
-      
-      // Cancel previous animation frame
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-      
-      // Use requestAnimationFrame for smooth animation on high performance devices
-      animationFrameId = requestAnimationFrame(() => {
-        const layers = revealBg.querySelectorAll('.parallax-layer');
-        
-        // Animate all layers with reduced intensity
-        layers.forEach((layer, index) => {
-          const speed = parseFloat(layer.dataset.speed) || 1;
-          const baseScale = 1.05 + (index * 0.03); // Reduced layer separation
-          
-          // Simplified calculations
-          const scale = baseScale + 0.08 * progress; // Reduced scaling range
-          
-          // Gentler parallax movement
-          const time = progress * 6.28; // 2*PI pre-calculated
-          const parallaxX = Math.sin(time) * 1.5 * speed; // Further reduced movement
-          const parallaxY = Math.cos(time * 1.2) * 0.8 * speed; // Further reduced movement
-          
-          // Optimized transform
-          layer.style.transform = `scale3d(${scale}, ${scale}, 1) translate3d(${parallaxX}%, ${parallaxY}%, 0)`;
-        });
-      });
+      // DISABLED: Keep background completely static for smooth performance
+      // Only the downloadable video will have parallax effects
+      console.log('📱 Live parallax disabled for performance - effects only in downloadable video');
+      return;
     }
     
-    // 2.5D Parallax background renderer with depth layers (for video recording)
+    // 2.5D Parallax background renderer with depth layers (VIDEO RECORDING ONLY)
+    // This creates the beautiful parallax effects in the downloadable MP4 video
     function draw2_5DParallaxBackground(ctx, bgImage, width, height, t) {
       if (!bgImage) return;
       
