@@ -3749,13 +3749,17 @@
       ctx.fillStyle = '#e6ffff';
       ctx.textAlign = 'center';
       
-      // Responsive font size for mobile
-      const fontSize = Math.max(24, Math.min(48, width * 0.04)); // 24px to 48px based on canvas width
+      // Add subtle text outline for better readability
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.lineWidth = 2;
+      
+      // Bigger font size for better readability
+      const fontSize = Math.max(36, Math.min(64, width * 0.06)); // 36px to 64px (increased from 24-48px)
       ctx.font = `${fontSize}px Playfair Display, serif`;
       
-      // Text positioning optimized for 9:16
-      const textY = height * 0.75; // Position text in lower third for mobile
-      const maxTextWidth = width * 0.85; // Use 85% of canvas width for text
+      // Text positioning centered vertically in the middle
+      const textY = height * 0.5; // Center text vertically (was 0.75 - lower third)
+      const maxTextWidth = width * 0.8; // Use 80% of canvas width for text (slightly reduced for bigger font)
       
       wrapAndDrawText(ctx, text, width / 2, textY, maxTextWidth);
 
@@ -3786,21 +3790,25 @@
       // Center text vertically around the target Y position
       const startY = y - (lines.length - 1) * lineHeight / 2;
       
-      // Add text shadow for better readability on mobile
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
+      // Enhanced text shadow for better readability with bigger font
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
       
       for (let i = 0; i < lines.length; i++) {
+        // Draw text outline first, then fill for better readability
+        ctx.strokeText(lines[i], x, startY + i * lineHeight);
         ctx.fillText(lines[i], x, startY + i * lineHeight);
       }
       
-      // Reset shadow
+      // Reset shadow and stroke
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = 'transparent';
+      ctx.lineWidth = 0;
     }
 
     function stopExperienceRecording() {
