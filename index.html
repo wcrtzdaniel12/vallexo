@@ -1980,28 +1980,23 @@
     async function showMemorySection(memoryText) {
       console.log('🎬 Preparing memory section and voiceover...');
       
-      const section = document.getElementById('memory-section');
       // Keep memory text in state (UI now uses integrated video player)
       try { lastGeneratedMemory = memoryText || ''; } catch (_) {}
       
-      // Start voiceover preparation while showing the section
+      // Start voiceover preparation (this is the main functionality now)
       try {
         console.log('🎵 Starting voiceover narration...');
         await narrateMemory(memoryText); // Wait for voiceover to be ready
-        console.log('✅ Voiceover ready, showing memory section');
+        console.log('✅ Voiceover ready, narration flow complete');
       } catch (error) {
-        console.log('⚠️ Voiceover failed, showing section anyway:', error);
+        console.log('⚠️ Voiceover failed:', error);
         console.log('⚠️ Voiceover error stack:', error.stack);
+        // Continue anyway - the user can still download the recording
       }
       
-      // Show the section
-      console.log('🎭 Showing memory section UI...');
-      section.classList.add('fade-in');
-      section.classList.remove('opacity-0', 'pointer-events-none');
-      setTimeout(() => {
-        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
-      console.log('✅ Memory section UI displayed');
+      // Note: The memory-section UI was removed when we cleaned up replay functionality
+      // The narration now handles the entire experience flow
+      console.log('✅ Memory section flow completed (UI removed, narration handles display)');
     }
     
     // Debug functions
