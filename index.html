@@ -3546,8 +3546,8 @@
       console.log('🎬 Starting experience recording...');
       console.log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
       
-      // Prepare canvas
-      const width = 1280, height = 720;
+      // Prepare canvas - OPTIMIZED FOR 9:16 MOBILE ASPECT RATIO
+      const width = 720, height = 1280; // 9:16 aspect ratio (mobile-first)
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const canvas = document.createElement('canvas');
       canvas.width = Math.floor(width * dpr);
@@ -3630,12 +3630,22 @@
         }
       }
 
-      const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+              // Try MP4 format first, fallback to WebM if not supported
+        let options = { mimeType: 'video/mp4' };
+        if (!MediaRecorder.isTypeSupported('video/mp4')) {
+          options = { mimeType: 'video/webm;codecs=vp9,opus' };
+          console.log('📱 MP4 not supported, falling back to WebM');
+        } else {
+          console.log('📱 Using MP4 format for better compatibility');
+          console.log('📱 Recording in 9:16 aspect ratio (720x1280) for mobile optimization');
+        }
+      
       const recorder = new MediaRecorder(stream, options);
       const chunks = [];
       recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
+        const mimeType = options.mimeType.includes('mp4') ? 'video/mp4' : 'video/webm';
+        const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
         // Recording complete - no preview needed
@@ -3696,42 +3706,58 @@
     function drawRecordingFrame() {
       const { ctx, canvas, startTs, durationSec, bgImage } = experienceRecording;
       if (!ctx || !bgImage) return;
-      const width = canvas.clientWidth, height = canvas.clientHeight;
+      
+      // Use actual canvas dimensions for 9:16 rendering
+      const width = canvas.width, height = canvas.height;
       const now = performance.now();
       const t = Math.max(0, Math.min(1, (now - startTs) / (durationSec * 1000)));
 
-      // Clear
+      // Clear canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Ken Burns: scale 1.05 -> 1.15, pan slight
+      // Ken Burns effect optimized for 9:16 mobile aspect ratio
       const scale = 1.05 + 0.10 * t;
       const panX = 0 + 0.02 * t * width;
       const panY = 0 + 0.02 * t * height;
+      
+      // Handle background image scaling for 9:16
       const imgW = bgImage.naturalWidth, imgH = bgImage.naturalHeight;
-      const aspectCanvas = width / height;
+      const aspectCanvas = width / height; // Should be 0.5625 (9:16)
       const aspectImg = imgW / imgH;
+      
       let drawW, drawH;
       if (aspectImg > aspectCanvas) {
+        // Image is wider than canvas - fit to height
         drawH = height * scale;
         drawW = drawH * aspectImg;
-              } else {
+      } else {
+        // Image is taller than canvas - fit to width
         drawW = width * scale;
         drawH = drawW / aspectImg;
       }
+      
       const dx = (width - drawW) / 2 + panX;
       const dy = (height - drawH) / 2 + panY;
       ctx.drawImage(bgImage, dx, dy, drawW, drawH);
 
-      // Dark overlay
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      // Dark overlay for better text readability
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(0, 0, width, height);
 
-      // Caption text
+      // Caption text optimized for 9:16 mobile
       const text = currentCaptionText || '';
       ctx.fillStyle = '#e6ffff';
       ctx.textAlign = 'center';
-      ctx.font = '32px Playfair Display, serif';
-      wrapAndDrawText(ctx, text, width / 2, height / 2, Math.min(900, width * 0.9));
+      
+      // Responsive font size for mobile
+      const fontSize = Math.max(24, Math.min(48, width * 0.04)); // 24px to 48px based on canvas width
+      ctx.font = `${fontSize}px Playfair Display, serif`;
+      
+      // Text positioning optimized for 9:16
+      const textY = height * 0.75; // Position text in lower third for mobile
+      const maxTextWidth = width * 0.85; // Use 85% of canvas width for text
+      
+      wrapAndDrawText(ctx, text, width / 2, textY, maxTextWidth);
 
       experienceRecording.drawId = requestAnimationFrame(drawRecordingFrame);
     }
@@ -3740,22 +3766,41 @@
       const words = (text || '').split(/\s+/);
       const lines = [];
       let line = '';
+      
       for (let i = 0; i < words.length; i++) {
         const test = line ? line + ' ' + words[i] : words[i];
         const metrics = ctx.measureText(test);
         if (metrics.width > maxWidth && line) {
           lines.push(line);
           line = words[i];
-              } else {
+        } else {
           line = test;
         }
       }
       if (line) lines.push(line);
-      const lineHeight = 42;
+      
+      // Responsive line height for mobile
+      const fontSize = parseInt(ctx.font);
+      const lineHeight = fontSize * 1.4; // 1.4x line height for better readability
+      
+      // Center text vertically around the target Y position
       const startY = y - (lines.length - 1) * lineHeight / 2;
+      
+      // Add text shadow for better readability on mobile
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      
       for (let i = 0; i < lines.length; i++) {
         ctx.fillText(lines[i], x, startY + i * lineHeight);
       }
+      
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
     }
 
     function stopExperienceRecording() {
@@ -3792,7 +3837,20 @@
       whenRecordingReady(() => {
         const a = document.createElement('a');
         a.href = experienceRecording.url;
-        a.download = 'vallexo-memory.webm';
+        
+        // Determine file extension based on MIME type
+        const isMP4 = experienceRecording.url.includes('mp4') || 
+                     (experienceRecording.recorder && 
+                      experienceRecording.recorder.mimeType && 
+                      experienceRecording.recorder.mimeType.includes('mp4'));
+        
+        const fileExt = isMP4 ? 'mp4' : 'webm';
+        const mimeType = isMP4 ? 'video/mp4' : 'video/webm';
+        
+        // Create optimized filename for mobile
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        a.download = `vallexo-memory-${timestamp}.${fileExt}`;
+        a.type = mimeType;
         document.body.appendChild(a);
         a.click();
         a.remove();
