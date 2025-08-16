@@ -995,192 +995,14 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 110%; /* Slightly larger for smooth motion */
-      height: 110%;
-      left: -5%;
-      top: -5%;
+      width: 100%;
+      height: 100%;
       background-size: cover;
       background-position: center;
       transform-origin: center;
+      /* Static background for smooth live experience - parallax only in video */
       overflow: hidden;
       transition: none; /* Remove any transitions for instant performance */
-      
-      /* Default nostalgic loop animation */
-      animation: nostalgicMotion 20s ease-in-out infinite;
-    }
-    
-    /* Memory-specific loop animations */
-    .reveal-bg.school-hallway {
-      animation: schoolHallwayMotion 25s ease-in-out infinite;
-    }
-    
-    .reveal-bg.classroom {
-      animation: classroomMotion 18s ease-in-out infinite;
-    }
-    
-    .reveal-bg.playground {
-      animation: playgroundMotion 22s ease-in-out infinite;
-    }
-    
-    .reveal-bg.living-room {
-      animation: livingRoomMotion 24s ease-in-out infinite;
-    }
-    
-    .reveal-bg.chuck-e-cheese {
-      animation: arcadeMotion 16s ease-in-out infinite;
-    }
-    
-    .reveal-bg.birthday-party-venue {
-      animation: partyMotion 20s ease-in-out infinite;
-    }
-    
-    .reveal-bg.school-canteen {
-      animation: canteenMotion 26s ease-in-out infinite;
-    }
-    
-    .reveal-bg.cousins-house {
-      animation: visitingMotion 28s ease-in-out infinite;
-    }
-    
-    /* Keyframe animations for different childhood settings */
-    
-    @keyframes nostalgicMotion {
-      0%, 100% { 
-        transform: scale(1.05) translateX(0) translateY(0); 
-        filter: brightness(1) contrast(1.1);
-      }
-      25% { 
-        transform: scale(1.08) translateX(-1%) translateY(0.5%); 
-        filter: brightness(1.02) contrast(1.12);
-      }
-      50% { 
-        transform: scale(1.06) translateX(0.5%) translateY(-0.5%); 
-        filter: brightness(0.98) contrast(1.15);
-      }
-      75% { 
-        transform: scale(1.09) translateX(-0.5%) translateY(0.3%); 
-        filter: brightness(1.01) contrast(1.08);
-      }
-    }
-    
-    @keyframes schoolHallwayMotion {
-      0%, 100% { 
-        transform: scale(1.06) translateX(0) rotateZ(0deg); 
-        filter: brightness(1.05) contrast(1.2) saturate(0.9);
-      }
-      33% { 
-        transform: scale(1.08) translateX(-1%) rotateZ(0.2deg); 
-        filter: brightness(1.08) contrast(1.25) saturate(0.85);
-      }
-      66% { 
-        transform: scale(1.07) translateX(0.8%) rotateZ(-0.1deg); 
-        filter: brightness(1.02) contrast(1.15) saturate(0.95);
-      }
-    }
-    
-    @keyframes classroomMotion {
-      0%, 100% { 
-        transform: scale(1.04) translateY(0); 
-        filter: brightness(1.1) contrast(1.1) sepia(0.1);
-      }
-      50% { 
-        transform: scale(1.07) translateY(-0.8%); 
-        filter: brightness(1.15) contrast(1.2) sepia(0.15);
-      }
-    }
-    
-    @keyframes playgroundMotion {
-      0%, 100% { 
-        transform: scale(1.05) translateX(0) translateY(0); 
-        filter: brightness(1.2) contrast(1.1) saturate(1.3);
-      }
-      20% { 
-        transform: scale(1.08) translateX(-0.5%) translateY(0.3%); 
-        filter: brightness(1.25) contrast(1.15) saturate(1.35);
-      }
-      40% { 
-        transform: scale(1.06) translateX(0.3%) translateY(-0.4%); 
-        filter: brightness(1.15) contrast(1.2) saturate(1.25);
-      }
-      60% { 
-        transform: scale(1.09) translateX(-0.3%) translateY(0.2%); 
-        filter: brightness(1.3) contrast(1.12) saturate(1.4);
-      }
-      80% { 
-        transform: scale(1.07) translateX(0.4%) translateY(-0.1%); 
-        filter: brightness(1.22) contrast(1.18) saturate(1.32);
-      }
-    }
-    
-    @keyframes livingRoomMotion {
-      0%, 100% { 
-        transform: scale(1.03) translateX(0); 
-        filter: brightness(1.1) contrast(1.05) saturate(1.1) sepia(0.05);
-      }
-      50% { 
-        transform: scale(1.06) translateX(-0.5%); 
-        filter: brightness(1.15) contrast(1.1) saturate(1.15) sepia(0.08);
-      }
-    }
-    
-    @keyframes arcadeMotion {
-      0%, 100% { 
-        transform: scale(1.08) translateX(0) translateY(0); 
-        filter: brightness(1.3) contrast(1.4) saturate(1.8) hue-rotate(5deg);
-      }
-      25% { 
-        transform: scale(1.12) translateX(-0.8%) translateY(0.4%); 
-        filter: brightness(1.4) contrast(1.5) saturate(1.9) hue-rotate(8deg);
-      }
-      50% { 
-        transform: scale(1.10) translateX(0.6%) translateY(-0.3%); 
-        filter: brightness(1.25) contrast(1.6) saturate(1.7) hue-rotate(3deg);
-      }
-      75% { 
-        transform: scale(1.13) translateX(-0.4%) translateY(0.2%); 
-        filter: brightness(1.35) contrast(1.45) saturate(1.85) hue-rotate(7deg);
-      }
-    }
-    
-    @keyframes partyMotion {
-      0%, 100% { 
-        transform: scale(1.06) translateX(0) translateY(0) rotateZ(0deg); 
-        filter: brightness(1.25) contrast(1.3) saturate(1.6) hue-rotate(10deg);
-      }
-      33% { 
-        transform: scale(1.10) translateX(-0.7%) translateY(0.5%) rotateZ(0.3deg); 
-        filter: brightness(1.35) contrast(1.4) saturate(1.8) hue-rotate(15deg);
-      }
-      66% { 
-        transform: scale(1.08) translateX(0.5%) translateY(-0.3%) rotateZ(-0.2deg); 
-        filter: brightness(1.3) contrast(1.35) saturate(1.7) hue-rotate(8deg);
-      }
-    }
-    
-    @keyframes canteenMotion {
-      0%, 100% { 
-        transform: scale(1.04) translateY(0); 
-        filter: brightness(1.15) contrast(1.2) saturate(0.9);
-      }
-      50% { 
-        transform: scale(1.07) translateY(-0.6%); 
-        filter: brightness(1.2) contrast(1.25) saturate(0.95);
-      }
-    }
-    
-    @keyframes visitingMotion {
-      0%, 100% { 
-        transform: scale(1.05) translateX(0); 
-        filter: brightness(1.05) contrast(1.15) sepia(0.15);
-      }
-      33% { 
-        transform: scale(1.08) translateX(-0.8%); 
-        filter: brightness(1.1) contrast(1.2) sepia(0.2);
-      }
-      66% { 
-        transform: scale(1.06) translateX(0.6%); 
-        filter: brightness(1.08) contrast(1.18) sepia(0.12);
-      }
     }
     
     /* Optimized parallax layers for smooth performance */
@@ -2231,30 +2053,6 @@
       }
     }
 
-    // Extract setting name from background URL for animation class
-    function getSettingFromBackgroundUrl(url) {
-      if (!url) return null;
-      
-      // Extract filename from URL
-      const filename = url.split('/').pop();
-      if (!filename) return null;
-      
-      // Map filenames to CSS class names
-      const settingMap = {
-        'school-hallway.jpg': 'school-hallway',
-        'school-canteen.jpg': 'school-canteen',
-        'classroom.jpg': 'classroom',
-        'playground.jpg': 'playground',
-        'chuck-e-cheese.jpg': 'chuck-e-cheese',
-        'birthday-party-venue.jpg': 'birthday-party-venue',
-        'living-room.jpg': 'living-room',
-        'cousins-house.jpg': 'cousins-house',
-        // Fallback for local images
-        'hallway1.png': 'school-hallway'
-      };
-      
-      return settingMap[filename] || null;
-    }
 
     // Show memory section with fade-in and scroll - AFTER voiceover is ready
     async function showMemorySection(memoryText) {
@@ -2266,22 +2064,10 @@
       // Get appropriate background image for this memory
       const backgroundUrl = await getBackgroundImageForMemory(memoryText);
       
-      // Update the background image and apply motion animation
+      // Update the background image
       const revealBg = document.getElementById('reveal-bg');
       if (revealBg && backgroundUrl) {
         revealBg.style.backgroundImage = `url(${backgroundUrl})`;
-        
-        // Apply setting-specific animation class
-        // Remove any existing animation classes
-        revealBg.className = 'reveal-bg';
-        
-        // Determine setting from background URL and apply appropriate animation
-        const setting = getSettingFromBackgroundUrl(backgroundUrl);
-        if (setting) {
-          revealBg.classList.add(setting);
-          console.log(`🎭 Applied ${setting} motion animation to background`);
-        }
-        
         console.log('🖼️ Background image updated for memory setting');
       }
       
@@ -4308,6 +4094,22 @@
 
 
 
+    // Generate nostalgic filename format: MEMORY_LOG_XXX_NAME
+    function generateNostalgicFilename(fileExt) {
+      // Get user's name from form input (fallback to 'USER' if not available)
+      const nameInput = document.getElementById('name');
+      let userName = 'USER';
+      if (nameInput && nameInput.value && nameInput.value.trim()) {
+        userName = nameInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      }
+      
+      // Generate random memory log number (001-999)
+      const randomLogNumber = Math.floor(Math.random() * 999) + 1;
+      const logNumber = String(randomLogNumber).padStart(3, '0');
+      
+      return `MEMORY_LOG_${logNumber}_${userName}.${fileExt}`;
+    }
+
     function shareRecordedVideo() {
       whenRecordingReady(() => {
         const a = document.createElement('a');
@@ -4322,9 +4124,9 @@
         const fileExt = isMP4 ? 'mp4' : 'webm';
         const mimeType = isMP4 ? 'video/mp4' : 'video/webm';
         
-        // Create optimized filename for mobile
-        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-        a.download = `vallexo-memory-${timestamp}.${fileExt}`;
+        // Create nostalgic filename format: MEMORY_LOG_XXX_NAME
+        const nostalgicFilename = generateNostalgicFilename(fileExt);
+        a.download = nostalgicFilename;
         a.type = mimeType;
         document.body.appendChild(a);
         a.click();
