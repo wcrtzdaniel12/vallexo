@@ -4097,10 +4097,15 @@
     // Generate nostalgic filename format: MEMORY_LOG_XXX_NAME
     function generateNostalgicFilename(fileExt) {
       // Get user's name from form input (fallback to 'USER' if not available)
-      const nameInput = document.getElementById('name');
+      const nameInput = document.getElementById('fullname');
       let userName = 'USER';
       if (nameInput && nameInput.value && nameInput.value.trim()) {
-        userName = nameInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        // Extract first name or first word, clean it up for filename
+        const fullName = nameInput.value.trim();
+        const firstName = fullName.split(' ')[0]; // Get first name only
+        userName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        // Ensure we have a valid name (not empty after cleaning)
+        if (!userName) userName = 'USER';
       }
       
       // Generate random memory log number (001-999)
