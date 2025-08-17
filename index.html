@@ -1174,7 +1174,9 @@
         <button class="outro-btn" id="share-btn">
           <span class="btn-glitch">Share</span>
         </button>
-
+        <button class="outro-btn" id="recall-more-btn">
+          <span class="btn-glitch">Recall More</span>
+        </button>
       </div>
     </div>
   </div>
@@ -4278,6 +4280,34 @@
           shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
         }
         
+        const recallMoreBtn = document.getElementById('recall-more-btn');
+        if (recallMoreBtn) {
+          recallMoreBtn.onclick = () => {
+            console.log('🔄 Recall More button clicked');
+            // Hide outro screen and return to hero page
+            hideOutroScreen();
+            // Clean up any existing recordings
+            if (experienceRecording && experienceRecording.url) {
+              URL.revokeObjectURL(experienceRecording.url);
+            }
+            experienceRecording = {
+              recorder: null,
+              chunks: [],
+              url: null,
+              canvas: null,
+              ctx: null,
+              drawId: null,
+              startTs: 0,
+              durationSec: 0,
+              bgImage: null,
+              previewVideo: null
+            };
+            // Reset any UI state
+            stopKenBurnsReveal();
+            console.log('✅ Ready for new memory generation');
+          };
+          recallMoreBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Recall More');
+        }
 
       }
     }
