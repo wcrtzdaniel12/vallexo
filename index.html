@@ -2028,6 +2028,10 @@
     async function getBackgroundImageForMemory(memoryText) {
       try {
         console.log('🖼️ Matching background image to memory content (99 scene settings)...');
+        console.log('📝 Memory text to match:', memoryText.substring(0, 100) + '...');
+        
+        const requestPayload = { memoryText };
+        console.log('📤 Request payload:', requestPayload);
         
         const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/getBackgroundImageV2', {
           method: 'POST',
@@ -2035,8 +2039,11 @@
             'Content-Type': 'application/json',
             'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlobnN1b3ZxcGV3d3lxb2ZydGF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzYzMzc3MywiZXhwIjoyMDY5MjA5NzczfQ.pABYaslGn8LPxR0vlt3q2F4Y27hFxpmV74yG0Q53JHk'
           },
-          body: JSON.stringify({ memoryText })
+          body: JSON.stringify(requestPayload)
         });
+        
+        console.log('📡 Response status:', response.status, response.statusText);
+        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
         
         if (response.ok) {
           const data = await response.json();
@@ -2050,11 +2057,22 @@
           });
           return data.backgroundUrl;
         } else {
+          const errorText = await response.text();
+          console.error('❌ Background matching failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText
+          });
           console.warn('⚠️ Background matching failed, using fallback');
           return 'img/hallway1.png'; // Local fallback
         }
       } catch (error) {
-        console.warn('⚠️ Background matching error:', error);
+        console.error('❌ Background matching error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+        console.warn('⚠️ Background matching error, using fallback');
         return 'img/hallway1.png'; // Local fallback
       }
     }
