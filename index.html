@@ -1168,6 +1168,9 @@
         <span class="glitch-word">you?</span>
       </div>
       <div class="outro-buttons">
+        <button class="outro-btn" id="save-btn">
+          <span class="btn-glitch">Save</span>
+        </button>
         <button class="outro-btn" id="share-btn">
           <span class="btn-glitch">Share</span>
         </button>
@@ -4127,7 +4130,7 @@
       return `MEMORY_LOG_${logNumber}_${userName}.${fileExt}`;
     }
 
-    function shareRecordedVideo() {
+    function saveRecordedVideo() {
       whenRecordingReady(() => {
         const a = document.createElement('a');
         a.href = experienceRecording.url;
@@ -4148,6 +4151,52 @@
         document.body.appendChild(a);
         a.click();
         a.remove();
+      });
+    }
+
+    function shareRecordedVideo() {
+      whenRecordingReady(async () => {
+        try {
+          // Check if Web Share API is available
+          if (navigator.share && navigator.canShare) {
+            // Convert blob URL to actual File object for sharing
+            const response = await fetch(experienceRecording.url);
+            const blob = await response.blob();
+            
+            // Determine file extension and MIME type
+            const isMP4 = experienceRecording.url.includes('mp4') || 
+                         (experienceRecording.recorder && 
+                          experienceRecording.recorder.mimeType && 
+                          experienceRecording.recorder.mimeType.includes('mp4'));
+            
+            const fileExt = isMP4 ? 'mp4' : 'webm';
+            const mimeType = isMP4 ? 'video/mp4' : 'video/webm';
+            
+            // Create nostalgic filename
+            const nostalgicFilename = generateNostalgicFilename(fileExt);
+            
+            // Create File object for sharing
+            const file = new File([blob], nostalgicFilename, { type: mimeType });
+            
+            // Check if we can share this file
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'My Childhood Memory',
+                text: 'Check out this nostalgic childhood memory I generated!'
+              });
+              console.log('✅ Video shared successfully via system share sheet');
+            } else {
+              throw new Error('File sharing not supported');
+            }
+          } else {
+            throw new Error('Web Share API not available');
+          }
+        } catch (error) {
+          console.warn('⚠️ System share failed, falling back to download:', error);
+          // Fallback to download if sharing fails
+          saveRecordedVideo();
+        }
       });
     }
 
@@ -4177,12 +4226,27 @@
         });
 
         // Add button functionality
+        const saveBtn = document.getElementById('save-btn');
         const shareBtn = document.getElementById('share-btn');
+        
+        if (saveBtn) {
+          saveBtn.onclick = () => {
+            console.log('💾 Save button clicked');
+            // Download recorded video
+            if (experienceRecording && experienceRecording.url) {
+              saveRecordedVideo();
+            } else {
+              // If recording not ready yet, wait briefly then retry
+              whenRecordingReady(() => saveRecordedVideo());
+            }
+          };
+          saveBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Save');
+        }
         
         if (shareBtn) {
           shareBtn.onclick = () => {
             console.log('🔗 Share button clicked');
-            // Prefer downloading recorded video if available; fallback to text sharing
+            // Use system share sheet for recorded video
             if (experienceRecording && experienceRecording.url) {
               shareRecordedVideo();
             } else {
