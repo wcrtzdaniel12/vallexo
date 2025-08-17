@@ -2027,9 +2027,9 @@
     // Get appropriate background image for the memory
     async function getBackgroundImageForMemory(memoryText) {
       try {
-        console.log('🖼️ Matching background image to memory content...');
+        console.log('🖼️ Matching background image to memory content (99 scene settings)...');
         
-        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/getBackgroundImage', {
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/getBackgroundImageV2', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2040,10 +2040,13 @@
         
         if (response.ok) {
           const data = await response.json();
-          console.log('🎯 Background image matched:', {
+          console.log('🎯 Background image matched (from 99 possibilities):', {
             setting: data.matchedSetting,
             confidence: data.confidence,
-            url: data.backgroundUrl
+            url: data.backgroundUrl,
+            selectionMethod: data.selectionMethod,
+            totalImages: data.totalImages,
+            categories: data.availableCategories
           });
           return data.backgroundUrl;
         } else {
