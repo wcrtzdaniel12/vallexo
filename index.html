@@ -2824,6 +2824,13 @@
         
         try {
           console.log('🚀 Starting memory generation for:', fullname, birthYear);
+          
+          // Store user's name for filename generation later
+          if (fullname && fullname.trim()) {
+            const firstName = fullname.trim().split(' ')[0];
+            currentUserName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'USER';
+          }
+          
           const memory = await generateMemory(fullname, birthYear);
           console.log('✅ Memory generation completed successfully');
           
@@ -4094,18 +4101,23 @@
 
 
 
+    // Store user's name globally when memory is generated
+    let currentUserName = 'USER';
+
     // Generate nostalgic filename format: MEMORY_LOG_XXX_NAME
     function generateNostalgicFilename(fileExt) {
-      // Get user's name from form input (fallback to 'USER' if not available)
-      const nameInput = document.getElementById('fullname');
-      let userName = 'USER';
-      if (nameInput && nameInput.value && nameInput.value.trim()) {
-        // Extract first name or first word, clean it up for filename
-        const fullName = nameInput.value.trim();
-        const firstName = fullName.split(' ')[0]; // Get first name only
-        userName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        // Ensure we have a valid name (not empty after cleaning)
-        if (!userName) userName = 'USER';
+      // Use stored name from memory generation
+      let userName = currentUserName || 'USER';
+      
+      // If no stored name, try to get from form as fallback
+      if (userName === 'USER') {
+        const nameInput = document.getElementById('fullname');
+        if (nameInput && nameInput.value && nameInput.value.trim()) {
+          const fullName = nameInput.value.trim();
+          const firstName = fullName.split(' ')[0]; // Get first name only
+          userName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!userName) userName = 'USER';
+        }
       }
       
       // Generate random memory log number (001-999)
