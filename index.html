@@ -4215,7 +4215,7 @@
           } else {
             throw new Error('Web Share API not available');
           }
-        } catch (error) {
+      } catch (error) {
           console.warn('⚠️ System share failed, falling back to download:', error);
           // Fallback to download if sharing fails
           saveRecordedVideo();
