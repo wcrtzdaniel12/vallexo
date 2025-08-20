@@ -3850,63 +3850,60 @@
       console.log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
 
       // Build audio mix: voice + bgm (if available) - Mobile-optimized audio routing
-      let mixCtx = null;
+      let recordingAudioCtx = null;
       let dest = null;
       let audioStream = null;
       
       // Detect mobile device for audio handling
       const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      // Try to create AudioContext with mobile-specific handling
+      // Try to create separate AudioContext for recording (don't interfere with main audio)
       try {
-        mixCtx = new (window.AudioContext || window.webkitAudioContext)({
-          sampleRate: 44100, // Explicit sample rate for consistency
-          latencyHint: 'playback' // Optimize for playback over low latency
-        });
+        // Create separate context for recording to avoid conflicts
+        recordingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // Resume context immediately for mobile
-        if (mixCtx.state === 'suspended') {
-          console.log('🔇 Mix AudioContext suspended - attempting resume...');
-          try {
-            await mixCtx.resume();
-            console.log('✅ AudioContext resumed successfully');
-          } catch (resumeError) {
-            console.warn('⚠️ AudioContext resume failed:', resumeError);
-          }
+        // Resume context for mobile (non-blocking to prevent freezing)
+        if (recordingAudioCtx.state === 'suspended') {
+          console.log('🔇 Recording AudioContext suspended - attempting resume...');
+          recordingAudioCtx.resume().then(() => {
+            console.log('✅ Recording AudioContext resumed successfully');
+          }).catch((resumeError) => {
+            console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
+          });
         }
         
-        dest = mixCtx.createMediaStreamDestination();
-        console.log(`🎵 Audio mixing setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
+        dest = recordingAudioCtx.createMediaStreamDestination();
+        console.log(`🎵 Recording audio setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
         
       } catch (error) {
-        console.warn('⚠️ Failed to create mix AudioContext:', error);
+        console.warn('⚠️ Failed to create recording AudioContext:', error);
         // Continue without audio mixing if context creation fails
       }
       
       // Audio routing with mobile-specific fallbacks
-      if (mixCtx && dest) {
+      if (recordingAudioCtx && dest) {
         try {
           // Primary voice audio routing
-          const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
-          const voiceGain = mixCtx.createGain();
+          const voiceNode = recordingAudioCtx.createMediaElementSource(voiceAudioEl);
+          const voiceGain = recordingAudioCtx.createGain();
           voiceGain.gain.value = 1.0; // Full volume for voice
           
           voiceNode.connect(voiceGain);
           voiceGain.connect(dest);
-          voiceGain.connect(mixCtx.destination);
+          voiceGain.connect(recordingAudioCtx.destination);
           
           console.log('🎤 Voice audio routed to recording stream');
           
           // Background music routing (lower volume)
           if (usingAudioFiles && audioElement && !audioElement.paused) {
             try {
-              const bgNode = mixCtx.createMediaElementSource(audioElement);
-              const bgGain = mixCtx.createGain();
+              const bgNode = recordingAudioCtx.createMediaElementSource(audioElement);
+              const bgGain = recordingAudioCtx.createGain();
               bgGain.gain.value = 0.3; // Lower volume for background
               
               bgNode.connect(bgGain);
               bgGain.connect(dest);
-              bgGain.connect(mixCtx.destination);
+              bgGain.connect(recordingAudioCtx.destination);
               
               console.log('🎵 Background music routed to recording stream');
             } catch (bgError) {
@@ -3932,13 +3929,31 @@
           }
         }
         
-        // Ensure context is running
+        // Ensure context is running (non-blocking)
         try { 
-          if (mixCtx.state !== 'running') {
-            await mixCtx.resume(); 
-            console.log('🎵 AudioContext resumed and running');
+          if (recordingAudioCtx.state !== 'running') {
+            recordingAudioCtx.resume().then(() => {
+              console.log('🎵 Recording AudioContext resumed and running');
+            }).catch(() => {
+              console.log('⚠️ Recording AudioContext resume failed, continuing anyway');
+            });
           }
         } catch (_) {}
+      } else {
+        // Fallback: try direct audio capture if AudioContext mixing fails
+        try {
+          console.log('🔄 AudioContext mixing not available, trying direct capture...');
+          const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
+          if (directStream && directStream.getAudioTracks().length > 0) {
+            audioStream = directStream;
+            console.log('✅ Direct audio capture working as fallback');
+          } else {
+            console.warn('⚠️ No audio capture available - recording video only');
+          }
+        } catch (directError) {
+          console.warn('⚠️ Direct audio capture failed:', directError);
+          console.log('📹 Proceeding with video-only recording');
+        }
       }
 
       // Compose stream (video from canvas + mixed audio)
@@ -3969,7 +3984,7 @@
             console.warn('⚠️ Stream merging also failed:', mergeError);
           }
         }
-      } else {
+              } else {
         console.warn('⚠️ No audio stream available for recording');
       }
 
@@ -4028,7 +4043,7 @@
         // Recording complete - no preview needed
         experienceRecording.previewVideo = null;
         cleanupCanvas();
-        try { mixCtx && mixCtx.close(); } catch (_) {}
+        try { recordingAudioCtx && recordingAudioCtx.close(); } catch (_) {}
         
         console.log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
         
