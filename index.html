@@ -3803,7 +3803,8 @@
       bgImage: null,
       previewVideo: null,
       logicalWidth: 720,
-      logicalHeight: 1280
+      logicalHeight: 1280,
+      finalMimeType: 'video/webm'
     };
 
     function startExperienceRecording(voiceAudioEl, totalDurationSec) {
@@ -3848,82 +3849,189 @@
       
       console.log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
 
-      // Build audio mix: voice + bgm (if available) - lazy AudioContext creation
+      // Build audio mix: voice + bgm (if available) - Mobile-optimized audio routing
       let mixCtx = null;
       let dest = null;
+      let audioStream = null;
       
-      // Only create AudioContext after user interaction
+      // Detect mobile device for audio handling
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Try to create AudioContext with mobile-specific handling
       try {
-        mixCtx = new (window.AudioContext || window.webkitAudioContext)();
-        dest = mixCtx.createMediaStreamDestination();
+        mixCtx = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: 44100, // Explicit sample rate for consistency
+          latencyHint: 'playback' // Optimize for playback over low latency
+        });
         
-        // Ensure context is resumed
+        // Resume context immediately for mobile
         if (mixCtx.state === 'suspended') {
-          console.log('🔇 Mix AudioContext suspended - will resume on user interaction');
+          console.log('🔇 Mix AudioContext suspended - attempting resume...');
+          try {
+            await mixCtx.resume();
+            console.log('✅ AudioContext resumed successfully');
+          } catch (resumeError) {
+            console.warn('⚠️ AudioContext resume failed:', resumeError);
+          }
         }
+        
+        dest = mixCtx.createMediaStreamDestination();
+        console.log(`🎵 Audio mixing setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
+        
       } catch (error) {
-        console.log('Failed to create mix AudioContext:', error);
+        console.warn('⚠️ Failed to create mix AudioContext:', error);
         // Continue without audio mixing if context creation fails
       }
-      // Only try to route audio if AudioContext was created successfully
+      
+      // Audio routing with mobile-specific fallbacks
       if (mixCtx && dest) {
         try {
+          // Primary voice audio routing
           const voiceNode = mixCtx.createMediaElementSource(voiceAudioEl);
-          // Route to recorder and to speakers via AudioContext
-          voiceNode.connect(dest);
-          voiceNode.connect(mixCtx.destination);
-        } catch (_) {}
+          const voiceGain = mixCtx.createGain();
+          voiceGain.gain.value = 1.0; // Full volume for voice
+          
+          voiceNode.connect(voiceGain);
+          voiceGain.connect(dest);
+          voiceGain.connect(mixCtx.destination);
+          
+          console.log('🎤 Voice audio routed to recording stream');
+          
+          // Background music routing (lower volume)
+          if (usingAudioFiles && audioElement && !audioElement.paused) {
+            try {
+              const bgNode = mixCtx.createMediaElementSource(audioElement);
+              const bgGain = mixCtx.createGain();
+              bgGain.gain.value = 0.3; // Lower volume for background
+              
+              bgNode.connect(bgGain);
+              bgGain.connect(dest);
+              bgGain.connect(mixCtx.destination);
+              
+              console.log('🎵 Background music routed to recording stream');
+            } catch (bgError) {
+              console.warn('⚠️ Background audio routing failed:', bgError);
+            }
+          }
+          
+          // Get the mixed audio stream
+          audioStream = dest.stream;
+          console.log(`🔊 Mixed audio stream ready: ${audioStream.getAudioTracks().length} tracks`);
+          
+        } catch (routingError) {
+          console.warn('⚠️ Audio routing failed:', routingError);
+          // Fallback: try to use the voice audio directly
+          try {
+            const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
+            if (directStream) {
+              audioStream = directStream;
+              console.log('🔄 Using direct audio capture fallback');
+            }
+          } catch (fallbackError) {
+            console.warn('⚠️ Direct audio capture also failed:', fallbackError);
+          }
+        }
         
-        // Try to include background playlist if available
-        try {
-          if (usingAudioFiles && audioElement) {
-            const bgNode = mixCtx.createMediaElementSource(audioElement);
-            // Route to recorder and speakers via AudioContext
-            bgNode.connect(dest);
-            bgNode.connect(mixCtx.destination);
+        // Ensure context is running
+        try { 
+          if (mixCtx.state !== 'running') {
+            await mixCtx.resume(); 
+            console.log('🎵 AudioContext resumed and running');
           }
         } catch (_) {}
-
-        // Ensure context is running
-        try { mixCtx.resume && mixCtx.resume(); } catch (_) {}
       }
 
       // Compose stream (video from canvas + mixed audio)
       const stream = canvas.captureStream(30);
       
-      // Add audio tracks if available, otherwise just video
-      if (dest && dest.stream) {
+      // Add audio tracks with mobile-optimized approach
+      if (audioStream && audioStream.getAudioTracks().length > 0) {
         try {
-          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
-        } catch (_) {
-          const merged = new MediaStream(stream.getVideoTracks().concat(dest.stream.getAudioTracks()));
-          stream.getTracks().forEach(tr => stream.removeTrack(tr));
-          merged.getTracks().forEach(tr => stream.addTrack(tr));
+          // Method 1: Direct track addition (preferred)
+          audioStream.getAudioTracks().forEach(track => {
+            console.log(`🎵 Adding audio track: ${track.kind} (${track.readyState})`);
+            stream.addTrack(track);
+          });
+          console.log(`✅ Audio tracks added: ${stream.getAudioTracks().length} tracks`);
+        } catch (addError) {
+          console.warn('⚠️ Direct track addition failed, trying merge method:', addError);
+          try {
+            // Method 2: Stream merging fallback
+            const videoTracks = stream.getVideoTracks();
+            const audioTracks = audioStream.getAudioTracks();
+            const merged = new MediaStream([...videoTracks, ...audioTracks]);
+            
+            // Replace stream reference
+            stream.getTracks().forEach(tr => stream.removeTrack(tr));
+            merged.getTracks().forEach(tr => stream.addTrack(tr));
+            console.log(`🔄 Stream merged: ${merged.getVideoTracks().length}V + ${merged.getAudioTracks().length}A`);
+          } catch (mergeError) {
+            console.warn('⚠️ Stream merging also failed:', mergeError);
+          }
         }
+      } else {
+        console.warn('⚠️ No audio stream available for recording');
       }
 
-              // Try MP4 format first, fallback to WebM if not supported
-        let options = { mimeType: 'video/mp4' };
-        if (!MediaRecorder.isTypeSupported('video/mp4')) {
-          options = { mimeType: 'video/webm;codecs=vp9,opus' };
-          console.log('📱 MP4 not supported, falling back to WebM');
-              } else {
-          console.log('📱 Using MP4 format for better compatibility');
-          console.log('📱 Recording in 9:16 aspect ratio (720x1280) for mobile optimization');
+      // Mobile-optimized codec selection with audio support
+      let options = {};
+      
+      // Test codec support with explicit audio requirements
+      const testFormats = [
+        // Mobile-preferred formats with explicit audio codecs
+        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus (Mobile optimized)' },
+        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus' },
+        { mimeType: 'video/webm', name: 'WebM (Default)' },
+        // MP4 formats (may not support audio on all mobile browsers)
+        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC' },
+        { mimeType: 'video/mp4', name: 'MP4 (Default)' }
+      ];
+      
+      // Find the best supported format
+      for (const format of testFormats) {
+        if (MediaRecorder.isTypeSupported(format.mimeType)) {
+          options = { mimeType: format.mimeType };
+          console.log(`📱 Using ${format.name} for recording`);
+          break;
         }
+      }
+      
+      // Fallback if no specific format is supported
+      if (!options.mimeType) {
+        options = {}; // Let browser choose default
+        console.log('📱 Using browser default codec (no specific format supported)');
+      }
+      
+      console.log(`📱 Final recording options:`, options);
+      console.log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getAudioTracks().length}A tracks`);
       
       const recorder = new MediaRecorder(stream, options);
       const chunks = [];
       recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
-        const mimeType = options.mimeType.includes('mp4') ? 'video/mp4' : 'video/webm';
-        const blob = new Blob(chunks, { type: mimeType });
+        // Determine MIME type from the actual recorder format
+        let finalMimeType = 'video/webm'; // Default fallback
+        if (options.mimeType) {
+          finalMimeType = options.mimeType.split(';')[0]; // Remove codec info for blob
+        } else if (recorder.mimeType) {
+          finalMimeType = recorder.mimeType.split(';')[0];
+        }
+        
+        console.log(`📱 Creating blob with MIME type: ${finalMimeType}`);
+        console.log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
+        
+        const blob = new Blob(chunks, { type: finalMimeType });
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
+        experienceRecording.finalMimeType = finalMimeType; // Store for filename generation
+        
         // Recording complete - no preview needed
         experienceRecording.previewVideo = null;
         cleanupCanvas();
-        try { mixCtx.close(); } catch (_) {}
+        try { mixCtx && mixCtx.close(); } catch (_) {}
+        
+        console.log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
+        
         // After recording is ready, show outro and enable responsive controls
         try { showOutroScreen(); } catch (_) {}
       };
@@ -4264,14 +4372,11 @@
         const a = document.createElement('a');
         a.href = experienceRecording.url;
         
-        // Determine file extension based on MIME type
-        const isMP4 = experienceRecording.url.includes('mp4') || 
-                     (experienceRecording.recorder && 
-                      experienceRecording.recorder.mimeType && 
-                      experienceRecording.recorder.mimeType.includes('mp4'));
+        // Determine file extension from stored MIME type
+        const mimeType = experienceRecording.finalMimeType || 'video/webm';
+        const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
         
-        const fileExt = isMP4 ? 'mp4' : 'webm';
-        const mimeType = isMP4 ? 'video/mp4' : 'video/webm';
+        console.log(`💾 Saving video: ${mimeType} -> .${fileExt}`);
         
         // Create nostalgic filename format: MEMORY_LOG_XXX_NAME
         const nostalgicFilename = generateNostalgicFilename(fileExt);
@@ -4280,6 +4385,8 @@
         document.body.appendChild(a);
         a.click();
         a.remove();
+        
+        console.log(`✅ Download initiated: ${nostalgicFilename}`);
       });
     }
 
@@ -4292,14 +4399,11 @@
             const response = await fetch(experienceRecording.url);
             const blob = await response.blob();
             
-            // Determine file extension and MIME type
-            const isMP4 = experienceRecording.url.includes('mp4') || 
-                         (experienceRecording.recorder && 
-                          experienceRecording.recorder.mimeType && 
-                          experienceRecording.recorder.mimeType.includes('mp4'));
+            // Use stored MIME type for consistency
+            const mimeType = experienceRecording.finalMimeType || 'video/webm';
+            const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
             
-            const fileExt = isMP4 ? 'mp4' : 'webm';
-            const mimeType = isMP4 ? 'video/mp4' : 'video/webm';
+            console.log(`📤 Sharing video: ${mimeType} -> .${fileExt}`);
             
             // Create nostalgic filename
             const nostalgicFilename = generateNostalgicFilename(fileExt);
@@ -4408,7 +4512,8 @@
               bgImage: null,
               previewVideo: null,
               logicalWidth: 720,
-              logicalHeight: 1280
+              logicalHeight: 1280,
+              finalMimeType: 'video/webm'
             };
             // Reset any UI state
             stopKenBurnsReveal();
