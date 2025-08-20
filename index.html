@@ -3801,7 +3801,9 @@
       startTs: 0,
       durationSec: 0,
       bgImage: null,
-      previewVideo: null
+      previewVideo: null,
+      logicalWidth: 720,
+      logicalHeight: 1280
     };
 
     function startExperienceRecording(voiceAudioEl, totalDurationSec) {
@@ -3825,7 +3827,12 @@
       document.body.appendChild(canvas);
 
       const ctx = canvas.getContext('2d');
+      // Scale the context to handle device pixel ratio properly
       ctx.scale(dpr, dpr);
+      
+      // Store logical dimensions for drawing calculations
+      experienceRecording.logicalWidth = width;
+      experienceRecording.logicalHeight = height;
 
       // Load background image from reveal-bg (uses the matched background from memory analysis)
       const bgEl = document.getElementById('reveal-bg');
@@ -3924,11 +3931,13 @@
       experienceRecording = {
         recorder, chunks, url: null, canvas, ctx,
         drawId: null, startTs: performance.now(), durationSec: totalDurationSec,
-        bgImage: img, previewVideo: null
+        bgImage: img, previewVideo: null,
+        logicalWidth: width, logicalHeight: height
       };
 
       // Start drawing once image is ready
       img.onload = () => {
+        console.log(`🎬 Recording canvas setup: ${width}x${height} logical, ${canvas.width}x${canvas.height} physical (DPR: ${dpr})`);
         drawRecordingFrame();
         recorder.start(100); // collect data every 100ms
         
@@ -4108,15 +4117,16 @@
     }
 
     function drawRecordingFrame() {
-      const { ctx, canvas, startTs, durationSec, bgImage } = experienceRecording;
+      const { ctx, canvas, startTs, durationSec, bgImage, logicalWidth, logicalHeight } = experienceRecording;
       if (!ctx || !bgImage) return;
       
-      // Use actual canvas dimensions for 9:16 rendering
-      const width = canvas.width, height = canvas.height;
+      // Use stored logical dimensions for consistent 9:16 rendering
+      const width = logicalWidth || 720;
+      const height = logicalHeight || 1280;
       const now = performance.now();
       const t = Math.max(0, Math.min(1, (now - startTs) / (durationSec * 1000)));
 
-      // Clear canvas
+      // Clear canvas using logical dimensions (context is already scaled for DPR)
       ctx.clearRect(0, 0, width, height);
 
       // 2.5D Parallax effect with multiple layers
@@ -4136,12 +4146,12 @@
       ctx.lineWidth = 2;
       
       // Bigger font size for better readability
-      const fontSize = Math.max(36, Math.min(64, width * 0.06)); // 36px to 64px (increased from 24-48px)
+      const fontSize = Math.max(36, Math.min(64, width * 0.06)); // 36px to 64px
       ctx.font = `${fontSize}px Playfair Display, serif`;
       
       // Text positioning centered vertically in the middle
-      const textY = height * 0.5; // Center text vertically (was 0.75 - lower third)
-      const maxTextWidth = width * 0.8; // Use 80% of canvas width for text (slightly reduced for bigger font)
+      const textY = height * 0.5; // Center text vertically
+      const maxTextWidth = width * 0.8; // Use 80% of width for text
       
       wrapAndDrawText(ctx, text, width / 2, textY, maxTextWidth);
 
@@ -4396,7 +4406,9 @@
               startTs: 0,
               durationSec: 0,
               bgImage: null,
-              previewVideo: null
+              previewVideo: null,
+              logicalWidth: 720,
+              logicalHeight: 1280
             };
             // Reset any UI state
             stopKenBurnsReveal();
