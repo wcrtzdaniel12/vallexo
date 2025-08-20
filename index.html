@@ -3988,16 +3988,27 @@
         console.warn('⚠️ No audio stream available for recording');
       }
 
-      // Mobile-optimized codec selection with audio support
+      // Mobile-optimized codec selection with MP4 priority for mobile
       let options = {};
       
-      // Test codec support with explicit audio requirements
-      const testFormats = [
-        // Mobile-preferred formats with explicit audio codecs
-        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus (Mobile optimized)' },
+      // Detect mobile device for format priority
+      const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Test codec support with mobile-first priority
+      const testFormats = isMobileDevice ? [
+        // Mobile-first: prioritize MP4 for better compatibility
+        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC (Mobile optimized)' },
+        { mimeType: 'video/mp4', name: 'MP4 (Default)' },
+        // WebM fallbacks for mobile
+        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
         { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus' },
+        { mimeType: 'video/webm', name: 'WebM (Default)' }
+      ] : [
+        // Desktop-first: WebM for better quality
+        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus (Desktop optimized)' },
+        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
         { mimeType: 'video/webm', name: 'WebM (Default)' },
-        // MP4 formats (may not support audio on all mobile browsers)
+        // MP4 fallbacks for desktop
         { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC' },
         { mimeType: 'video/mp4', name: 'MP4 (Default)' }
       ];
@@ -4006,34 +4017,64 @@
       for (const format of testFormats) {
         if (MediaRecorder.isTypeSupported(format.mimeType)) {
           options = { mimeType: format.mimeType };
-          console.log(`📱 Using ${format.name} for recording`);
+          console.log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
           break;
         }
       }
       
       // Fallback if no specific format is supported
       if (!options.mimeType) {
+        // Try basic formats without codec specification
+        const basicFormats = ['video/mp4', 'video/webm'];
+        for (const format of basicFormats) {
+          if (MediaRecorder.isTypeSupported(format)) {
+            options = { mimeType: format };
+            console.log(`📱 Using basic ${format} as fallback`);
+            break;
+          }
+        }
+      }
+      
+      // Final fallback: let browser choose
+      if (!options.mimeType) {
         options = {}; // Let browser choose default
         console.log('📱 Using browser default codec (no specific format supported)');
       }
       
+      // Mobile format compatibility warning
+      if (isMobileDevice && options.mimeType && options.mimeType.includes('webm')) {
+        console.warn('⚠️ Mobile device using WebM format - may not play in all mobile video players');
+        console.warn('💡 Consider using MP4 for maximum mobile compatibility');
+      }
+      
       console.log(`📱 Final recording options:`, options);
       console.log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getAudioTracks().length}A tracks`);
+      console.log(`📱 Device type: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
+      console.log(`📱 Format priority: ${isMobileDevice ? 'MP4 first (mobile optimized)' : 'WebM first (desktop optimized)'}`);
       
       const recorder = new MediaRecorder(stream, options);
       const chunks = [];
       recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
         // Determine MIME type from the actual recorder format
-        let finalMimeType = 'video/webm'; // Default fallback
+        let finalMimeType = 'video/mp4'; // Default to MP4 for better mobile compatibility
         if (options.mimeType) {
           finalMimeType = options.mimeType.split(';')[0]; // Remove codec info for blob
         } else if (recorder.mimeType) {
           finalMimeType = recorder.mimeType.split(';')[0];
         }
         
+        // Ensure we have a mobile-compatible format
+        const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobileDevice && finalMimeType === 'video/webm') {
+          // Try to convert WebM to MP4 for mobile compatibility
+          console.log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
+          finalMimeType = 'video/mp4';
+        }
+        
         console.log(`📱 Creating blob with MIME type: ${finalMimeType}`);
         console.log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
+        console.log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
         
         const blob = new Blob(chunks, { type: finalMimeType });
         const url = URL.createObjectURL(blob);
