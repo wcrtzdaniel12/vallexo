@@ -4196,12 +4196,12 @@
       ];
       
       layers.forEach((layer, index) => {
-        // Calculate parallax movement for this layer
-        const parallaxX = Math.sin(t * Math.PI * 2) * 30 * layer.speed; // Horizontal oscillation
-        const parallaxY = Math.cos(t * Math.PI * 1.5) * 20 * layer.speed; // Vertical oscillation
+        // Calculate dynamic parallax movement for this layer
+        const parallaxX = Math.sin(t * Math.PI * 4) * 80 * layer.speed; // Faster, larger horizontal movement
+        const parallaxY = Math.cos(t * Math.PI * 3) * 60 * layer.speed; // Faster, larger vertical movement
         
-        // Ken Burns zoom with layer-specific scaling
-        const baseScale = layer.scale + 0.15 * t; // Gradual zoom
+        // Dynamic Ken Burns zoom with layer-specific scaling
+        const baseScale = layer.scale + 0.25 * t; // More dramatic zoom
         
         // Calculate image dimensions
         const imgW = bgImage.naturalWidth, imgH = bgImage.naturalHeight;
@@ -4247,26 +4247,26 @@
     function drawParallaxParticles(ctx, width, height, t) {
       ctx.save();
       
-      // Create floating particles at different depths
-      const particleCount = 15;
+      // Create dynamic floating particles at different depths
+      const particleCount = 25; // More particles for enhanced effect
       for (let i = 0; i < particleCount; i++) {
         const seed = i * 0.618033988749; // Golden ratio for distribution
         const depth = (i % 3) / 3; // 3 depth layers
-        const speed = 0.3 + depth * 0.7; // Closer particles move faster
+        const speed = 0.5 + depth * 1.0; // Faster movement for all particles
         
-        // Particle position with parallax movement
+        // Dynamic particle position with enhanced parallax movement
         const baseX = (seed * width) % width;
         const baseY = ((seed * 1.618033988749 * height) % height);
-        const parallaxX = Math.sin(t * Math.PI * 2 * speed + seed * 10) * 40 * (1 - depth);
-        const parallaxY = Math.cos(t * Math.PI * 1.3 * speed + seed * 15) * 30 * (1 - depth);
+        const parallaxX = Math.sin(t * Math.PI * 6 * speed + seed * 10) * 80 * (1 - depth); // Faster, larger movement
+        const parallaxY = Math.cos(t * Math.PI * 4 * speed + seed * 15) * 60 * (1 - depth); // Faster, larger movement
         
         const x = baseX + parallaxX;
         const y = baseY + parallaxY;
         
-        // Particle properties based on depth
-        const size = 1 + depth * 3; // Closer particles are bigger
-        const opacity = 0.1 + depth * 0.2; // Closer particles are more visible
-        const brightness = 100 + depth * 155; // Closer particles are brighter
+        // Enhanced particle properties based on depth
+        const size = 2 + depth * 4; // Bigger particles for more visibility
+        const opacity = 0.2 + depth * 0.3; // More visible particles
+        const brightness = 120 + depth * 135; // Brighter particles
         
         // Draw particle
         ctx.globalAlpha = opacity;
