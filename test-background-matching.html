@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Image Matching Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ffff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-memory {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .result {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        button {
+            background: transparent;
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+        button:hover {
+            background: rgba(0, 255, 255, 0.1);
+        }
+        .preview-image {
+            max-width: 200px;
+            max-height: 150px;
+            border: 1px solid #00ffff;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Background Image Matching Test</h1>
+        <p>Test the automatic background image matching system for different memory types.</p>
+        
+        <div class="test-memory">
+            <h3>Test Memory 1: School Hallway</h3>
+            <p><em>"You're walking down the school hallway, fluorescent lights buzzing overhead. The lockers clang shut as other students rush past you. The tile floor is cold and polished, reflecting the harsh light from above..."</em></p>
+            <button onclick="testMemory(this, 'You\\'re walking down the school hallway, fluorescent lights buzzing overhead. The lockers clang shut as other students rush past you.')">Test This Memory</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 2: Playground</h3>
+            <p><em>"The swing creaks as you pump your legs higher, trying to reach the clouds. Below you, the sandbox is empty except for a forgotten toy truck. The monkey bars glint in the afternoon sun..."</em></p>
+            <button onclick="testMemory(this, 'The swing creaks as you pump your legs higher, trying to reach the clouds. Below you, the sandbox is empty except for a forgotten toy truck.')">Test This Memory</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 3: Chuck E. Cheese</h3>
+            <p><em>"The animatronic mouse on stage moves jerkily while tinny music plays. Around you, arcade games beep and flash. The smell of pizza mingles with the sound of tickets spilling from the skee ball machine..."</em></p>
+            <button onclick="testMemory(this, 'The animatronic mouse on stage moves jerkily while tinny music plays. Around you, arcade games beep and flash. The smell of pizza mingles with tickets.')">Test This Memory</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 4: Birthday Party</h3>
+            <p><em>"The birthday cake sits in the center of the table, five candles flickering. Colorful balloons bob from chair backs. Someone starts singing happy birthday and you feel the warmth of being celebrated..."</em></p>
+            <button onclick="testMemory(this, 'The birthday cake sits in the center of the table, five candles flickering. Colorful balloons bob from chair backs.')">Test This Memory</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 5: Living Room</h3>
+            <p><em>"You're sprawled on the carpet in front of the TV, the glow washing over your face. The couch behind you holds the indent of where someone was sitting. The remote control is just out of reach..."</em></p>
+            <button onclick="testMemory(this, 'You\\'re sprawled on the carpet in front of the TV, the glow washing over your face. The couch behind you holds the indent of where someone was sitting.')">Test This Memory</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 6: Multiple Settings (Family Van → Ice Cream Parlor)</h3>
+            <p><em>"You're in the family van, looking out the window as your parents drive. The car seat feels big and you can see the road passing by. Then you arrive at the ice cream parlor, the sweet smell hits you as you walk in. The counter is full of colorful flavors and you can't decide between chocolate and strawberry..."</em></p>
+            <button onclick="testMemory(this, 'You\\'re in the family van, looking out the window as your parents drive. The car seat feels big and you can see the road passing by. Then you arrive at the ice cream parlor, the sweet smell hits you as you walk in. The counter is full of colorful flavors and you can\\'t decide between chocolate and strawberry.')">Test Multiple Settings</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 7: School → Home Transition</h3>
+            <p><em>"You're in the school hallway after the final bell, walking past the lockers. The fluorescent lights are still on but the building feels empty. Then you're in the family van, and finally back in your living room where the TV is playing cartoons..."</em></p>
+            <button onclick="testMemory(this, 'You\\'re in the school hallway after the final bell, walking past the lockers. The fluorescent lights are still on but the building feels empty. Then you\\'re in the family van, and finally back in your living room where the TV is playing cartoons.')">Test School→Van→Home</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Memory 8: Complex Journey (Home → Mall → Restaurant)</h3>
+            <p><em>"You start in your living room watching TV, then your parents take you to the mall kids section where there are toys everywhere. Later you're at a fast food restaurant with a play area, and you can smell the fries while kids are running around the slides..."</em></p>
+            <button onclick="testMemory(this, 'You start in your living room watching TV, then your parents take you to the mall kids section where there are toys everywhere. Later you\\'re at a fast food restaurant with a play area, and you can smell the fries while kids are running around the slides.')">Test Complex Journey</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-memory">
+            <h3>Test Custom Memory</h3>
+            <textarea id="customMemory" style="width: 100%; height: 100px; background: #2a2a2a; color: #fff; border: 1px solid #00ffff; padding: 10px;" placeholder="Enter your own memory text to test..."></textarea>
+            <button onclick="testCustomMemory()">Test Custom Memory</button>
+            <div class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testMemory(button, memoryText) {
+            const resultDiv = button.parentNode.querySelector('.result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '🔄 Testing background matching...';
+            
+            try {
+                console.log('Testing memory:', memoryText);
+                
+                const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/getBackgroundImageV2', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlobnN1b3ZxcGV3d3lxb2ZydGF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzYzMzc3MywiZXhwIjoyMDY5MjA5NzczfQ.pABYaslGn8LPxR0vlt3q2F4Y27hFxpmV74yG0Q53JHk'
+                    },
+                    body: JSON.stringify({ memoryText })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Background matching result:', data);
+                    
+                    resultDiv.innerHTML = `
+                        <strong>✅ Match Found!</strong><br/>
+                        <strong>Setting:</strong> ${data.matchedSetting}<br/>
+                        <strong>Confidence:</strong> ${data.confidence}<br/>
+                        <strong>Selection Method:</strong> ${data.selectionMethod?.method || 'Unknown'}<br/>
+                        <strong>Reason:</strong> ${data.selectionMethod?.reason || 'Not specified'}<br/>
+                        <strong>URL:</strong> <a href="${data.backgroundUrl}" target="_blank" style="color: #00ff00;">${data.backgroundUrl}</a><br/>
+                        <img src="${data.backgroundUrl}" class="preview-image" onload="console.log('Image loaded successfully')" onerror="console.log('Image failed to load'); this.style.border='2px solid red';" />
+                        ${data.debug ? `<br/><strong>🔍 Debug Info:</strong><br/>
+                        <strong>Selected Location:</strong> ${data.debug.selectedLocation}<br/>
+                        <strong>Top 5 Scores:</strong><br/>
+                        ${data.debug.topScores.map(item => `• ${item.location}: ${item.score.toFixed(1)}`).join('<br/>')}<br/>
+                        <strong>First Mention Bonus:</strong> ${data.debug.firstMentionBonus}<br/>
+                        <strong>Total Locations Matched:</strong> ${data.debug.totalLocationsMatched}` : ''}
+                    `;
+                } else {
+                    const errorData = await response.json();
+                    resultDiv.innerHTML = `
+                        <strong>❌ Error:</strong> ${errorData.error}<br/>
+                        <strong>Fallback:</strong> ${errorData.fallbackImage || 'None'}
+                    `;
+                }
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = `<strong>❌ Network Error:</strong> ${error.message}`;
+            }
+        }
+        
+        function testCustomMemory() {
+            const textarea = document.getElementById('customMemory');
+            const memoryText = textarea.value.trim();
+            
+            if (!memoryText) {
+                alert('Please enter some memory text to test');
+                return;
+            }
+            
+            const button = textarea.parentNode.querySelector('button');
+            testMemory(button, memoryText);
+        }
+        
+        // Test all memories at once
+        function testAll() {
+            const buttons = document.querySelectorAll('.test-memory button');
+            buttons.forEach((button, index) => {
+                setTimeout(() => {
+                    if (button.onclick) button.click();
+                }, index * 1000); // Stagger tests by 1 second
+            });
+        }
+        
+        console.log('Background matching test page loaded. Use testAll() to test all memories at once.');
+    </script>
+</body>
+</html>
+
+
