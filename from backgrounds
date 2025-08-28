@@ -1,0 +1,3 @@
+[33m03e778e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mcleaned-main[m[33m, [m[1;31morigin/cleaned-main[m[33m)[m Add loop motion effects to childhood memory backgrounds
+[33mea73f8b[m Implement automatic background image matching system for generated memories
+[33m43e1eb9[m Disable live parallax effects: static background for smooth performance, keep 2.5D effects only in downloadable video

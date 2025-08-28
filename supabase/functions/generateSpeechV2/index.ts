@@ -1,5 +1,8 @@
 // OpenAI TTS API via Supabase Edge Function - generateSpeechV2
 // This function expects an .env file in the same directory with OPENAI_API_KEY=sk-xxx... for local and deployed environments.
+/* global Deno */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const Deno: any;
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 Deno.serve(async (req) => {
@@ -65,18 +68,12 @@ Deno.serve(async (req) => {
     console.log("API Key from env length:", apiKey ? apiKey.length : 0);
     console.log("API Key from env starts with:", apiKey ? apiKey.substring(0, 10) + "..." : "None");
     
-    // If no environment variable, use hardcoded key (fallback for website calls)
+    // If no environment variable, throw error (security requirement)
     if (!apiKey) {
-      console.log("Environment variable not found, using hardcoded key...");
-      apiKey = "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";
-      console.log("Using hardcoded API key");
-    }
-    
-    if (!apiKey) {
-      console.error("No API key available!");
+      console.error("Environment variable OPENAI_API_KEY not found!");
       return new Response(JSON.stringify({ 
         error: "OpenAI API key not configured",
-        details: "No API key available from environment or hardcoded"
+        details: "OPENAI_API_KEY environment variable is required"
       }), {
         status: 500,
         headers: { 
@@ -85,6 +82,8 @@ Deno.serve(async (req) => {
         },
       });
     }
+    
+
 
     // Limit text length to save credits and follow OpenAI limits (OpenAI TTS supports up to 4096 chars)
     const maxLength = 2500; // Increased for longer memories
@@ -129,28 +128,66 @@ Deno.serve(async (req) => {
     // Get the audio data as ArrayBuffer
     const audioBuffer = await openaiRes.arrayBuffer();
     console.log("Audio received:", audioBuffer.byteLength, "bytes");
-    
+
     // Convert ArrayBuffer to Uint8Array
     const uint8Array = new Uint8Array(audioBuffer);
-    
+
     // Convert to base64
     let base64Audio = "";
     for (let i = 0; i < uint8Array.length; i++) {
       base64Audio += String.fromCharCode(uint8Array[i]);
     }
     base64Audio = btoa(base64Audio);
-    
+
     console.log("Base64 conversion complete:", base64Audio.length, "characters");
 
-    return new Response(JSON.stringify({ 
+    // Optional: run Whisper transcription to obtain time-coded segments for accurate caption sync
+    let segments: Array<{ start: number; end: number; text: string }> = [];
+    try {
+      console.log("Starting Whisper transcription...");
+      const audioFile = new File([uint8Array], "speech.mp3", { type: "audio/mpeg" });
+      const formData = new FormData();
+      formData.append("file", audioFile);
+      formData.append("model", "whisper-1");
+      formData.append("response_format", "verbose_json");
+
+      const sttRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: formData,
+      });
+
+      console.log("Whisper response status:", sttRes.status);
+      if (!sttRes.ok) {
+        const sttErrText = await sttRes.text();
+        console.error("Whisper transcription error:", sttRes.status, sttErrText);
+      } else {
+        const sttJson = await sttRes.json();
+        console.log("Whisper transcription received");
+        if (Array.isArray(sttJson.segments)) {
+          segments = sttJson.segments.map((s: any) => ({
+            start: typeof s.start === 'number' ? s.start : 0,
+            end: typeof s.end === 'number' ? s.end : 0,
+            text: typeof s.text === 'string' ? s.text : ''
+          }));
+        }
+      }
+    } catch (sttError) {
+      console.error("Transcription exception:", sttError);
+    }
+
+    return new Response(JSON.stringify({
       audio: base64Audio,
+      segments,
       success: true,
       size: audioBuffer.byteLength,
       textLength: truncatedText.length,
       model: "tts-1",
       voice: "onyx"
     }), {
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         'Access-Control-Allow-Origin': '*',
       }
