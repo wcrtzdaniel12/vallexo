@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +10,40 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
   <!-- Tone.js will be loaded only when needed to prevent AudioContext warnings -->
   <script>
+    // Production Logging Utility - Only logs in development
+    window.Logger = {
+      isDev: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('localhost'),
+      
+      log: function(message, ...args) {
+        if (this.isDev) {
+          console.log(message, ...args);
+        }
+      },
+      
+      warn: function(message, ...args) {
+        if (this.isDev) {
+          console.warn(message, ...args);
+        }
+      },
+      
+      error: function(message, ...args) {
+        // Always log errors in production for debugging
+        console.error(message, ...args);
+      },
+      
+      info: function(message, ...args) {
+        if (this.isDev) {
+          console.info(message, ...args);
+        }
+      }
+    };
+
+    // Global logger instance
+    const log = window.Logger.log;
+    const warn = window.Logger.warn;
+    const error = window.Logger.error;
+    const info = window.Logger.info;
+
     // Lazy load Tone.js to prevent AudioContext warnings
     window.loadToneJS = function() {
       if (window.Tone) return Promise.resolve(window.Tone);
@@ -19,7 +52,7 @@
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js';
         script.onload = () => {
-          console.log('🎵 Tone.js loaded on demand');
+          log('🎵 Tone.js loaded on demand');
           resolve(window.Tone);
         };
         script.onerror = reject;
@@ -34,7 +67,7 @@
       loaded: false
     };
     
-    console.log('🔧 Tone.js loading deferred - will load on user interaction');
+    log('🔧 Tone.js loading deferred - will load on user interaction');
   </script>
   <style>
     @keyframes glitch {
@@ -1433,9 +1466,9 @@
         if (!audioContext) {
           try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            console.log('Created audio context for sound effect');
-          } catch (e) {
-            console.log('Could not create audio context for sound effect');
+            log('Created audio context for sound effect');
+                      } catch (e) {
+              log('Could not create audio context for sound effect');
             return;
           }
         }
@@ -1493,7 +1526,7 @@
         osc3.start(now);
         osc3.stop(now + 0.4);
         
-        console.log('🔊 Generate Memory sound effect played');
+        log('🔊 Generate Memory sound effect played');
       } catch (error) {
         console.error('Error playing Generate Memory sound:', error);
       }
@@ -1506,20 +1539,20 @@
         try {
           const response = await fetch(audioFiles[i], { method: 'HEAD' });
           if (response.ok) {
-            console.log('Found audio file:', audioFiles[i]);
+            log('Found audio file:', audioFiles[i]);
             foundFiles.push(audioFiles[i]);
           }
         } catch (error) {
-          console.log('File not found:', audioFiles[i]);
+          log('File not found:', audioFiles[i]);
         }
       }
       
       if (foundFiles.length > 0) {
-        console.log('Found', foundFiles.length, 'audio files');
+        log('Found', foundFiles.length, 'audio files');
         audioFiles = foundFiles; // Use only the files that exist
         return true;
       } else {
-        console.log('No audio files found, will use synthesized music');
+        log('No audio files found, will use synthesized music');
         return false;
       }
     }
@@ -1538,7 +1571,7 @@
           return await initSynthesizedAudio();
         }
       } catch (error) {
-        console.log('Audio initialization failed:', error);
+        log('Audio initialization failed:', error);
         return false;
       }
     }
@@ -1553,14 +1586,14 @@
         audioElement.addEventListener('ended', playNextTrack);
         audioElement.addEventListener('error', handleAudioError);
         audioElement.addEventListener('canplaythrough', () => {
-          console.log('Audio track loaded successfully');
+          log('Audio track loaded successfully');
         });
         
         loadTrack(currentTrackIndex);
-        console.log('Audio file playlist system initialized');
+        log('Audio file playlist system initialized');
         return true;
       } catch (error) {
-        console.log('Audio file initialization failed:', error);
+        log('Audio file initialization failed:', error);
         return false;
       }
     }
@@ -1574,7 +1607,7 @@
           
           // Ensure context is resumed after user interaction
           if (audioContext.state === 'suspended') {
-            console.log('🔇 AudioContext suspended - waiting for user interaction');
+            log('🔇 AudioContext suspended - waiting for user interaction');
             return false; // Will be resumed later
           }
         }
@@ -1606,10 +1639,10 @@
           started: false  // Track if oscillator has been started
         };
         
-        console.log('Synthesized audio fallback initialized');
+        log('Synthesized audio fallback initialized');
         return true;
       } catch (error) {
-        console.log('Synthesized audio initialization failed:', error);
+        log('Synthesized audio initialization failed:', error);
         return false;
       }
     }
@@ -1618,11 +1651,11 @@
     function loadTrack(index) {
       if (usingAudioFiles && audioFiles[index]) {
         audioElement.src = audioFiles[index];
-        console.log('Loading track:', audioFiles[index]);
+        log('Loading track:', audioFiles[index]);
         
         // Add error handling for this specific track
         audioElement.onerror = (e) => {
-          console.log('Failed to load track:', audioFiles[index], e);
+          log('Failed to load track:', audioFiles[index], e);
           // Try next track after a short delay
           setTimeout(() => {
             playNextTrack();
@@ -1631,7 +1664,7 @@
         
         // Add success handling
         audioElement.oncanplaythrough = () => {
-          console.log('Track loaded successfully:', audioFiles[index]);
+          log('Track loaded successfully:', audioFiles[index]);
         };
       }
     }
@@ -1640,11 +1673,11 @@
     function playNextTrack() {
       if (usingAudioFiles && audioFiles.length > 0) {
         currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
-        console.log('Moving to track', currentTrackIndex + 1, 'of', audioFiles.length);
+        log('Moving to track', currentTrackIndex + 1, 'of', audioFiles.length);
         loadTrack(currentTrackIndex);
         if (isPlaying && audioElement) {
           audioElement.play().catch(error => {
-            console.log('Auto-play failed for next track:', error);
+            log('Auto-play failed for next track:', error);
             // If auto-play fails, try the next track
             setTimeout(() => {
               playNextTrack();
@@ -1652,23 +1685,23 @@
           });
         }
       } else {
-        console.log('No more tracks available, stopping playlist');
+        log('No more tracks available, stopping playlist');
         stopPlayback();
       }
     }
     
     // Handle audio errors
     function handleAudioError(e) {
-      console.log('Audio error for track:', audioFiles[currentTrackIndex], e);
-      console.log('Error details:', e.target.error);
+              log('Audio error for track:', audioFiles[currentTrackIndex], e);
+              log('Error details:', e.target.error);
       
       // Log specific error information
       if (e.target.error) {
-        console.log('Error code:', e.target.error.code);
-        console.log('Error message:', e.target.error.message);
+        log('Error code:', e.target.error.code);
+        log('Error message:', e.target.error.message);
       }
       
-      console.log('Trying next track...');
+              log('Trying next track...');
       // Don't immediately call playNextTrack, let the onerror handler do it
     }
     
@@ -1682,20 +1715,20 @@
         if (usingAudioFiles && audioElement) {
           await audioElement.play();
           isPlaying = true;
-          console.log('Audio file playlist started');
+          log('Audio file playlist started');
         } else if (audioContext && synthesizedAudio) {
           await audioContext.resume();
           if (!synthesizedAudio.started) {
             synthesizedAudio.drone.start();
             synthesizedAudio.started = true;
-            console.log('Synthesized audio oscillator started');
+            log('Synthesized audio oscillator started');
           }
           isPlaying = true;
-          console.log('Synthesized audio resumed');
+          log('Synthesized audio resumed');
         }
         return true;
       } catch (error) {
-        console.log('Play failed:', error);
+        log('Play failed:', error);
         return false;
       }
     }
@@ -1708,7 +1741,7 @@
         audioContext.suspend();
       }
       isPlaying = false;
-      console.log('Audio stopped');
+              log('Audio stopped');
     }
     
     // Update volume
@@ -1731,7 +1764,7 @@
         originalVolume = volume;
         setVolume(0.05); // Reduce to 5% (50% of the previous 10%)
         isDucking = true;
-        console.log('Background music ducked to 5% for voiceover');
+        log('Background music ducked to 5% for voiceover');
       }
     }
     
@@ -1740,7 +1773,7 @@
       if (isDucking) {
         setVolume(originalVolume);
         isDucking = false;
-        console.log('Background music volume restored to', originalVolume);
+        log('Background music volume restored to', originalVolume);
       }
     }
     
@@ -1750,7 +1783,7 @@
         if (!audioElement && !audioContext) {
           await initAudio();
           if (!audioElement && !audioContext) {
-            console.log('Failed to initialize audio system');
+            log('Failed to initialize audio system');
             return;
           }
         }
@@ -1760,20 +1793,20 @@
           stopPlayback();
           this.textContent = '♪ OFF';
           this.classList.add('muted');
-          console.log('Background music paused');
+          log('Background music paused');
         } else {
           // Resume or start
           const success = await startPlayback();
           if (success) {
             this.textContent = '♪ ON';
             this.classList.remove('muted');
-            console.log('Background music playing');
+            log('Background music playing');
           } else {
-            console.log('Failed to start audio playback');
+            log('Failed to start audio playback');
           }
         }
       } catch (error) {
-        console.log('Audio toggle error:', error);
+        log('Audio toggle error:', error);
         this.textContent = '♪ ERROR';
       }
     });
@@ -1798,16 +1831,16 @@
             if ((usingAudioFiles && audioElement) || (!usingAudioFiles && audioContext)) {
               const success = await startPlayback();
               if (success) {
-                console.log('Background music auto-started successfully');
+                log('Background music auto-started successfully');
               } else {
-                console.log('Background music needs user interaction to start');
+                log('Background music needs user interaction to start');
               }
             } else {
-              console.log('Background music needs user interaction to start');
+              log('Background music needs user interaction to start');
             }
           }
         } catch (error) {
-          console.log('Auto-start failed, will start on user interaction:', error);
+          log('Auto-start failed, will start on user interaction:', error);
         }
       }, 500);
     });
@@ -1826,7 +1859,7 @@
             isPlaying = true;
             document.getElementById('audio-toggle').textContent = '♪ ON';
             document.getElementById('audio-toggle').classList.remove('muted');
-            console.log('Background music started on first user interaction');
+            log('Background music started on first user interaction');
           }
         } else if (!usingAudioFiles && audioContext && audioContext.state === 'suspended') {
           await audioContext.resume();
@@ -1838,7 +1871,7 @@
             isPlaying = true;
             document.getElementById('audio-toggle').textContent = '♪ ON';
             document.getElementById('audio-toggle').classList.remove('muted');
-            console.log('Synthesized audio started on first user interaction');
+            log('Synthesized audio started on first user interaction');
           }
         }
         
@@ -1847,10 +1880,10 @@
           const testUtterance = new SpeechSynthesisUtterance('Radio test');
           testUtterance.volume = 0;
           speechSynthesis.speak(testUtterance);
-          console.log('Speech synthesis test completed');
+          log('Speech synthesis test completed');
         }
       } catch (error) {
-        console.log('First click audio initialization failed:', error);
+        log('First click audio initialization failed:', error);
       }
       
       document.removeEventListener('click', initOnFirstClick);
@@ -2075,8 +2108,8 @@
       for (const url of urls) {
         try {
           const requestBody = { name, birthYear };
-            console.log(`🔄 Attempt ${retry + 1}/${maxRetries + 1} to generate memory via:`, url);
-            console.log('📝 Request payload:', requestBody);
+            log(`🔄 Attempt ${retry + 1}/${maxRetries + 1} to generate memory via:`, url);
+            log('📝 Request payload:', requestBody);
           
           const response = await fetch(url, {
             method: 'POST',
@@ -2084,7 +2117,7 @@
             body: JSON.stringify(requestBody)
           });
             
-            console.log('📡 Response status:', response.status, response.statusText);
+            log('📡 Response status:', response.status, response.statusText);
             
           if (!response.ok) {
               const errorText = await response.text();
@@ -2094,10 +2127,10 @@
           }
             
           const data = await response.json();
-            console.log('✅ Response from Supabase function:', data);
+            log('✅ Response from Supabase function:', data);
             
             if (data && data.memory) {
-              console.log('🎉 Memory generated successfully:', data.memory.substring(0, 100) + '...');
+                              log('🎉 Memory generated successfully:', data.memory.substring(0, 100) + '...');
             return data.memory;
           } else {
               console.warn('⚠️ No memory in response data:', data);
@@ -2113,7 +2146,7 @@
         
         // If we get here, all URLs failed for this retry
         if (retry < maxRetries) {
-          console.log(`⏳ Retry ${retry + 1} failed, waiting before next attempt...`);
+                      log(`⏳ Retry ${retry + 1} failed, waiting before next attempt...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1))); // Exponential backoff
         }
       }
@@ -2126,11 +2159,11 @@
     // Get appropriate background image for the memory
     async function getBackgroundImageForMemory(memoryText) {
       try {
-        console.log('🖼️ Matching background image to memory content (99 scene settings)...');
-        console.log('📝 Memory text to match:', memoryText.substring(0, 100) + '...');
+        log('🖼️ Matching background image to memory content (99 scene settings)...');
+                  log('📝 Memory text to match:', memoryText.substring(0, 100) + '...');
         
         const requestPayload = { memoryText };
-        console.log('📤 Request payload:', requestPayload);
+                  log('📤 Request payload:', requestPayload);
         
         const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/getBackgroundImageV2', {
           method: 'POST',
@@ -2141,12 +2174,12 @@
           body: JSON.stringify(requestPayload)
         });
         
-        console.log('📡 Response status:', response.status, response.statusText);
-        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+                    log('📡 Response status:', response.status, response.statusText);
+                  log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
         
         if (response.ok) {
           const data = await response.json();
-          console.log('🎯 Background image matched (from 99 possibilities):', {
+                      log('🎯 Background image matched (from 99 possibilities):', {
             setting: data.matchedSetting,
             confidence: data.confidence,
             url: data.backgroundUrl,
@@ -2179,7 +2212,7 @@
 
     // Show memory section with fade-in and scroll - AFTER voiceover is ready
     async function showMemorySection(memoryText) {
-      console.log('🎬 Preparing memory section and voiceover...');
+              log('🎬 Preparing memory section and voiceover...');
       
       // Keep memory text in state (UI now uses integrated video player)
       try { lastGeneratedMemory = memoryText || ''; } catch (_) {}
@@ -2191,23 +2224,23 @@
       const revealBg = document.getElementById('reveal-bg');
       if (revealBg && backgroundUrl) {
         revealBg.style.backgroundImage = `url(${backgroundUrl})`;
-        console.log('🖼️ Background image updated for memory setting');
+        log('🖼️ Background image updated for memory setting');
       }
       
       // Start voiceover preparation (this is the main functionality now)
       try {
-        console.log('🎵 Starting voiceover narration...');
+        log('🎵 Starting voiceover narration...');
         await narrateMemory(memoryText); // Wait for voiceover to be ready
-        console.log('✅ Voiceover ready, narration flow complete');
+                  log('✅ Voiceover ready, narration flow complete');
       } catch (error) {
-        console.log('⚠️ Voiceover failed:', error);
-        console.log('⚠️ Voiceover error stack:', error.stack);
+        log('⚠️ Voiceover failed:', error);
+                  log('⚠️ Voiceover error stack:', error.stack);
         // Continue anyway - the user can still download the recording
       }
       
       // Note: The memory-section UI was removed when we cleaned up replay functionality
       // The narration now handles the entire experience flow
-      console.log('✅ Memory section flow completed (UI removed, narration handles display)');
+              log('✅ Memory section flow completed (UI removed, narration handles display)');
     }
     
     // Debug functions
@@ -2224,7 +2257,7 @@
       // Update to show OpenAI TTS status
       speechStatus.textContent = 'OpenAI TTS: Active';
       voiceCount.textContent = 'Voice: Onyx (1950s Radio)';
-      console.log('Using OpenAI TTS with Onyx voice for 1950s radio host narration');
+              log('Using OpenAI TTS with Onyx voice for 1950s radio host narration');
       
       // Show current background image info if available
       const bgEl = document.getElementById('reveal-bg');
@@ -2232,7 +2265,7 @@
         const bgStyle = getComputedStyle(bgEl).backgroundImage;
         const bgUrl = bgStyle.match(/url\("?(.*?)"?\)/)?.[1];
         if (bgUrl) {
-          console.log('🖼️ Current background:', bgUrl);
+          log('🖼️ Current background:', bgUrl);
         }
       }
     }
@@ -2243,7 +2276,7 @@
       const maxLength = 2500; // Increased for longer memories
       if (text.length > maxLength) {
         text = text.substring(0, maxLength) + '...';
-        console.log('Text truncated to save credits:', text.length, 'characters');
+        log('Text truncated to save credits:', text.length, 'characters');
       }
       
       // DON'T add instruction to the text - let OpenAI TTS handle the voice style
@@ -2274,7 +2307,7 @@
     
     // OpenAI TTS realistic radio announcer narration
     async function narrateMemory(memoryText) {
-      console.log('Attempting to narrate memory with OpenAI TTS:', memoryText.substring(0, 50) + '...');
+              log('Attempting to narrate memory with OpenAI TTS:', memoryText.substring(0, 50) + '...');
       
       try {
         // Add radio static effect immediately
@@ -2294,14 +2327,14 @@
           .replace(/\s+/g, ' ') // Replace multiple spaces with single space
           .trim();               // Remove leading/trailing spaces
         
-        console.log('Sanitized text length:', sanitizedText.length);
+        log('Sanitized text length:', sanitizedText.length);
         
         // Call OpenAI TTS API via Supabase Edge Function
-        console.log('🎙️ CALLING GENERATE SPEECH V2 WITH NEW API KEY');
-        console.log('📞 Endpoint: generateSpeechV2 (NOT generateSpeech)');
-        console.log('🔑 Expected: New API key should work');
-        console.log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now());
-        console.log('Request body:', JSON.stringify({ text: sanitizedText }));
+        log('🎙️ CALLING GENERATE SPEECH V2 WITH NEW API KEY');
+                  log('📞 Endpoint: generateSpeechV2 (NOT generateSpeech)');
+          log('🔑 Expected: New API key should work');
+                  log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now());
+          log('Request body:', JSON.stringify({ text: sanitizedText }));
         
         const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now(), {
           method: 'POST',
@@ -2314,7 +2347,7 @@
           })
         });
         
-        console.log('OpenAI TTS response status:', response.status);
+        log('OpenAI TTS response status:', response.status);
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -2323,7 +2356,7 @@
         }
         
         const data = await response.json();
-        console.log('OpenAI TTS success:', data);
+        log('OpenAI TTS success:', data);
         
         if (data.audio) {
           // Convert base64 to audio blob
@@ -2350,11 +2383,11 @@
             if (Number.isFinite(audio.duration) && audio.duration > 0) {
               const sentenceCount = splitMemoryIntoLines(memoryText).length;
               if (Array.isArray(data.segments) && data.segments.length) {
-                console.log('Using Whisper segments for caption timing (text-aligned)');
+                log('Using Whisper segments for caption timing (text-aligned)');
                 boundaryPromise = Promise.resolve(boundariesFromSegmentsAndText(data.segments, memoryText, audio.duration))
                   .then(bt => (Array.isArray(bt) && bt.length ? bt : boundariesFromWhisperSegments(data.segments, sentenceCount, audio.duration)));
               } else {
-                console.log('No Whisper segments; using offline silence analysis with calibrated reading-time snapping');
+                log('No Whisper segments; using offline silence analysis with calibrated reading-time snapping');
                 boundaryPromise = extractSilenceBoundariesFromBlob(audioBlob)
                   .then(rawSilences => {
                     const est = computeBoundaryTimesForLines(memoryText, audio.duration);
@@ -2366,8 +2399,8 @@
           });
           
           audio.onplay = async () => {
-            console.log('🎵 Live audio playback started successfully');
-            console.log('OpenAI TTS narration started');
+            log('🎵 Live audio playback started successfully');
+            log('OpenAI TTS narration started');
             updateDebugInfo();
             // Start synchronized reveal
             try {
@@ -2375,26 +2408,26 @@
               const bt = Array.isArray(btResolved) && btResolved.length ? btResolved : computeBoundaryTimesForLines(memoryText, Math.max(6, audio.duration || 20));
               // Only use fixed timing as fallback if no Whisper segments
               if (data.segments && data.segments.length > 0) {
-                console.log('🎯 WHISPER SEGMENTS DETECTED:', {
+                log('🎯 WHISPER SEGMENTS DETECTED:', {
                   segmentCount: data.segments.length,
                   segments: data.segments.map((seg, i) => `${i}: "${seg.text}" (${seg.start?.toFixed(2)}s-${seg.end?.toFixed(2)}s)`),
                   totalDuration: audio.duration?.toFixed(2) + 's'
                 });
-                console.log('✅ Using Whisper segments for timing and text division');
+                log('✅ Using Whisper segments for timing and text division');
                 startKenBurnsRevealWithSegments(memoryText, audio, data.segments);
               } else {
-                console.log('⚠️ NO WHISPER SEGMENTS AVAILABLE:', {
+                log('⚠️ NO WHISPER SEGMENTS AVAILABLE:', {
                   hasSegments: !!data.segments,
                   segmentLength: data.segments?.length || 0,
                   dataKeys: Object.keys(data || {})
                 });
-                console.log('🔄 Falling back to fixed 2.5s timing');
+                log('🔄 Falling back to fixed 2.5s timing');
                 revealSync.fixedSecondsPerLine = 2.5;
                 startKenBurnsReveal(memoryText, audio, null, bt);
               }
             } catch (error) {
-              console.log('❌ ERROR in caption timing logic:', error);
-              console.log('🔄 Emergency fallback to fixed 2.5s timing');
+              log('❌ ERROR in caption timing logic:', error);
+              log('🔄 Emergency fallback to fixed 2.5s timing');
               revealSync.fixedSecondsPerLine = 2.5;
               const bt = computeBoundaryTimesForLines(memoryText, Math.max(6, audio.duration || 20));
               startKenBurnsReveal(memoryText, audio, null, bt);
@@ -2402,7 +2435,7 @@
           };
           
           audio.onended = () => {
-            console.log('OpenAI TTS narration ended');
+            log('OpenAI TTS narration ended');
             removeRadioStaticEffect();
             restoreBackgroundMusic(); // Restore background music volume
             URL.revokeObjectURL(audioUrl); // Clean up
@@ -2427,7 +2460,7 @@
           await audio.play();
           } catch (playError) {
             if (playError.name === 'NotAllowedError') {
-              console.log('🔇 Audio autoplay blocked - requesting user interaction');
+              log('🔇 Audio autoplay blocked - requesting user interaction');
               // Show user-friendly message and request interaction
               const interactionMsg = document.createElement('div');
               interactionMsg.style.cssText = `
@@ -2473,7 +2506,7 @@
                 if (interactionMsg.parentNode) {
                   interactionMsg.remove();
                   document.removeEventListener('click', startNarration);
-                  console.log('⏰ Timeout reached - attempting to continue narration flow');
+                  log('⏰ Timeout reached - attempting to continue narration flow');
                   // The narration flow should continue even without audio playing
                 }
               }, 10000);
@@ -2495,7 +2528,7 @@
         restoreBackgroundMusic(); // Restore background music volume
         
         // Fallback to Web Speech API if OpenAI TTS fails
-        console.log('🔄 Falling back to Web Speech API...');
+        log('🔄 Falling back to Web Speech API...');
         try {
         fallbackToWebSpeech(memoryText);
         } catch (fallbackError) {
@@ -2519,8 +2552,8 @@
         utterance.volume = 0.95;
         
         utterance.onstart = () => {
-          console.log('🗣️ Fallback Web Speech narration started');
-          console.log('🔄 Web Speech API - using fixed 2.5s timing (no segments available)');
+          log('🗣️ Fallback Web Speech narration started');
+                      log('🔄 Web Speech API - using fixed 2.5s timing (no segments available)');
           updateDebugInfo();
           // Web Speech API doesn't provide timing segments, use fixed timing
           revealSync.fixedSecondsPerLine = 2.5;
@@ -2528,7 +2561,7 @@
         };
         
         utterance.onend = () => {
-          console.log('Fallback Web Speech narration ended');
+          log('Fallback Web Speech narration ended');
           removeRadioStaticEffect();
           restoreBackgroundMusic(); // Restore background music volume
           stopKenBurnsReveal();
@@ -2539,7 +2572,7 @@
         };
         
         utterance.onerror = (event) => {
-          console.log('Fallback Web Speech error:', event);
+          log('Fallback Web Speech error:', event);
           removeRadioStaticEffect();
           restoreBackgroundMusic(); // Restore background music volume
           alert('Speech synthesis failed. Please try again.');
@@ -2637,7 +2670,7 @@
       if ('speechSynthesis' in window) {
         // Trigger voice loading
         speechSynthesis.getVoices();
-        console.log('Speech synthesis initialized');
+        log('Speech synthesis initialized');
         updateDebugInfo();
         
         // Wait for voices to load and log the best ones
@@ -2649,14 +2682,14 @@
             v.name.toLowerCase().includes('microsoft') ||
             v.name.toLowerCase().includes('premium')
           );
-          console.log('Natural-sounding voices available:', naturalVoices.map(v => v.name));
+          log('Natural-sounding voices available:', naturalVoices.map(v => v.name));
         }, 2000);
       }
       
       // Initialize integrated video player button handlers
-      console.log('🔧 Setting up integrated player button handlers...');
+              log('🔧 Setting up integrated player button handlers...');
       
-      console.log('✅ No integrated player buttons - download only via outro screen');
+              log('✅ No integrated player buttons - download only via outro screen');
       
           // Global error handler to catch any uncaught errors
     window.addEventListener('error', (event) => {
@@ -2674,13 +2707,13 @@
     
     // Add global user interaction handler to resume AudioContexts
     const resumeAudioContexts = () => {
-        console.log('👆 User interaction detected - resuming AudioContexts');
+        log('👆 User interaction detected - resuming AudioContexts');
         
         // Initialize Tone.js properly on user interaction
         if (window.Tone && !window.Tone.loaded) {
           try {
             window.loadToneJS().then(() => {
-              console.log('✅ Tone.js loaded and ready');
+              log('✅ Tone.js loaded and ready');
               // Resume Tone.js context if it exists
               if (window.Tone.context && window.Tone.context.state === 'suspended') {
                 return window.Tone.context.resume();
@@ -2688,17 +2721,17 @@
             }).then(() => {
               console.log('✅ Tone.js AudioContext resumed');
             }).catch(err => {
-              console.log('❌ Tone.js initialization failed:', err);
+                              log('❌ Tone.js initialization failed:', err);
             });
           } catch (err) {
             console.log('❌ Tone.js resume failed:', err);
           }
         } else if (window.Tone && window.Tone.context && window.Tone.context.state === 'suspended') {
           try {
-            window.Tone.context.resume().then(() => {
-              console.log('✅ Tone.js AudioContext resumed');
-            }).catch(err => {
-              console.log('❌ Failed to resume Tone.js AudioContext:', err);
+                              window.Tone.context.resume().then(() => {
+                    log('✅ Tone.js AudioContext resumed');
+                  }).catch(err => {
+              log('❌ Failed to resume Tone.js AudioContext:', err);
             });
           } catch (err) {
             console.log('❌ Tone.js resume failed:', err);
@@ -2708,9 +2741,9 @@
         // Resume main audio context
         if (window.audioContext && window.audioContext.state === 'suspended') {
           window.audioContext.resume().then(() => {
-            console.log('✅ Main AudioContext resumed');
+            log('✅ Main AudioContext resumed');
           }).catch(err => {
-            console.log('❌ Failed to resume main AudioContext:', err);
+                          log('❌ Failed to resume main AudioContext:', err);
           });
         }
         
@@ -2719,9 +2752,9 @@
           try {
             window.synthesizedAudio.drone.start();
             window.synthesizedAudio.started = true;
-            console.log('✅ Synthesized audio started');
+            log('✅ Synthesized audio started');
           } catch (err) {
-            console.log('❌ Failed to start synthesized audio:', err);
+                          log('❌ Failed to start synthesized audio:', err);
           }
         }
       };
@@ -2731,7 +2764,7 @@
         document.addEventListener(eventType, resumeAudioContexts, { once: true });
       });
       
-      console.log('🎵 AudioContext resume handlers attached');
+              log('🎵 AudioContext resume handlers attached');
     });
     
     // Keyboard shortcuts
@@ -2894,7 +2927,7 @@
     document.getElementById('memory-form').addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      console.log('📝 Form submitted - starting validation...');
+              log('📝 Form submitted - starting validation...');
       
       // Play sound effect for engagement
       try {
@@ -2907,46 +2940,46 @@
       const fullname = document.getElementById('fullname').value.trim();
       const birthYear = parseInt(document.getElementById('birthYear').value, 10);
       
-      console.log('📝 Form data:', { fullname, birthYear });
+              log('📝 Form data:', { fullname, birthYear });
       
       let hasErrors = false;
       if (!fullname) {
         document.getElementById('name-error').textContent = 'Please enter your full name';
         document.getElementById('name-error').classList.add('show');
         hasErrors = true;
-        console.log('❌ Name validation failed');
+        log('❌ Name validation failed');
       }
       if (!birthYear) {
         document.getElementById('birthYear-error').textContent = 'Please enter your birth year';
         document.getElementById('birthYear-error').classList.add('show');
         hasErrors = true;
-        console.log('❌ Birth year validation failed');
+        log('❌ Birth year validation failed');
       } else if (birthYear < 1950 || birthYear > 2010) {
         document.getElementById('birthYear-error').textContent = 'Please enter a birth year between 1950-2010';
         document.getElementById('birthYear-error').classList.add('show');
         hasErrors = true;
-        console.log('❌ Birth year range validation failed');
+        log('❌ Birth year range validation failed');
       }
       
       if (!hasErrors) {
-        console.log('✅ Form validation passed, proceeding with memory generation...');
+        log('✅ Form validation passed, proceeding with memory generation...');
         
         try {
           closeModal();
-          console.log('✅ Modal closed');
+          log('✅ Modal closed');
         } catch (modalError) {
           console.warn('⚠️ Modal close failed:', modalError);
         }
         
         try {
         showLoadingOverlay();
-          console.log('✅ Loading overlay shown');
+          log('✅ Loading overlay shown');
         } catch (overlayError) {
           console.warn('⚠️ Loading overlay failed:', overlayError);
         }
         
         try {
-          console.log('🚀 Starting memory generation for:', fullname, birthYear);
+          log('🚀 Starting memory generation for:', fullname, birthYear);
           
           // Store user's name for filename generation later
           if (fullname && fullname.trim()) {
@@ -2955,12 +2988,12 @@
           }
           
           const memory = await generateMemory(fullname, birthYear);
-          console.log('✅ Memory generation completed successfully');
+          log('✅ Memory generation completed successfully');
           
           // Start voice + UI
-          console.log('🎬 Starting memory section display...');
+          log('🎬 Starting memory section display...');
           await showMemorySection(memory);
-          console.log('✅ Memory section displayed successfully');
+          log('✅ Memory section displayed successfully');
           hideLoadingOverlay();
         } catch (error) {
           console.error('💥 Memory generation failed:', error);
@@ -2988,7 +3021,7 @@
           alert(errorMessage);
         }
       } else {
-        console.log('❌ Form validation failed, not proceeding');
+        log('❌ Form validation failed, not proceeding');
       }
     });
 
@@ -3666,10 +3699,10 @@
           }
         }
 
-        console.log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
+        log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
 
         if (!segments.length) {
-          console.log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
+          log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
           startKenBurnsReveal(memoryText, audioEl, null, null);
           return;
         }
@@ -3776,13 +3809,13 @@
             }
         }
 
-        console.log(`🎬 Ken Burns reveal started with ${segments.length} merged Whisper segments:`);
+        log(`🎬 Ken Burns reveal started with ${segments.length} merged Whisper segments:`);
         segments.forEach((seg, i) => {
           const duration = seg.end - seg.start;
           const nextGap = i < segments.length - 1 ? segments[i + 1].start - seg.end : 0;
-          console.log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${nextGap.toFixed(2)}s gap)`);
+          log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${nextGap.toFixed(2)}s gap)`);
         });
-        console.log('🎵 Using TextTrack cue synchronization when available for subtitle-grade timing');
+                  log('🎵 Using TextTrack cue synchronization when available for subtitle-grade timing');
       } catch (error) {
         console.error('Error in startKenBurnsRevealWithSegments:', error);
         // Fallback to regular reveal
@@ -3810,8 +3843,8 @@
 
     function startExperienceRecording(voiceAudioEl, totalDurationSec) {
       // Show user-friendly notification about recording
-      console.log('🎬 Starting experience recording...');
-      console.log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
+              log('🎬 Starting experience recording...');
+              log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
       
       // Prepare canvas - OPTIMIZED FOR 9:16 MOBILE ASPECT RATIO
       const width = 720, height = 1280; // 9:16 aspect ratio (mobile-first)
@@ -3848,7 +3881,7 @@
       img.crossOrigin = 'anonymous';
       img.src = bgUrl || 'img/hallway1.png';
       
-      console.log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
+              log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
 
       // Build audio mix: voice + bgm (if available) - Mobile-optimized audio routing
       let recordingAudioCtx = null;
@@ -3865,16 +3898,16 @@
         
         // Resume context for mobile (non-blocking to prevent freezing)
         if (recordingAudioCtx.state === 'suspended') {
-          console.log('🔇 Recording AudioContext suspended - attempting resume...');
+          log('🔇 Recording AudioContext suspended - attempting resume...');
           recordingAudioCtx.resume().then(() => {
-            console.log('✅ Recording AudioContext resumed successfully');
+                          log('✅ Recording AudioContext resumed successfully');
           }).catch((resumeError) => {
             console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
           });
         }
         
         dest = recordingAudioCtx.createMediaStreamDestination();
-        console.log(`🎵 Recording audio setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
+        log(`🎵 Recording audio setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
         
       } catch (error) {
         console.warn('⚠️ Failed to create recording AudioContext:', error);
@@ -3893,7 +3926,7 @@
           voiceGain.connect(dest);
           voiceGain.connect(recordingAudioCtx.destination);
           
-          console.log('🎤 Voice audio routed to recording stream');
+          log('🎤 Voice audio routed to recording stream');
           
           // Background music routing (lower volume)
           if (usingAudioFiles && audioElement && !audioElement.paused) {
@@ -3906,7 +3939,7 @@
               bgGain.connect(dest);
               bgGain.connect(recordingAudioCtx.destination);
               
-              console.log('🎵 Background music routed to recording stream');
+              log('🎵 Background music routed to recording stream');
             } catch (bgError) {
               console.warn('⚠️ Background audio routing failed:', bgError);
             }
@@ -3914,7 +3947,7 @@
           
           // Get the mixed audio stream
           audioStream = dest.stream;
-          console.log(`🔊 Mixed audio stream ready: ${audioStream.getAudioTracks().length} tracks`);
+          log(`🔊 Mixed audio stream ready: ${audioStream.getAudioTracks().length} tracks`);
           
         } catch (routingError) {
           console.warn('⚠️ Audio routing failed:', routingError);
@@ -3923,7 +3956,7 @@
             const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
             if (directStream) {
               audioStream = directStream;
-              console.log('🔄 Using direct audio capture fallback');
+              log('🔄 Using direct audio capture fallback');
             }
           } catch (fallbackError) {
             console.warn('⚠️ Direct audio capture also failed:', fallbackError);
@@ -3934,26 +3967,26 @@
         try { 
           if (recordingAudioCtx.state !== 'running') {
             recordingAudioCtx.resume().then(() => {
-              console.log('🎵 Recording AudioContext resumed and running');
+              log('🎵 Recording AudioContext resumed and running');
             }).catch(() => {
-              console.log('⚠️ Recording AudioContext resume failed, continuing anyway');
+                              log('⚠️ Recording AudioContext resume failed, continuing anyway');
             });
           }
         } catch (_) {}
       } else {
         // Fallback: try direct audio capture if AudioContext mixing fails
         try {
-          console.log('🔄 AudioContext mixing not available, trying direct capture...');
+          log('🔄 AudioContext mixing not available, trying direct capture...');
           const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
           if (directStream && directStream.getAudioTracks().length > 0) {
             audioStream = directStream;
-            console.log('✅ Direct audio capture working as fallback');
+            log('✅ Direct audio capture working as fallback');
           } else {
             console.warn('⚠️ No audio capture available - recording video only');
           }
         } catch (directError) {
           console.warn('⚠️ Direct audio capture failed:', directError);
-          console.log('📹 Proceeding with video-only recording');
+          log('📹 Proceeding with video-only recording');
         }
       }
 
@@ -3965,10 +3998,10 @@
         try {
           // Method 1: Direct track addition (preferred)
           audioStream.getAudioTracks().forEach(track => {
-            console.log(`🎵 Adding audio track: ${track.kind} (${track.readyState})`);
+            log(`🎵 Adding audio track: ${track.kind} (${track.readyState})`);
             stream.addTrack(track);
           });
-          console.log(`✅ Audio tracks added: ${stream.getAudioTracks().length} tracks`);
+          log(`✅ Audio tracks added: ${stream.getAudioTracks().length} tracks`);
         } catch (addError) {
           console.warn('⚠️ Direct track addition failed, trying merge method:', addError);
           try {
@@ -3980,7 +4013,7 @@
             // Replace stream reference
             stream.getTracks().forEach(tr => stream.removeTrack(tr));
             merged.getTracks().forEach(tr => stream.addTrack(tr));
-            console.log(`🔄 Stream merged: ${merged.getVideoTracks().length}V + ${merged.getAudioTracks().length}A`);
+            log(`🔄 Stream merged: ${merged.getVideoTracks().length}V + ${merged.getAudioTracks().length}A`);
           } catch (mergeError) {
             console.warn('⚠️ Stream merging also failed:', mergeError);
           }
@@ -4018,7 +4051,7 @@
       for (const format of testFormats) {
         if (MediaRecorder.isTypeSupported(format.mimeType)) {
           options = { mimeType: format.mimeType };
-          console.log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
+          log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
           break;
         }
       }
@@ -4030,7 +4063,7 @@
         for (const format of basicFormats) {
           if (MediaRecorder.isTypeSupported(format)) {
             options = { mimeType: format };
-            console.log(`📱 Using basic ${format} as fallback`);
+            log(`📱 Using basic ${format} as fallback`);
             break;
           }
         }
@@ -4039,7 +4072,7 @@
       // Final fallback: let browser choose
       if (!options.mimeType) {
         options = {}; // Let browser choose default
-        console.log('📱 Using browser default codec (no specific format supported)');
+        log('📱 Using browser default codec (no specific format supported)');
       }
       
       // Mobile format compatibility warning
@@ -4048,10 +4081,10 @@
         console.warn('💡 Consider using MP4 for maximum mobile compatibility');
       }
       
-      console.log(`📱 Final recording options:`, options);
-      console.log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getAudioTracks().length}A tracks`);
-      console.log(`📱 Device type: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
-      console.log(`📱 Format priority: ${isMobileDevice ? 'MP4 first (mobile optimized)' : 'WebM first (desktop optimized)'}`);
+              log(`📱 Final recording options:`, options);
+              log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getVideoTracks().length}A tracks`);
+        log(`📱 Device type: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
+        log(`📱 Format priority: ${isMobileDevice ? 'MP4 first (mobile optimized)' : 'WebM first (desktop optimized)'}`);
       
       const recorder = new MediaRecorder(stream, options);
       const chunks = [];
@@ -4069,13 +4102,13 @@
         const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobileDevice && finalMimeType === 'video/webm') {
           // Try to convert WebM to MP4 for mobile compatibility
-          console.log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
+          log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
           finalMimeType = 'video/mp4';
         }
         
-        console.log(`📱 Creating blob with MIME type: ${finalMimeType}`);
-        console.log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
-        console.log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
+        log(`📱 Creating blob with MIME type: ${finalMimeType}`);
+        log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
+        log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
         
         const blob = new Blob(chunks, { type: finalMimeType });
         const url = URL.createObjectURL(blob);
@@ -4087,7 +4120,7 @@
         cleanupCanvas();
         try { recordingAudioCtx && recordingAudioCtx.close(); } catch (_) {}
         
-        console.log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
+        log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
         
         // After recording is ready, show outro and enable responsive controls
         try { showOutroScreen(); } catch (_) {}
@@ -4102,7 +4135,7 @@
 
       // Start drawing once image is ready
       img.onload = () => {
-        console.log(`🎬 Recording canvas setup: ${width}x${height} logical, ${canvas.width}x${canvas.height} physical (DPR: ${dpr})`);
+        log(`🎬 Recording canvas setup: ${width}x${height} logical, ${canvas.width}x${canvas.height} physical (DPR: ${dpr})`);
         drawRecordingFrame();
         recorder.start(100); // collect data every 100ms
         
@@ -4152,7 +4185,7 @@
                                (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
       
       isLowPerformance = isMobile || hasLimitedMemory || hasSlowConnection;
-      console.log('📱 Performance mode:', isLowPerformance ? 'Low (mobile/limited)' : 'High (desktop)');
+              log('📱 Performance mode:', isLowPerformance ? 'Low (mobile/limited)' : 'High (desktop)');
       return isLowPerformance;
     }
 
@@ -4170,7 +4203,7 @@
       revealBg.style.backgroundPosition = 'center';
       revealBg.style.transform = 'scale(1.05)'; // Slight zoom for visual interest
       
-      console.log('📱 Static background set for live experience (parallax saved for video)');
+              log('📱 Static background set for live experience (parallax saved for video)');
     }
     
     // Optimized animation with throttling and RAF
@@ -4180,7 +4213,7 @@
     function animateLive2_5DParallax(progress) {
       // DISABLED: Keep background completely static for smooth performance
       // Only the downloadable video will have parallax effects
-      console.log('📱 Live parallax disabled for performance - effects only in downloadable video');
+              log('📱 Live parallax disabled for performance - effects only in downloadable video');
       return;
     }
     
@@ -4433,7 +4466,7 @@
         const mimeType = experienceRecording.finalMimeType || 'video/webm';
         const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
         
-        console.log(`💾 Saving video: ${mimeType} -> .${fileExt}`);
+        log(`💾 Saving video: ${mimeType} -> .${fileExt}`);
         
         // Create nostalgic filename format: MEMORY_LOG_XXX_NAME
         const nostalgicFilename = generateNostalgicFilename(fileExt);
@@ -4443,7 +4476,7 @@
         a.click();
         a.remove();
         
-        console.log(`✅ Download initiated: ${nostalgicFilename}`);
+        log(`✅ Download initiated: ${nostalgicFilename}`);
       });
     }
 
@@ -4460,7 +4493,7 @@
             const mimeType = experienceRecording.finalMimeType || 'video/webm';
             const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
             
-            console.log(`📤 Sharing video: ${mimeType} -> .${fileExt}`);
+            log(`📤 Sharing video: ${mimeType} -> .${fileExt}`);
             
             // Create nostalgic filename
             const nostalgicFilename = generateNostalgicFilename(fileExt);
@@ -4475,7 +4508,7 @@
                 title: 'My Childhood Memory',
                 text: 'Check out this nostalgic childhood memory I generated!'
               });
-              console.log('✅ Video shared successfully via system share sheet');
+              log('✅ Video shared successfully via system share sheet');
             } else {
               throw new Error('File sharing not supported');
             }
@@ -4504,7 +4537,7 @@
 
     // Emotional outro screen functions
     function showOutroScreen() {
-      console.log('🎭 Showing emotional outro screen');
+              log('🎭 Showing emotional outro screen');
       const overlay = document.getElementById('outro-overlay');
       if (overlay) {
         overlay.classList.add('active');
@@ -4521,7 +4554,7 @@
         
         if (saveBtn) {
           saveBtn.onclick = () => {
-            console.log('💾 Save button clicked');
+            log('💾 Save button clicked');
             // Download recorded video
             if (experienceRecording && experienceRecording.url) {
               saveRecordedVideo();
@@ -4535,7 +4568,7 @@
         
         if (shareBtn) {
           shareBtn.onclick = () => {
-            console.log('🔗 Share button clicked');
+            log('🔗 Share button clicked');
             // Use system share sheet for recorded video
             if (experienceRecording && experienceRecording.url) {
               shareRecordedVideo();
@@ -4550,7 +4583,7 @@
         const recallMoreBtn = document.getElementById('recall-more-btn');
         if (recallMoreBtn) {
           recallMoreBtn.onclick = () => {
-            console.log('🔄 Recall More button clicked');
+            log('🔄 Recall More button clicked');
             // Hide outro screen and return to hero page
             hideOutroScreen();
             // Clean up any existing recordings
@@ -4574,7 +4607,7 @@
             };
             // Reset any UI state
             stopKenBurnsReveal();
-            console.log('✅ Ready for new memory generation');
+            log('✅ Ready for new memory generation');
           };
           recallMoreBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Recall More');
         }
