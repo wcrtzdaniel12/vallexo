@@ -44,38 +44,8 @@
     const error = window.Logger.error;
     const info = window.Logger.info;
     
-    // Minimal Memory Leak Prevention - Surgical Fixes Only
-    window.MemoryLeakFixer = {
-      // Store interval IDs for cleanup
-      activeIntervals: new Set(),
-      
-      // Track an interval for later cleanup
-      trackInterval: function(id) {
-        this.activeIntervals.add(id);
-        return id;
-      },
-      
-      // Clean up specific intervals (called when needed)
-      cleanupIntervals: function() {
-        this.activeIntervals.forEach(id => {
-          clearInterval(id);
-          log('🧹 Cleared interval:', id);
-        });
-        this.activeIntervals.clear();
-      },
-      
-      // Clean up specific interval by ID
-      clearInterval: function(id) {
-        if (id && this.activeIntervals.has(id)) {
-          clearInterval(id);
-          this.activeIntervals.delete(id);
-          log('🧹 Cleared specific interval:', id);
-        }
-      }
-    };
-    
-    // Global instance
-    const memoryLeakFixer = window.MemoryLeakFixer;
+    // Memory leak fixer will be created after DOM loads
+    let memoryLeakFixer = null;
 
     // Lazy load Tone.js to prevent AudioContext warnings
     window.loadToneJS = function() {
@@ -1934,7 +1904,7 @@
     }
     
     // Update visualizer continuously
-    const visualizerInterval = memoryLeakFixer.trackInterval(setInterval(updateVisualizer, 50));
+    const visualizerInterval = memoryLeakFixer ? memoryLeakFixer.trackInterval(setInterval(updateVisualizer, 50)) : setInterval(updateVisualizer, 50);
     
     // Fake user actions for social proof
     const fakeUserActions = [
@@ -2723,6 +2693,38 @@
               log('🔧 Setting up integrated player button handlers...');
       
               log('✅ No integrated player buttons - download only via outro screen');
+      
+      // Initialize memory leak fixer after DOM is loaded
+      memoryLeakFixer = {
+        // Store interval IDs for cleanup
+        activeIntervals: new Set(),
+        
+        // Track an interval for later cleanup
+        trackInterval: function(id) {
+          this.activeIntervals.add(id);
+          return id;
+        },
+        
+        // Clean up specific intervals (called when needed)
+        cleanupIntervals: function() {
+          this.activeIntervals.forEach(id => {
+            clearInterval(id);
+            log('🧹 Cleared interval:', id);
+          });
+          this.activeIntervals.clear();
+        },
+        
+        // Clean up specific interval by ID
+        clearInterval: function(id) {
+          if (id && this.activeIntervals.has(id)) {
+            clearInterval(id);
+            this.activeIntervals.delete(id);
+            log('🧹 Cleared specific interval:', id);
+          }
+        }
+      };
+      
+      log('🧹 Memory leak fixer initialized after DOM load');
       
           // Global error handler to catch any uncaught errors
     window.addEventListener('error', (event) => {
