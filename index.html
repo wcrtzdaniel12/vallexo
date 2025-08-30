@@ -44,8 +44,7 @@
     const error = window.Logger.error;
     const info = window.Logger.info;
     
-    // Memory leak fixer will be created after DOM loads
-    let memoryLeakFixer = null;
+
 
     // Lazy load Tone.js to prevent AudioContext warnings
     window.loadToneJS = function() {
@@ -1904,7 +1903,7 @@
     }
     
     // Update visualizer continuously
-    const visualizerInterval = memoryLeakFixer ? memoryLeakFixer.trackInterval(setInterval(updateVisualizer, 50)) : setInterval(updateVisualizer, 50);
+    setInterval(updateVisualizer, 50);
     
     // Fake user actions for social proof
     const fakeUserActions = [
@@ -2734,11 +2733,7 @@
       console.error('🚨 Error source:', event.filename, 'line:', event.lineno);
     });
     
-    // Clean up intervals when page unloads
-    window.addEventListener('beforeunload', () => {
-      log('🧹 Page unloading - cleaning up intervals...');
-      memoryLeakFixer.cleanupIntervals();
-    });
+
     
     // Global unhandled promise rejection handler
     window.addEventListener('unhandledrejection', (event) => {
@@ -2845,12 +2840,12 @@
         setTimeout(() => flash.remove(), 140);
         // Loop flash pops
         overlay._flashTimer && clearInterval(overlay._flashTimer);
-        overlay._flashTimer = memoryLeakFixer.trackInterval(setInterval(() => {
+        overlay._flashTimer = setInterval(() => {
           const f = document.createElement('div');
           f.className = 'loading-flash';
           overlay.appendChild(f);
           setTimeout(() => f.remove(), 140);
-        }, 2200 + Math.random()*1200));
+        }, 2200 + Math.random()*1200);
       } catch (e) { /* no-op */ }
     }
     
@@ -2872,8 +2867,7 @@
         overlay._flashTimer = null;
       }
       
-      // Clean up tracked intervals
-      memoryLeakFixer.cleanupIntervals();
+
       const txt = document.getElementById('loading-text');
       if (txt) txt.classList.remove('glitch');
     }
@@ -2882,7 +2876,7 @@
       const matrix = document.getElementById('loading-matrix');
       const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
       
-      const matrixRainInterval = memoryLeakFixer.trackInterval(setInterval(() => {
+      setInterval(() => {
         const rain = document.createElement('div');
         rain.className = 'matrix-rain';
         rain.style.left = Math.random() * 100 + '%';
@@ -2896,7 +2890,7 @@
             rain.parentNode.removeChild(rain);
           }
         }, 3000);
-      }, 100));
+      }, 100);
     }
     
     function startMemoryFragments() {
@@ -2924,7 +2918,7 @@
         'car engine hum...'
       ];
       
-      const memoryFragmentsInterval = memoryLeakFixer.trackInterval(setInterval(() => {
+      setInterval(() => {
         const fragment = document.createElement('div');
         fragment.className = 'loading-memory-fragments';
         fragment.style.left = Math.random() * 80 + 10 + '%';
@@ -2939,7 +2933,7 @@
             fragment.parentNode.removeChild(fragment);
           }
         }, 4000);
-      }, 800));
+      }, 800);
     }
     
     function updateLoadingText() {
@@ -2956,7 +2950,7 @@
       ];
       
       let phaseIndex = 0;
-      const textInterval = memoryLeakFixer.trackInterval(setInterval(() => {
+      const textInterval = setInterval(() => {
         if (phaseIndex < loadingPhases.length) {
           loadingText.textContent = loadingPhases[phaseIndex].text;
           loadingStatus.textContent = loadingPhases[phaseIndex].status;
@@ -2964,7 +2958,7 @@
         } else {
           clearInterval(textInterval);
         }
-      }, 2000));
+      }, 2000);
     }
 
     // Update form submit handler to show memory section
@@ -3070,40 +3064,14 @@
     });
 
     // Add random glitch effects
-    const glitchInterval = memoryLeakFixer.trackInterval(setInterval(() => {
+    setInterval(() => {
       const elements = document.querySelectorAll('.glitch-text, .flicker-text');
-      if (elements.length > 0) {
-        const randomElement = elements[Math.floor(Math.random() * elements.length)];
-        randomElement.style.animation = 'none';
-        setTimeout(() => {
-          randomElement.style.animation = '';
-        }, 100);
-      }
-    }, 3000));
-    
-    // Add memory cleanup button for testing (only in development)
-    if (window.Logger.isDev) {
-      const cleanupBtn = document.createElement('button');
-      cleanupBtn.textContent = '🧹 Cleanup Intervals';
-      cleanupBtn.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        z-index: 10000;
-        background: rgba(0, 255, 0, 0.8);
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        border-radius: 3px;
-        font-size: 12px;
-        cursor: pointer;
-      `;
-      cleanupBtn.onclick = () => {
-        memoryLeakFixer.cleanupIntervals();
-        alert('Interval cleanup completed! Check console for details.');
-      };
-      document.body.appendChild(cleanupBtn);
-    }
+      const randomElement = elements[Math.floor(Math.random() * elements.length)];
+      randomElement.style.animation = 'none';
+      setTimeout(() => {
+        randomElement.style.animation = '';
+      }, 100);
+    }, 3000);
 
     // Smooth scroll
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -3637,7 +3605,7 @@
           ? (revealSync.totalWords / (revealSync.lines.length * revealSync.fixedSecondsPerLine))
           : (revealSync.totalWords / fallbackSec);
           let startTs = performance.now();
-          estimateTimer = memoryLeakFixer.trackInterval(setInterval(() => {
+          estimateTimer = setInterval(() => {
             const elapsedSec = (performance.now() - startTs) / 1000;
             
             // Calculate progress for 2.5D parallax animation
@@ -3655,7 +3623,7 @@
               const wordsSpoken = Math.floor(elapsedSec * wordsPerSec);
               setCaptionByWords(wordsSpoken);
             }
-          }, 100));
+          }, 100);
         }
 
         // Web Speech boundary sync
@@ -3865,15 +3833,15 @@
             }
           };
           audioEl.addEventListener('timeupdate', audioTimeHandler);
-          const preciseTimer = memoryLeakFixer.trackInterval(setInterval(() => {
+          const preciseTimer = setInterval(() => {
               if (audioEl && !audioEl.paused && audioTimeHandler) audioTimeHandler();
-            }, 40));
+            }, 40);
           revealSync.preciseTimer = preciseTimer;
         } else {
             // No audio duration: fall back to equal segment pacing
             const avg = totalDuration / segments.length;
             let i = 0;
-          estimateTimer = memoryLeakFixer.trackInterval(setInterval(() => {
+          estimateTimer = setInterval(() => {
               if (i < segments.length) { setCaptionText(segments[i].text); i++; }
             }, Math.max(200, avg * 1000));
             }
@@ -4475,8 +4443,7 @@
       try { if (experienceRecording.drawId) cancelAnimationFrame(experienceRecording.drawId); } catch (_) {}
       try { if (experienceRecording.recorder && experienceRecording.recorder.state !== 'inactive') experienceRecording.recorder.stop(); } catch (_) {}
       
-      // Clean up any active intervals
-      memoryLeakFixer.cleanupIntervals();
+
     }
 
     function cleanupCanvas() {
@@ -4494,12 +4461,12 @@
     function whenRecordingReady(cb) {
       // Ready when a Blob URL is available (integrated player may or may not be set yet)
       if (experienceRecording && experienceRecording.url) return cb();
-      const waitId = memoryLeakFixer.trackInterval(setInterval(() => {
+      const waitId = setInterval(() => {
         if (experienceRecording && experienceRecording.url) {
           clearInterval(waitId);
           cb();
         }
-      }, 250));
+      }, 250);
     }
 
 
