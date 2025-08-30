@@ -3,105 +3,4648 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vallexo - Generate Nostalgic Childhood Memories</title>
+      <title>Vallexo v11</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/reset.css">
-  <link rel="stylesheet" href="css/main.css">
-</head>
-<body>
-  <!-- Audio Toggle Button -->
-  <button id="audio-toggle" class="audio-toggle" title="Toggle Background Music">♪ OFF</button>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <!-- Tone.js will be loaded only when needed to prevent AudioContext warnings -->
+  <script>
+    // Production Logging Utility - Only logs in development
+    window.Logger = {
+      isDev: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('localhost'),
+      
+      log: function(message, ...args) {
+        if (this.isDev) {
+          console.log(message, ...args);
+        }
+      },
+      
+      warn: function(message, ...args) {
+        if (this.isDev) {
+          console.warn(message, ...args);
+        }
+      },
+      
+      error: function(message, ...args) {
+        // Always log errors in production for debugging
+        console.error(message, ...args);
+      },
+      
+      info: function(message, ...args) {
+        if (this.isDev) {
+          console.info(message, ...args);
+        }
+      }
+    };
 
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="hero-content">
-      <h1 class="hero-title">VALLEXO</h1>
-      <p class="hero-subtitle">AI-Powered Nostalgic Memory Generation</p>
-      <p class="hero-description">
-        Pay $12 to remember something you never lived.
-      </p>
-      <button id="open-modal" class="btn-glitch" data-text="Generate My Memory — $12">
-        Generate My Memory — $12
-      </button>
+    // Global logger instance
+    const log = window.Logger.log;
+    const warn = window.Logger.warn;
+    const error = window.Logger.error;
+    const info = window.Logger.info;
+
+    // Lazy load Tone.js to prevent AudioContext warnings
+    window.loadToneJS = function() {
+      if (window.Tone) return Promise.resolve(window.Tone);
+      
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js';
+        script.onload = () => {
+          log('🎵 Tone.js loaded on demand');
+          resolve(window.Tone);
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+    
+    // Prevent any Tone.js usage until explicitly loaded
+    window.Tone = {
+      start: () => Promise.resolve(),
+      context: null,
+      loaded: false
+    };
+    
+    log('🔧 Tone.js loading deferred - will load on user interaction');
+  </script>
+  <style>
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(-2px, -2px); }
+      60% { transform: translate(2px, 2px); }
+      80% { transform: translate(2px, -2px); }
+      100% { transform: translate(0); }
+    }
+    
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+    
+    @keyframes ambient {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(0.5deg); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+    
+    .liminal-bg {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #1f1f1f 50%, #2a2a2a 75%, #1a1a1a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .liminal-bg::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
+      animation: ambient 20s ease-in-out infinite;
+    }
+    
+    .glitch-text {
+      animation: glitch 0.3s infinite;
+      text-shadow: 
+        2px 0 #00ffff,
+        -2px 0 #ff00ff,
+        0 2px #ffff00;
+    }
+    
+    .flicker-text {
+      animation: flicker 3s infinite;
+    }
+    
+    .scanline {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.5), transparent);
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+    }
+    
+    .glitch-button {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .glitch-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .glitch-button:hover::before {
+      left: 100%;
+    }
+    
+    .glitch-button:hover {
+      animation: glitch 0.1s infinite;
+      box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.5),
+        0 0 40px rgba(255, 0, 255, 0.3);
+    }
+    
+    .neon-pulse {
+      animation: pulse 4s ease-in-out infinite;
+    }
+    
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .text-shadow-glow {
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .brand-section {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 20px 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+    
+    .brand-section.scrolled {
+      background: rgba(0, 0, 0, 0.8);
+      border-bottom: 1px solid rgba(0, 255, 255, 0.4);
+    }
+    
+    .brand-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .brand-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: #00ffff;
+      text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+      letter-spacing: 2px;
+      animation: brand-glow 3s ease-in-out infinite;
+    }
+    
+    .brand-tagline {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 300;
+      letter-spacing: 1px;
+      opacity: 0.8;
+      animation: tagline-fade 4s ease-in-out infinite;
+    }
+    
+    @keyframes brand-glow {
+      0%, 100% { text-shadow: 0 0 15px rgba(0, 255, 255, 0.8); }
+      50% { text-shadow: 0 0 25px rgba(0, 255, 255, 1), 0 0 35px rgba(0, 255, 255, 0.5); }
+    }
+    
+    @keyframes tagline-fade {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    
+    .brand-logo:hover {
+      animation: brand-glitch 0.3s ease-in-out;
+    }
+    
+    @keyframes brand-glitch {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      75% { transform: translateX(-1px); }
+      100% { transform: translateX(0); }
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px);
+      z-index: 1000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .modal-content {
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      margin: auto;
+      position: relative;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+      animation: modal-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes modal-glow {
+      0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
+      50% { box-shadow: 0 0 50px rgba(0, 255, 255, 0.4); }
+    }
+    
+    .modal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      color: #00ffff;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .form-group {
+      margin-bottom: 25px;
+    }
+    
+    .form-label {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 4px;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.8);
+    }
+    
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .modal-button {
+      width: 100%;
+      padding: 16px 24px;
+      background: transparent;
+      border: 2px solid #00ffff;
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .modal-button:hover {
+      background: rgba(0, 255, 255, 0.1);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .modal-button:active {
+      transform: translateY(0);
+    }
+    
+    .modal-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .modal-button:hover::before {
+      left: 100%;
+    }
+    
+    /* Loading Effects */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(20px);
+      z-index: 2000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loading-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    /* Extra nausea/vertigo layers */
+    .loading-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%);
+      mix-blend-mode: multiply;
+      animation: vignette-pulse 3.2s ease-in-out infinite;
+    }
+    .loading-overlay::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, rgba(0,255,255,0.03) 0px, rgba(0,255,255,0.03) 1px, transparent 2px, transparent 4px),
+        repeating-linear-gradient(90deg, rgba(255,0,255,0.02) 0px, rgba(255,0,255,0.02) 1px, transparent 2px, transparent 3px);
+      animation: grain-shift 0.8s steps(2,end) infinite;
+    }
+
+    @keyframes vignette-pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 0.95; }
+    }
+    @keyframes grain-shift {
+      0% { transform: translate3d(0,0,0); filter: hue-rotate(0deg) saturate(1); }
+      50% { transform: translate3d(1px,-1px,0); filter: hue-rotate(10deg) saturate(1.2); }
+      100% { transform: translate3d(0,0,0); filter: hue-rotate(0deg) saturate(1); }
+    }
+    
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      will-change: transform, filter;
+      animation: vertigo-wobble 6.5s ease-in-out infinite;
+    }
+
+    @keyframes vertigo-wobble {
+      0%   { transform: perspective(900px) rotateX(0deg) rotateY(0deg) scale(1); filter: contrast(1) saturate(1); }
+      25%  { transform: perspective(900px) rotateX(6deg) rotateY(-3deg) scale(1.02); filter: contrast(1.1) saturate(1.1); }
+      50%  { transform: perspective(900px) rotateX(-5deg) rotateY(4deg) scale(1.03); filter: contrast(1.15) saturate(1.15) hue-rotate(4deg); }
+      75%  { transform: perspective(900px) rotateX(3deg) rotateY(2deg) scale(1.01); filter: contrast(1.05) saturate(1.05); }
+      100% { transform: perspective(900px) rotateX(0deg) rotateY(0deg) scale(1); filter: contrast(1) saturate(1); }
+    }
+    
+    .loading-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      color: #00ffff;
+      text-align: center;
+      margin-bottom: 40px;
+      text-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+      animation: loading-pulse 2s ease-in-out infinite;
+    }
+
+    /* Glitch slices for nauseating feel */
+    .loading-text.glitch::before,
+    .loading-text.glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #00ffff;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .loading-text.glitch::before {
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+      text-shadow: -2px 0 #ff00ff;
+      animation: slice-shift 1.2s steps(2,end) infinite;
+    }
+    .loading-text.glitch::after {
+      clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+      text-shadow: 2px 0 #ffff00;
+      animation: slice-shift 1.1s steps(2,end) infinite reverse;
+    }
+    @keyframes slice-shift {
+      0% { transform: translate(-50%, 0); }
+      50% { transform: translate(calc(-50% + 2px), 1px); }
+      100% { transform: translate(-50%, 0); }
+    }
+    
+    @keyframes loading-pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    
+    .loading-progress {
+      width: 300px;
+      height: 4px;
+      background: rgba(0, 255, 255, 0.2);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 30px;
+    }
+    
+    .loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+      background-size: 300% 100%;
+      animation: loading-flow 3s ease-in-out infinite, loading-move 8s linear infinite;
+      border-radius: 2px;
+    }
+
+    /* Flash frame for discomfort effect */
+    .loading-flash {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.6), rgba(255,255,255,0) 60%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      animation: flash-pop 120ms ease-out forwards;
+    }
+    @keyframes flash-pop {
+      from { opacity: 0.8; filter: blur(0); }
+      to { opacity: 0; filter: blur(2px); }
+    }
+    
+    @keyframes loading-flow {
+      0%, 100% { width: 0%; }
+      50% { width: 100%; }
+    }
+    
+    @keyframes loading-move {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+    
+    .loading-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: rgba(0, 255, 255, 0.8);
+      text-align: center;
+      margin-bottom: 20px;
+      animation: status-flicker 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes status-flicker {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.4; }
+    }
+    
+    .loading-scanline {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.8), transparent);
+      animation: scanline-loading 4s linear infinite;
+      pointer-events: none;
+    }
+    
+    @keyframes scanline-loading {
+      0% { transform: translateY(-50vh); }
+      100% { transform: translateY(50vh); }
+    }
+    
+    .loading-glitch {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    
+    .loading-glitch::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 255, 0.1) 50%, transparent 70%);
+      animation: glitch-sweep 6s linear infinite;
+    }
+    
+    @keyframes glitch-sweep {
+      0% { transform: translateX(-100%) translateY(-100%); }
+      100% { transform: translateX(100%) translateY(100%); }
+    }
+    
+    .loading-matrix {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.1;
+    }
+    
+    .matrix-rain {
+      position: absolute;
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      animation: matrix-fall 3s linear infinite;
+    }
+    
+    @keyframes matrix-fall {
+      0% { transform: translateY(-100px); opacity: 1; }
+      100% { transform: translateY(100vh); opacity: 0; }
+    }
+
+    @keyframes ring-wobble {
+      0%   { transform: translate(-50%, -50%) rotate(0deg) scale(1); top: 50%; left: 50%; }
+      25%  { transform: translate(-48%, -52%) rotate(5deg) scale(1.02); }
+      50%  { transform: translate(-51%, -49%) rotate(-4deg) scale(1.04); }
+      75%  { transform: translate(-52%, -51%) rotate(3deg) scale(1.01); }
+      100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+    }
+
+    /* Emotional Outro Screen - Mobile Optimized */
+    .outro-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+      z-index: 9999;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 2s ease-in-out;
+      overflow-y: auto;
+      padding: 20px 10px;
+      box-sizing: border-box;
+    }
+
+    .outro-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .outro-background {
+      position: absolute;
+      inset: 0;
+      background: 
+        repeating-linear-gradient(0deg, rgba(0,255,255,0.02) 0px, rgba(0,255,255,0.02) 1px, transparent 2px, transparent 6px),
+        repeating-linear-gradient(90deg, rgba(255,0,255,0.01) 0px, rgba(255,0,255,0.01) 1px, transparent 2px, transparent 8px),
+        radial-gradient(circle at 30% 20%, rgba(0,255,255,0.05) 0%, transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(255,0,255,0.03) 0%, transparent 50%);
+      animation: static-noise 8s ease-in-out infinite;
+    }
+
+    @keyframes static-noise {
+      0%, 100% { filter: contrast(1) brightness(1); }
+      50% { filter: contrast(1.1) brightness(1.05) hue-rotate(2deg); }
+    }
+
+    .outro-content {
+      text-align: center;
+      max-width: min(800px, 90vw);
+      width: 100%;
+      padding: clamp(20px, 5vw, 40px);
+      position: relative;
+      z-index: 2;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: calc(100vh - 40px);
+    }
+
+    .outro-message {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(18px, 4vw, 28px);
+      line-height: 1.4;
+      color: #e0e0e0;
+      margin-bottom: clamp(30px, 8vw, 60px);
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+      word-wrap: break-word;
+      hyphens: auto;
+    }
+
+    /* Mobile-specific adjustments */
+    @media (max-width: 768px) {
+      .outro-content {
+        padding: 20px 15px;
+        min-height: calc(100vh - 40px);
+        justify-content: center;
+      }
+      
+      .outro-message {
+        font-size: clamp(16px, 4.5vw, 22px);
+        line-height: 1.5;
+        margin-bottom: clamp(25px, 6vw, 40px);
+      }
+    }
+
+    .glitch-word {
+      display: inline-block;
+      position: relative;
+      animation: word-flicker 4s ease-in-out infinite;
+      animation-delay: calc(var(--word-index, 0) * 0.2s);
+      word-break: break-word;
+      hyphens: auto;
+    }
+
+    /* Mobile-optimized glitch words */
+    @media (max-width: 768px) {
+      .glitch-word {
+        margin: 0 2px;
+        line-height: 1.6;
+      }
+    }
+
+    .glitch-word:nth-child(1) { --word-index: 0; }
+    .glitch-word:nth-child(2) { --word-index: 1; }
+    .glitch-word:nth-child(3) { --word-index: 2; }
+    .glitch-word:nth-child(4) { --word-index: 3; }
+    .glitch-word:nth-child(5) { --word-index: 4; }
+    .glitch-word:nth-child(6) { --word-index: 5; }
+    .glitch-word:nth-child(7) { --word-index: 6; }
+    .glitch-word:nth-child(8) { --word-index: 7; }
+    .glitch-word:nth-child(9) { --word-index: 8; }
+    .glitch-word:nth-child(10) { --word-index: 9; }
+    .glitch-word:nth-child(12) { --word-index: 10; }
+    .glitch-word:nth-child(13) { --word-index: 11; }
+    .glitch-word:nth-child(14) { --word-index: 12; }
+    .glitch-word:nth-child(15) { --word-index: 13; }
+    .glitch-word:nth-child(16) { --word-index: 14; }
+    .glitch-word:nth-child(17) { --word-index: 15; }
+    .glitch-word:nth-child(18) { --word-index: 16; }
+
+    @keyframes word-flicker {
+      0%, 94%, 100% { 
+        opacity: 1; 
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        filter: brightness(1);
+      }
+      95%, 98% { 
+        opacity: 0.3; 
+        text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff;
+        filter: brightness(1.5) contrast(1.2);
+      }
+      96%, 97% { 
+        opacity: 0.8; 
+        text-shadow: -2px 0 #ffff00, 2px 0 #ff00ff;
+        filter: brightness(0.8) hue-rotate(10deg);
+      }
+    }
+
+    .outro-buttons {
+      display: flex;
+      gap: clamp(15px, 4vw, 40px);
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .outro-btn {
+      background: linear-gradient(135deg, rgba(0,255,255,0.1) 0%, rgba(0,255,255,0.05) 100%);
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(14px, 3vw, 18px);
+      font-weight: 600;
+      padding: clamp(12px, 3vw, 15px) clamp(20px, 5vw, 35px);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: clamp(1px, 0.3vw, 2px);
+      position: relative;
+      overflow: hidden;
+      min-width: clamp(120px, 25vw, 160px);
+      border-radius: 4px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Mobile-specific button adjustments */
+    @media (max-width: 768px) {
+      .outro-buttons {
+        gap: 15px;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 300px;
+        margin: 0 auto;
+      }
+      
+      .outro-btn {
+        width: 100%;
+        max-width: 280px;
+        padding: 16px 24px;
+        font-size: 16px;
+        letter-spacing: 1px;
+        border-radius: 6px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .outro-buttons {
+        gap: 12px;
+      }
+      
+      .outro-btn {
+        padding: 14px 20px;
+        font-size: 15px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    .outro-btn:hover {
+      background: linear-gradient(135deg, rgba(0,255,255,0.2) 0%, rgba(0,255,255,0.1) 100%);
+      border-color: rgba(0, 255, 255, 0.6);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .outro-btn:active {
+      transform: translateY(0);
+      background: linear-gradient(135deg, rgba(0,255,255,0.3) 0%, rgba(0,255,255,0.15) 100%);
+    }
+
+    /* Touch-specific styles for mobile */
+    @media (hover: none) and (pointer: coarse) {
+      .outro-btn:hover {
+        /* Reset hover styles on touch devices */
+        background: linear-gradient(135deg, rgba(0,255,255,0.1) 0%, rgba(0,255,255,0.05) 100%);
+        border-color: rgba(0, 255, 255, 0.3);
+        box-shadow: none;
+        transform: none;
+      }
+      
+      .outro-btn:active {
+        background: linear-gradient(135deg, rgba(0,255,255,0.25) 0%, rgba(0,255,255,0.12) 100%);
+        border-color: rgba(0, 255, 255, 0.5);
+        transform: scale(0.98);
+      }
+    }
+
+    .btn-glitch {
+      display: block;
+      position: relative;
+    }
+
+    .outro-btn:hover .btn-glitch::before,
+    .outro-btn:hover .btn-glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      width: 100%;
+      color: #00ffff;
+      animation: btn-glitch-anim 0.3s ease-in-out;
+    }
+
+    .outro-btn:hover .btn-glitch::before {
+      top: 0;
+      text-shadow: -2px 0 #ff00ff;
+      clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+    }
+
+    .outro-btn:hover .btn-glitch::after {
+      top: 0;
+      text-shadow: 2px 0 #ffff00;
+      clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+    }
+
+    @keyframes btn-glitch-anim {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-2px, 1px); }
+      40% { transform: translate(2px, -1px); }
+      60% { transform: translate(-1px, 2px); }
+      80% { transform: translate(1px, -2px); }
+    }
+    
+    .loading-memory-fragments {
+      position: absolute;
+      color: rgba(0, 255, 255, 0.6);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      pointer-events: none;
+      animation: fragment-float 4s ease-in-out infinite;
+    }
+    
+    @keyframes fragment-float {
+      0%, 100% { opacity: 0.3; transform: translateY(0px); }
+      50% { opacity: 0.8; transform: translateY(-10px); }
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+    
+    .modal-close:hover {
+      color: #00ffff;
+    }
+    
+    .error-message {
+      color: #ff6b6b;
+      font-size: 14px;
+      margin-top: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .error-message.show {
+      opacity: 1;
+    }
+    
+    .ticker {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.8);
+      border-top: 1px solid rgba(0, 255, 255, 0.3);
+      overflow: hidden;
+      z-index: 50;
+    }
+    
+    .ticker-content {
+      display: flex;
+      white-space: nowrap;
+      animation: ticker-scroll 60s linear infinite;
+    }
+    
+    @keyframes ticker-scroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    
+    .ticker-item {
+      display: inline-block;
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      margin-right: 60px;
+      opacity: 0.7;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    }
+    
+    .ticker-item.flicker {
+      animation: flicker 2s infinite;
+    }
+    
+    .ticker-item.glitch {
+      animation: glitch 0.5s infinite;
+    }
+    
+    .social-proof {
+      position: absolute;
+      color: rgba(0, 255, 255, 0.8);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+      transition: opacity 1.5s ease-in-out;
+    }
+    
+    .social-proof.visible {
+      opacity: 1;
+    }
+    
+    .social-proof.float-1 {
+      animation: float1 8s ease-in-out infinite;
+    }
+    
+    .social-proof.float-2 {
+      animation: float2 10s ease-in-out infinite;
+    }
+    
+    .social-proof.float-3 {
+      animation: float3 12s ease-in-out infinite;
+    }
+    
+    @keyframes float1 {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(-15px) translateX(10px); }
+    }
+    
+    @keyframes float2 {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(10px) translateX(-8px); }
+    }
+    
+    @keyframes float3 {
+      0%, 100% { transform: translateY(0px) translateX(0px); }
+      50% { transform: translateY(-8px) translateX(-12px); }
+    }
+    
+    /* Audio Controls */
+    .audio-controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .audio-button {
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      color: #00ffff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .audio-button:hover {
+      background: rgba(0, 255, 255, 0.1);
+      border-color: #00ffff;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    }
+    
+    .audio-button.muted {
+      color: rgba(0, 255, 255, 0.5);
+      border-color: rgba(0, 255, 255, 0.2);
+    }
+    
+    .volume-slider {
+      width: 80px;
+      height: 4px;
+      background: rgba(0, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .volume-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .volume-slider::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    
+    .audio-visualizer {
+      position: fixed;
+      bottom: 60px;
+      left: 20px;
+      z-index: 50;
+      display: flex;
+      align-items: end;
+      gap: 2px;
+      height: 60px;
+    }
+    
+    .debug-panel {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #00ffff;
+      z-index: 1000;
+      max-width: 200px;
+      display: none;
+    }
+    
+    .debug-panel.show {
+      display: block;
+    }
+    
+    .visualizer-bar {
+      width: 3px;
+      background: linear-gradient(to top, #00ffff, rgba(0, 255, 255, 0.3));
+      border-radius: 2px;
+      animation: visualizer-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes visualizer-pulse {
+      0%, 100% { height: 10px; opacity: 0.3; }
+      50% { height: 40px; opacity: 0.8; }
+    }
+
+    /* Reveal Overlay (Ken Burns + Captions) */
+    .reveal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1600; /* Above radio-static */
+      display: none;
+      overflow: hidden;
+    }
+    .reveal-overlay.active { display: block; }
+    .reveal-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      transform-origin: center;
+      /* Static background for smooth live experience - parallax only in video */
+      overflow: hidden;
+      transition: none; /* Remove any transitions for instant performance */
+    }
+    
+    /* Optimized parallax layers for smooth performance */
+    .parallax-layer {
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      will-change: transform;
+      transform-origin: center;
+      backface-visibility: hidden;
+      perspective: 1000px;
+      transform: translateZ(0); /* Force GPU acceleration */
+    }
+    
+    .parallax-layer.far {
+      filter: blur(6px); /* Reduced blur for performance */
+      opacity: 0.4;
+      z-index: 1;
+      transform: translateZ(0) scale3d(1.2, 1.2, 1);
+    }
+    
+    .parallax-layer.mid {
+      filter: blur(3px); /* Reduced blur for performance */
+      opacity: 0.6;
+      z-index: 2;
+      transform: translateZ(0) scale3d(1.1, 1.1, 1);
+    }
+    
+    .parallax-layer.main {
+      filter: none;
+      opacity: 1.0;
+      z-index: 3;
+      transform: translateZ(0) scale3d(1.05, 1.05, 1);
+    }
+    
+    /* Optimized floating particles */
+    .parallax-particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: rgba(230, 255, 255, 0.15);
+      border-radius: 50%;
+      pointer-events: none;
+      will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+    .reveal-overlay::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(2px);
+    }
+    .reveal-caption {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(90vw, 900px);
+      text-align: center;
+      color: #e6ffff;
+      font-family: 'Playfair Display', serif;
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.25);
+      z-index: 1;
+      padding: 0 10px;
+    }
+    .reveal-line {
+      opacity: 0;
+      filter: blur(4px);
+      transition: opacity 700ms ease, filter 1200ms ease;
+      font-size: clamp(18px, 3.2vw, 34px);
+    }
+    .reveal-line.show {
+      opacity: 1;
+      filter: blur(0px);
+    }
+
+    /* Hide normal paragraph while reveal is active */
+    .hidden-during-reveal { visibility: hidden; }
+  </style>
+</head>
+<body class="liminal-bg min-h-screen">
+  <!-- Audio Controls -->
+  <div class="audio-controls">
+    <button class="audio-button" id="audio-toggle">♪ LOADING...</button>
+    <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="50">
+  </div>
+  
+  <!-- Audio Visualizer -->
+  <div class="audio-visualizer" id="audio-visualizer">
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+    <div class="visualizer-bar"></div>
+  </div>
+  
+  <!-- Debug Panel -->
+  <div class="debug-panel" id="debug-panel">
+    <div>🔧 DEBUG MODE</div>
+    <div id="speech-status">ElevenLabs: Loading...</div>
+    <div id="voice-count">Voice: Matthew (Radio)</div>
+    <button onclick="toggleDebug()" style="margin-top: 5px; padding: 2px 5px; font-size: 8px;">Toggle Debug</button>
+  </div>
+
+  <!-- Brand Section -->
+  <div class="brand-section" id="brand-section">
+    <div class="brand-container">
+      <div class="brand-logo">VALLEXO</div>
+      <div class="brand-tagline">You were there. You just forgot.</div>
     </div>
+  </div>
+
+  <!-- Scanline Effect -->
+  <div class="scanline"></div>
+
+  <!-- Reveal Overlay (Ken Burns + Captions) -->
+  <div id="reveal-overlay" class="reveal-overlay">
+    <div id="reveal-bg" class="reveal-bg" style="background-image: url('img/hallway1.png');"></div>
+    <div id="reveal-caption" class="reveal-caption"></div>
+  </div>
+
+  <!-- Emotional Outro Screen -->
+  <div id="outro-overlay" class="outro-overlay">
+    <div class="outro-background"></div>
+    <div class="outro-content">
+      <div class="outro-message" id="outro-message">
+        <span class="glitch-word">Sometimes…</span> 
+        <span class="glitch-word">the</span> 
+        <span class="glitch-word">places</span> 
+        <span class="glitch-word">that</span> 
+        <span class="glitch-word">shaped</span> 
+        <span class="glitch-word">us</span> 
+        <span class="glitch-word">are</span> 
+        <span class="glitch-word">just</span> 
+        <span class="glitch-word">shadows</span> 
+        <span class="glitch-word">now.</span>
+        <br><br>
+        <span class="glitch-word">But</span> 
+        <span class="glitch-word">you</span> 
+        <span class="glitch-word">felt</span> 
+        <span class="glitch-word">it</span> 
+        <span class="glitch-word">again,</span> 
+        <span class="glitch-word">didn't</span> 
+        <span class="glitch-word">you?</span>
+      </div>
+      <div class="outro-buttons">
+        <button class="outro-btn" id="save-btn">
+          <span class="btn-glitch">Save</span>
+        </button>
+        <button class="outro-btn" id="share-btn">
+          <span class="btn-glitch">Share</span>
+        </button>
+        <button class="outro-btn" id="recall-more-btn">
+          <span class="btn-glitch">Recall More</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Hero Section -->
+  <section class="min-h-screen flex items-center justify-center px-4 relative" style="padding-top: 50px;">
+    <div class="text-center max-w-5xl mx-auto relative z-10">
+      <!-- Main Headline -->
+      <h1 class="font-playfair text-4xl md:text-6xl lg:text-8xl font-bold text-gray-100 mb-8 leading-tight flicker-text">
+        You were there.
+      </h1>
+      <h2 class="font-mono text-2xl md:text-4xl lg:text-6xl font-light text-cyan-300 mb-4 glitch-text">
+        You just don't remember it yet.
+      </h2>
+      
+      <!-- Subtext -->
+      <p class="font-inter text-lg md:text-xl lg:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed neon-pulse">
+                    Pay $12 to remember something you never lived.
+      </p>
+      
+      <!-- CTA Button -->
+      <button 
+        onclick="openModal()"
+        class="glitch-button font-mono bg-transparent border-2 border-cyan-400 text-cyan-400 px-12 py-6 text-xl md:text-2xl font-medium hover:bg-cyan-400 hover:text-gray-900 transition-all duration-500"
+      >
+                    Generate My Memory — $12
+      </button>
+      
+      <!-- Ambient Text -->
+      <div class="absolute top-1/4 left-1/4 text-xs text-gray-500 font-mono opacity-30 neon-pulse">
+        MEMORY_001.CORRUPTED
+      </div>
+      <div class="absolute bottom-1/4 right-1/4 text-xs text-gray-500 font-mono opacity-30 neon-pulse">
+        ACCESS_DENIED
+      </div>
+      <div class="absolute top-1/2 right-1/3 text-xs text-pink-400 font-mono opacity-40 flicker-text">
+        SYSTEM_GLITCH
+      </div>
+    </div>
+    
+    <!-- Social Proof Container -->
+    <div id="social-proof-container"></div>
   </section>
 
-  <!-- Memory Modal -->
-  <div id="memory-modal" class="modal">
+
+
+  <!-- Memory Ticker -->
+  <div class="ticker">
+    <div class="ticker-content">
+      <span class="ticker-item">RECALLING: MALL_1997.CORRUPTED</span>
+      <span class="ticker-item flicker">ACCESSING: SCHOOL_HALLWAY_2001</span>
+      <span class="ticker-item">LOADING: GRANDMA_HOUSE_1995</span>
+      <span class="ticker-item glitch">ERROR: BEACH_VACATION_1999</span>
+      <span class="ticker-item">PROCESSING: BIRTHDAY_PARTY_2003</span>
+      <span class="ticker-item flicker">RECOVERING: CHRISTMAS_MORNING_1996</span>
+      <span class="ticker-item">SCANNING: SUMMER_CAMP_2000</span>
+      <span class="ticker-item glitch">CORRUPTED: FIRST_KISS_2005</span>
+      <span class="ticker-item">DECODING: FAMILY_DINNER_1998</span>
+      <span class="ticker-item flicker">RETRIEVING: ROAD_TRIP_2002</span>
+      <span class="ticker-item">ANALYZING: SLEEPOVER_2004</span>
+      <span class="ticker-item glitch">ERROR: PROM_NIGHT_2006</span>
+      <span class="ticker-item">LOADING: BACKYARD_BBQ_1997</span>
+      <span class="ticker-item flicker">PROCESSING: MOVIE_THEATER_2001</span>
+      <span class="ticker-item">RECALLING: ICE_CREAM_SHOP_1999</span>
+      <span class="ticker-item glitch">CORRUPTED: GRADUATION_2007</span>
+      <span class="ticker-item">SCANNING: AMUSEMENT_PARK_2000</span>
+      <span class="ticker-item flicker">ACCESSING: LIBRARY_STUDY_2003</span>
+      <span class="ticker-item">DECODING: FISHING_TRIP_1996</span>
+      <span class="ticker-item glitch">ERROR: FIRST_CAR_2005</span>
+      <span class="ticker-item">RECALLING: MALL_1997.CORRUPTED</span>
+      <span class="ticker-item flicker">ACCESSING: SCHOOL_HALLWAY_2001</span>
+      <span class="ticker-item">LOADING: GRANDMA_HOUSE_1995</span>
+      <span class="ticker-item glitch">ERROR: BEACH_VACATION_1999</span>
+      <span class="ticker-item">PROCESSING: BIRTHDAY_PARTY_2003</span>
+      <span class="ticker-item flicker">RECOVERING: CHRISTMAS_MORNING_1996</span>
+      <span class="ticker-item">SCANNING: SUMMER_CAMP_2000</span>
+      <span class="ticker-item glitch">CORRUPTED: FIRST_KISS_2005</span>
+      <span class="ticker-item">DECODING: FAMILY_DINNER_1998</span>
+      <span class="ticker-item flicker">RETRIEVING: ROAD_TRIP_2002</span>
+      <span class="ticker-item">ANALYZING: SLEEPOVER_2004</span>
+      <span class="ticker-item glitch">ERROR: PROM_NIGHT_2006</span>
+      <span class="ticker-item">LOADING: BACKYARD_BBQ_1997</span>
+      <span class="ticker-item flicker">PROCESSING: MOVIE_THEATER_2001</span>
+      <span class="ticker-item">RECALLING: ICE_CREAM_SHOP_1999</span>
+      <span class="ticker-item glitch">CORRUPTED: GRADUATION_2007</span>
+      <span class="ticker-item">SCANNING: AMUSEMENT_PARK_2000</span>
+      <span class="ticker-item flicker">ACCESSING: LIBRARY_STUDY_2003</span>
+      <span class="ticker-item">DECODING: FISHING_TRIP_1996</span>
+      <span class="ticker-item glitch">ERROR: FIRST_CAR_2005</span>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
     <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">Generate Your Memory</h2>
-        <p class="modal-subtitle">Enter your details to create a nostalgic childhood memory</p>
-      </div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h2 class="modal-title">Generate Your Memory</h2>
       
       <form id="memory-form">
         <div class="form-group">
-          <label for="fullname" class="form-label">Full Name</label>
-          <input type="text" id="fullname" name="fullname" class="form-input" placeholder="Enter your full name" required>
-          <div id="name-error" class="error-message">Please enter your full name (at least 2 characters)</div>
+          <label class="form-label">Your Full Name</label>
+          <input type="text" class="form-input" id="fullname" placeholder="e.g. Evelyn Rose" required>
+          <div class="error-message" id="name-error"></div>
         </div>
         
         <div class="form-group">
-          <label for="birthYear" class="form-label">Birth Year</label>
-          <input type="number" id="birthYear" name="birthYear" class="form-input" placeholder="e.g., 1985" min="1950" max="2010" required>
-          <div id="birthYear-error" class="error-message">Please enter your birth year</div>
+          <label class="form-label">Birth Year</label>
+          <input type="number" class="form-input" id="birthYear" placeholder="e.g. 1996" min="1950" max="2010" required>
+          <div class="error-message" id="birthYear-error"></div>
         </div>
         
-        <button type="submit" class="btn-glitch" data-text="Generate Memory">
-          Generate Memory
-        </button>
+        <button type="submit" class="modal-button">Generate My Memory →</button>
       </form>
-      
-      <button id="close-modal" class="btn-glitch" style="margin-top: 1rem;">Close</button>
     </div>
   </div>
 
   <!-- Loading Overlay -->
-  <div id="loading-overlay" class="loading-overlay">
-    <div class="loading-content">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Generating your nostalgic memory...</div>
-    </div>
-  </div>
-
-  <!-- Reveal Section (Hidden by default) -->
-  <div id="reveal-overlay" class="reveal-section" style="display: none;">
-    <div id="reveal-bg" class="reveal-bg"></div>
-    <div class="reveal-content">
-      <div id="memory-text" class="reveal-text"></div>
-      <div id="reveal-caption" class="reveal-caption"></div>
-    </div>
-  </div>
-
-  <!-- Outro Screen -->
-  <div id="outro-overlay" class="outro-overlay">
-    <div class="outro-content">
-      <h2 class="outro-title">Memory Complete!</h2>
-      <p class="outro-message">
-        Your nostalgic childhood memory has been generated and recorded. 
-        You can now save it to your device or share it with others.
-      </p>
-      <div class="outro-buttons">
-        <button id="save-btn" class="outro-btn">
-          <span class="btn-glitch" data-text="Save">Save</span>
-        </button>
-        <button id="share-btn" class="outro-btn">
-          <span class="btn-glitch" data-text="Share">Share</span>
-        </button>
-        <button id="recall-more-btn" class="outro-btn">
-          <span class="btn-glitch" data-text="Recall More">Recall More</span>
-        </button>
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-container">
+      <div class="loading-scanline"></div>
+      <div class="loading-glitch"></div>
+      <div class="loading-matrix" id="loading-matrix"></div>
+      
+      <div class="loading-text" id="loading-text">RECONSTRUCTING MEMORY</div>
+      <div class="loading-progress">
+        <div class="loading-bar"></div>
       </div>
+      <div class="loading-status" id="loading-status">ACCESSING NEURAL PATHWAYS...</div>
+      
+      <div class="loading-memory-fragments" id="memory-fragments"></div>
+      <!-- Motion wobble ring -->
+      <div id="nausea-ring" style="position:absolute;width:60vmin;height:60vmin;border:1px dashed rgba(0,255,255,0.25);border-radius:50%;filter:blur(0.3px);animation: ring-wobble 7s ease-in-out infinite; pointer-events:none;"></div>
     </div>
   </div>
 
-  <!-- Modular JavaScript Files -->
-  <script src="js/main.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/memory.js"></script>
-  <script src="js/video.js"></script>
-  <script src="js/ui.js"></script>
+  <script>
+    // Background Music System - Hybrid (Audio Files + Synthesized Fallback)
+    let currentTrackIndex = 0;
+    let audioElement = null;
+    let audioFiles = [
+      'audio/track1.mp3',
+      'audio/track2.mp3',
+      'audio/track3.mp3', 
+      'audio/track4.mp3',
+      'audio/track5.mp3'
+    ];
+    let isPlaying = false;
+    let volume = 0.5;
+    let usingAudioFiles = false;
+    let audioContext = null;
+    let synthesizedAudio = null;
+
+    // Generate Memory button sound effect
+    function playGenerateMemorySound() {
+      try {
+        // Create audio context if it doesn't exist
+        if (!audioContext) {
+          try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            log('Created audio context for sound effect');
+                      } catch (e) {
+              log('Could not create audio context for sound effect');
+            return;
+          }
+        }
+
+        const ctx = audioContext;
+        const now = ctx.currentTime;
+        
+        // Create a cyberpunk-inspired sound effect
+        // Layer 1: Sharp attack beep
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        
+        osc1.frequency.setValueAtTime(800, now);
+        osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+        osc1.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+        
+        gain1.gain.setValueAtTime(0, now);
+        gain1.gain.linearRampToValueAtTime(0.3, now + 0.01);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        
+        osc1.start(now);
+        osc1.stop(now + 0.2);
+        
+        // Layer 2: Retro computer beep
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        
+        osc2.frequency.setValueAtTime(1600, now + 0.1);
+        osc2.frequency.exponentialRampToValueAtTime(2400, now + 0.2);
+        
+        gain2.gain.setValueAtTime(0, now + 0.1);
+        gain2.gain.linearRampToValueAtTime(0.2, now + 0.11);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        
+        osc2.start(now + 0.1);
+        osc2.stop(now + 0.3);
+        
+        // Layer 3: Deep sub bass for impact
+        const osc3 = ctx.createOscillator();
+        const gain3 = ctx.createGain();
+        osc3.connect(gain3);
+        gain3.connect(ctx.destination);
+        
+        osc3.frequency.setValueAtTime(80, now);
+        osc3.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+        
+        gain3.gain.setValueAtTime(0, now);
+        gain3.gain.linearRampToValueAtTime(0.4, now + 0.02);
+        gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        
+        osc3.start(now);
+        osc3.stop(now + 0.4);
+        
+        log('🔊 Generate Memory sound effect played');
+      } catch (error) {
+        console.error('Error playing Generate Memory sound:', error);
+      }
+    }
+    
+    // Check if audio files exist
+    async function checkAudioFiles() {
+      let foundFiles = [];
+      for (let i = 0; i < audioFiles.length; i++) {
+        try {
+          const response = await fetch(audioFiles[i], { method: 'HEAD' });
+          if (response.ok) {
+            log('Found audio file:', audioFiles[i]);
+            foundFiles.push(audioFiles[i]);
+          }
+        } catch (error) {
+          log('File not found:', audioFiles[i]);
+        }
+      }
+      
+      if (foundFiles.length > 0) {
+        log('Found', foundFiles.length, 'audio files');
+        audioFiles = foundFiles; // Use only the files that exist
+        return true;
+      } else {
+        log('No audio files found, will use synthesized music');
+        return false;
+      }
+    }
+    
+    // Initialize audio system
+    async function initAudio() {
+      try {
+        // Check if we have audio files
+        usingAudioFiles = await checkAudioFiles();
+        
+        if (usingAudioFiles) {
+          // Use audio files
+          return await initAudioFiles();
+        } else {
+          // Fall back to synthesized music
+          return await initSynthesizedAudio();
+        }
+      } catch (error) {
+        log('Audio initialization failed:', error);
+        return false;
+      }
+    }
+    
+    // Initialize audio file playlist
+    async function initAudioFiles() {
+      try {
+        audioElement = new Audio();
+        audioElement.volume = volume;
+        audioElement.preload = 'auto';
+        
+        audioElement.addEventListener('ended', playNextTrack);
+        audioElement.addEventListener('error', handleAudioError);
+        audioElement.addEventListener('canplaythrough', () => {
+          log('Audio track loaded successfully');
+        });
+        
+        loadTrack(currentTrackIndex);
+        log('Audio file playlist system initialized');
+        return true;
+      } catch (error) {
+        log('Audio file initialization failed:', error);
+        return false;
+      }
+    }
+    
+    // Initialize synthesized audio fallback (lazy initialization)
+    async function initSynthesizedAudio() {
+      try {
+        // Only create AudioContext after user interaction
+        if (!audioContext || audioContext.state === 'suspended') {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          
+          // Ensure context is resumed after user interaction
+          if (audioContext.state === 'suspended') {
+            log('🔇 AudioContext suspended - waiting for user interaction');
+            return false; // Will be resumed later
+          }
+        }
+        
+        const masterGain = audioContext.createGain();
+        masterGain.connect(audioContext.destination);
+        masterGain.gain.value = volume;
+        
+        // Simple synthesized ambient track
+        const drone = audioContext.createOscillator();
+        const droneGain = audioContext.createGain();
+        const droneFilter = audioContext.createBiquadFilter();
+        
+        drone.frequency.value = 220;
+        drone.type = 'sine';
+        droneGain.gain.value = 0.08;
+        droneFilter.type = 'lowpass';
+        droneFilter.frequency.value = 800;
+        
+        drone.connect(droneFilter);
+        droneFilter.connect(droneGain);
+        droneGain.connect(masterGain);
+        
+        synthesizedAudio = { 
+          drone, 
+          droneGain, 
+          droneFilter, 
+          masterGain,
+          started: false  // Track if oscillator has been started
+        };
+        
+        log('Synthesized audio fallback initialized');
+        return true;
+      } catch (error) {
+        log('Synthesized audio initialization failed:', error);
+        return false;
+      }
+    }
+    
+    // Load a specific track
+    function loadTrack(index) {
+      if (usingAudioFiles && audioFiles[index]) {
+        audioElement.src = audioFiles[index];
+        log('Loading track:', audioFiles[index]);
+        
+        // Add error handling for this specific track
+        audioElement.onerror = (e) => {
+          log('Failed to load track:', audioFiles[index], e);
+          // Try next track after a short delay
+          setTimeout(() => {
+            playNextTrack();
+          }, 1000);
+        };
+        
+        // Add success handling
+        audioElement.oncanplaythrough = () => {
+          log('Track loaded successfully:', audioFiles[index]);
+        };
+      }
+    }
+    
+    // Play next track
+    function playNextTrack() {
+      if (usingAudioFiles && audioFiles.length > 0) {
+        currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
+        log('Moving to track', currentTrackIndex + 1, 'of', audioFiles.length);
+        loadTrack(currentTrackIndex);
+        if (isPlaying && audioElement) {
+          audioElement.play().catch(error => {
+            log('Auto-play failed for next track:', error);
+            // If auto-play fails, try the next track
+            setTimeout(() => {
+              playNextTrack();
+            }, 2000);
+          });
+        }
+      } else {
+        log('No more tracks available, stopping playlist');
+        stopPlayback();
+      }
+    }
+    
+    // Handle audio errors
+    function handleAudioError(e) {
+              log('Audio error for track:', audioFiles[currentTrackIndex], e);
+              log('Error details:', e.target.error);
+      
+      // Log specific error information
+      if (e.target.error) {
+        log('Error code:', e.target.error.code);
+        log('Error message:', e.target.error.message);
+      }
+      
+              log('Trying next track...');
+      // Don't immediately call playNextTrack, let the onerror handler do it
+    }
+    
+    // Start playing
+    async function startPlayback() {
+      if (!audioElement && !audioContext) {
+        await initAudio();
+      }
+      
+      try {
+        if (usingAudioFiles && audioElement) {
+          await audioElement.play();
+          isPlaying = true;
+          log('Audio file playlist started');
+        } else if (audioContext && synthesizedAudio) {
+          await audioContext.resume();
+          if (!synthesizedAudio.started) {
+            synthesizedAudio.drone.start();
+            synthesizedAudio.started = true;
+            log('Synthesized audio oscillator started');
+          }
+          isPlaying = true;
+          log('Synthesized audio resumed');
+        }
+        return true;
+      } catch (error) {
+        log('Play failed:', error);
+        return false;
+      }
+    }
+    
+    // Stop playing
+    function stopPlayback() {
+      if (usingAudioFiles && audioElement) {
+        audioElement.pause();
+      } else if (audioContext) {
+        audioContext.suspend();
+      }
+      isPlaying = false;
+              log('Audio stopped');
+    }
+    
+    // Update volume
+    function setVolume(newVolume) {
+      volume = newVolume;
+      if (usingAudioFiles && audioElement) {
+        audioElement.volume = volume;
+      } else if (synthesizedAudio && synthesizedAudio.masterGain) {
+        synthesizedAudio.masterGain.gain.value = volume;
+      }
+    }
+    
+    // Volume ducking system
+    let originalVolume = 0.5;
+    let isDucking = false;
+    
+    // Duck background music during voiceover
+    function duckBackgroundMusic() {
+      if (!isDucking) {
+        originalVolume = volume;
+        setVolume(0.05); // Reduce to 5% (50% of the previous 10%)
+        isDucking = true;
+        log('Background music ducked to 5% for voiceover');
+      }
+    }
+    
+    // Restore background music volume after voiceover
+    function restoreBackgroundMusic() {
+      if (isDucking) {
+        setVolume(originalVolume);
+        isDucking = false;
+        log('Background music volume restored to', originalVolume);
+      }
+    }
+    
+    // Audio controls with better state management
+    document.getElementById('audio-toggle').addEventListener('click', async function() {
+      try {
+        if (!audioElement && !audioContext) {
+          await initAudio();
+          if (!audioElement && !audioContext) {
+            log('Failed to initialize audio system');
+            return;
+          }
+        }
+        
+        if (isPlaying) {
+          // Pause/Stop
+          stopPlayback();
+          this.textContent = '♪ OFF';
+          this.classList.add('muted');
+          log('Background music paused');
+        } else {
+          // Resume or start
+          const success = await startPlayback();
+          if (success) {
+            this.textContent = '♪ ON';
+            this.classList.remove('muted');
+            log('Background music playing');
+          } else {
+            log('Failed to start audio playback');
+          }
+        }
+      } catch (error) {
+        log('Audio toggle error:', error);
+        this.textContent = '♪ ERROR';
+      }
+    });
+    
+    // Volume control
+    document.getElementById('volume-slider').addEventListener('input', function() {
+      setVolume(this.value / 100);
+    });
+    
+    // Initialize audio on page load with better error handling and default to ON
+    window.addEventListener('load', function() {
+      // Set default state to ON
+      isPlaying = true;
+      document.getElementById('audio-toggle').textContent = '♪ ON';
+      document.getElementById('audio-toggle').classList.remove('muted');
+      
+      // Small delay to ensure page is fully loaded
+      setTimeout(async () => {
+        try {
+          if (!audioElement && !audioContext) {
+            await initAudio();
+            if ((usingAudioFiles && audioElement) || (!usingAudioFiles && audioContext)) {
+              const success = await startPlayback();
+              if (success) {
+                log('Background music auto-started successfully');
+              } else {
+                log('Background music needs user interaction to start');
+              }
+            } else {
+              log('Background music needs user interaction to start');
+            }
+          }
+        } catch (error) {
+          log('Auto-start failed, will start on user interaction:', error);
+        }
+      }, 500);
+    });
+    
+    // Initialize audio on first user interaction (fallback) - AGGRESSIVE AUTO-START
+    document.addEventListener('click', async function initOnFirstClick() {
+      try {
+        if (!audioElement && !audioContext) {
+          await initAudio();
+        }
+        
+        // Always try to start/resume audio on first click if not already playing
+        if (usingAudioFiles && audioElement && audioElement.paused) {
+          await audioElement.play();
+          if (!audioElement.paused) {
+            isPlaying = true;
+            document.getElementById('audio-toggle').textContent = '♪ ON';
+            document.getElementById('audio-toggle').classList.remove('muted');
+            log('Background music started on first user interaction');
+          }
+        } else if (!usingAudioFiles && audioContext && audioContext.state === 'suspended') {
+          await audioContext.resume();
+          if (synthesizedAudio && !synthesizedAudio.started) {
+            synthesizedAudio.drone.start();
+            synthesizedAudio.started = true;
+          }
+          if (audioContext.state === 'running') {
+            isPlaying = true;
+            document.getElementById('audio-toggle').textContent = '♪ ON';
+            document.getElementById('audio-toggle').classList.remove('muted');
+            log('Synthesized audio started on first user interaction');
+          }
+        }
+        
+        // Test speech synthesis on first click
+        if ('speechSynthesis' in window) {
+          const testUtterance = new SpeechSynthesisUtterance('Radio test');
+          testUtterance.volume = 0;
+          speechSynthesis.speak(testUtterance);
+          log('Speech synthesis test completed');
+        }
+      } catch (error) {
+        log('First click audio initialization failed:', error);
+      }
+      
+      document.removeEventListener('click', initOnFirstClick);
+    }, { once: true });
+    
+    // Simple visualizer for playlist (optional)
+    function updateVisualizer() {
+      const bars = document.querySelectorAll('.visualizer-bar');
+      bars.forEach((bar, index) => {
+        const delay = index * 0.1;
+        const height = isPlaying ? 10 + Math.sin(Date.now() * 0.001 + delay) * 30 : 5;
+        bar.style.height = height + 'px';
+        bar.style.opacity = isPlaying ? 0.3 + Math.sin(Date.now() * 0.002 + delay) * 0.5 : 0.2;
+      });
+    }
+    
+    // Update visualizer continuously
+    setInterval(updateVisualizer, 50);
+    
+    // Fake user actions for social proof
+    const fakeUserActions = [
+      "That night drive through a foggy highway in 2004 just came back.",
+      "Recalled the quiet hum of fluorescent lights in a middle school hallway.",
+      "A dusty couch, static-filled TV, and late-night Cartoon Network in 2007—unlocked.",
+      "Memory of a birthday party at Chuck E. Cheese in 2001 just resurfaced.",
+      "The empty mall food court in 2010 suddenly felt real again.",
+      "He felt the classroom clock ticking during a 2003 math test.",
+      "Just remembered hugging mom after the first day of 5th grade.",
+      "The hum of a computer lab and that default Windows XP wallpaper... unlocked.",
+      "Smell of McDonald's fries after a soccer game in 2006—back again.",
+      "Her 2012 playlist just started playing in her head out of nowhere.",
+      "A cold morning walk to the bus stop in Illinois just returned.",
+      "They just saw the 2011 Orlando Christmas lights in their head.",
+      "A hoodie, fall leaves, and Red Ribbon cake from Thanksgiving 2002—resurfaced.",
+      "Remembered walking past Forever 21 in a half-empty mall—Quebec, 2013.",
+      "The hallway outside the gym in Shibuya High, 2005. Vividly recalled.",
+      "Someone remembered their Gangnam subway ride listening to 2NE1 in 2010.",
+      "Texas summer heat, flip phones, and grape soda—memory reloaded.",
+      "That birthday trip to Disneyland in 2009 is back.",
+      "Saw a glimpse of prom night in a limo, Los Angeles 2011.",
+      "The Taco Bell drive-thru line at 11 PM, Chicago, 2014.",
+      "Just relived staring at glow-in-the-dark stars on their bedroom ceiling.",
+      "Remembered their crush giving them a candy cane during 7th grade homeroom.",
+      "Unlocked that exact moment of panic before a surprise pop quiz.",
+      "The ice cream truck jingle echoing through the suburbs—it's back.",
+      "That one awkward slow dance in the gym, Homecoming 2008.",
+      "She remembered dad lifting her up to see fireworks in 2003.",
+      "He just relived building LEGO on grandma's carpet in 2005.",
+      "Recalling a rainy day spent in the school library, 2012.",
+      "The purple Game Boy Advance and Mario Kart just reappeared in someone's head.",
+      "The weird silence of a Target at 9 PM on Christmas Eve... returned.",
+      "That one sunny afternoon in the park with grandpa, 2006.",
+      "A late-night drive-thru at Sonic in 2013... somehow felt too real.",
+      "Remembered laying on the grass watching clouds before phones ruled the world.",
+      "Just saw an old AIM chat window in their head from 2010.",
+      "Tangled Christmas lights and mom's voice—2004 came rushing back.",
+      "The faint buzz of the TV left on all night, 2002.",
+      "Back to scribbling in a diary with a gel pen, 2009.",
+      "A classroom projector flickering during a movie day, 2007—just unlocked.",
+      "A pizza party after the spelling bee in 2011—vividly remembered.",
+      "Relived the smell of a Blockbuster carpet and stale popcorn.",
+      "She remembered the scent of Abercrombie & Fitch while window shopping.",
+      "An awkward middle school hallway bump with a crush—2008, perfectly recalled.",
+      "The metallic taste of braces and cafeteria tater tots just returned.",
+      "He heard the sound of a dial-up modem... again.",
+      "Just saw the green laser lights of a roller rink from 2006.",
+      "The first iPod Shuffle and that Avril Lavigne track—back from 2010.",
+      "Tasting blue raspberry Icee from 7-Eleven in 2013 again.",
+      "Remembered dad fixing a broken lamp in total silence.",
+      "The 2015 Vine video binge spiral—randomly recalled.",
+      "Recalled the exact moment the dog barked during their first kiss."
+    ];
+
+    // Social proof system
+    let currentMessage = null;
+    let usedMessages = [];
+    let messageIndex = 0;
+
+    function showSocialProof() {
+      // Get next message with better cycling logic
+      if (usedMessages.length >= fakeUserActions.length) {
+        usedMessages = [];
+        messageIndex = 0;
+      }
+
+      // If we're starting fresh, randomize the starting point
+      if (usedMessages.length === 0) {
+        messageIndex = Math.floor(Math.random() * fakeUserActions.length);
+      }
+
+      const message = fakeUserActions[messageIndex];
+      usedMessages.push(message);
+      messageIndex++;
+
+      // Create new message element
+      const messageEl = document.createElement('div');
+      messageEl.className = 'social-proof';
+      messageEl.textContent = message;
+
+      // Random position
+      const positions = [
+        { top: '20%', left: '10%' },
+        { top: '15%', right: '15%' },
+        { bottom: '30%', left: '8%' },
+        { bottom: '25%', right: '12%' },
+        { top: '40%', left: '5%' },
+        { top: '35%', right: '8%' },
+        { bottom: '40%', left: '15%' },
+        { bottom: '35%', right: '5%' }
+      ];
+
+      const position = positions[Math.floor(Math.random() * positions.length)];
+      Object.assign(messageEl.style, position);
+
+      // Random float animation
+      const floatClasses = ['float-1', 'float-2', 'float-3'];
+      messageEl.classList.add(floatClasses[Math.floor(Math.random() * floatClasses.length)]);
+
+      // Add to container
+      const container = document.getElementById('social-proof-container');
+      container.appendChild(messageEl);
+
+      // Show message
+      setTimeout(() => {
+        messageEl.classList.add('visible');
+      }, 100);
+
+      // Hide message after 4 seconds
+      setTimeout(() => {
+        messageEl.classList.remove('visible');
+        setTimeout(() => {
+          if (messageEl.parentNode) {
+            messageEl.parentNode.removeChild(messageEl);
+          }
+        }, 1500);
+      }, 4000);
+
+      // Schedule next message
+      setTimeout(() => {
+        showSocialProof();
+      }, 5500); // 4 seconds display + 1.5 seconds fade out
+    }
+
+    // Start social proof system with proper randomization
+    setTimeout(() => {
+      // Shuffle the array for better variety
+      for (let i = fakeUserActions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fakeUserActions[i], fakeUserActions[j]] = [fakeUserActions[j], fakeUserActions[i]];
+      }
+      showSocialProof();
+    }, 2000);
+
+    // Brand section scroll effect
+    window.addEventListener('scroll', () => {
+      const brandSection = document.getElementById('brand-section');
+      if (window.scrollY > 50) {
+        brandSection.classList.add('scrolled');
+      } else {
+        brandSection.classList.remove('scrolled');
+      }
+    });
+
+    // Modal functionality
+    function openModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      
+      // Focus on first input
+      setTimeout(() => {
+        document.getElementById('fullname').focus();
+      }, 100);
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      
+      // Clear form
+      document.getElementById('memory-form').reset();
+      clearErrors();
+    }
+
+    function clearErrors() {
+      document.getElementById('name-error').classList.remove('show');
+      document.getElementById('birthYear-error').classList.remove('show');
+    }
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
+    // Close modal on outside click
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') {
+        closeModal();
+      }
+    });
+
+    // Remove OpenAI logic and use Supabase Edge Function
+    async function generateMemory(name, birthYear) {
+      // For production (replace with your actual Supabase project URL from dashboard)
+      const urls = [
+        'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateBio'
+      ];
+      
+      // For local development (requires: supabase start)
+      // const urls = [
+      //   'http://127.0.0.1:54321/functions/v1/generateBio',
+      //   '/functions/v1/generateBio'
+      // ];
+      
+      let lastError = null;
+      const maxRetries = 2;
+      
+      for (let retry = 0; retry <= maxRetries; retry++) {
+      for (const url of urls) {
+        try {
+          const requestBody = { name, birthYear };
+            log(`🔄 Attempt ${retry + 1}/${maxRetries + 1} to generate memory via:`, url);
+            log('📝 Request payload:', requestBody);
+          
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          });
+            
+            log('📡 Response status:', response.status, response.statusText);
+            
+          if (!response.ok) {
+              const errorText = await response.text();
+              console.warn(`❌ HTTP error with ${url}: ${response.status} - ${errorText}`);
+              lastError = new Error(`HTTP ${response.status}: ${errorText}`);
+            continue;
+          }
+            
+          const data = await response.json();
+            log('✅ Response from Supabase function:', data);
+            
+            if (data && data.memory) {
+                              log('🎉 Memory generated successfully:', data.memory.substring(0, 100) + '...');
+            return data.memory;
+          } else {
+              console.warn('⚠️ No memory in response data:', data);
+              lastError = new Error('No memory returned from API');
+              continue;
+          }
+        } catch (error) {
+            console.warn(`❌ Network/parsing error with ${url}:`, error);
+            lastError = error;
+          continue;
+        }
+      }
+        
+        // If we get here, all URLs failed for this retry
+        if (retry < maxRetries) {
+                      log(`⏳ Retry ${retry + 1} failed, waiting before next attempt...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1))); // Exponential backoff
+        }
+      }
+      
+      // If we get here, all retries failed
+      console.error('💥 All memory generation attempts failed after retries. Last error:', lastError);
+      throw new Error(`Failed to generate memory after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`);
+    }
+
+    // Get appropriate background image for the memory
+    async function getBackgroundImageForMemory(memoryText) {
+      try {
+        log('🖼️ Matching background image to memory content (99 scene settings)...');
+                  log('📝 Memory text to match:', memoryText.substring(0, 100) + '...');
+        
+        const requestPayload = { memoryText };
+                  log('📤 Request payload:', requestPayload);
+        
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/getBackgroundImageV2', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlobnN1b3ZxcGV3d3lxb2ZydGF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzYzMzc3MywiZXhwIjoyMDY5MjA5NzczfQ.pABYaslGn8LPxR0vlt3q2F4Y27hFxpmV74yG0Q53JHk'
+          },
+          body: JSON.stringify(requestPayload)
+        });
+        
+                    log('📡 Response status:', response.status, response.statusText);
+                  log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (response.ok) {
+          const data = await response.json();
+                      log('🎯 Background image matched (from 99 possibilities):', {
+            setting: data.matchedSetting,
+            confidence: data.confidence,
+            url: data.backgroundUrl,
+            selectionMethod: data.selectionMethod,
+            totalImages: data.totalImages,
+            categories: data.availableCategories
+          });
+          return data.backgroundUrl;
+        } else {
+          const errorText = await response.text();
+          console.error('❌ Background matching failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText
+          });
+          console.warn('⚠️ Background matching failed, using fallback');
+          return 'img/hallway1.png'; // Local fallback
+        }
+      } catch (error) {
+        console.error('❌ Background matching error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+        console.warn('⚠️ Background matching error, using fallback');
+        return 'img/hallway1.png'; // Local fallback
+      }
+    }
+
+
+    // Show memory section with fade-in and scroll - AFTER voiceover is ready
+    async function showMemorySection(memoryText) {
+              log('🎬 Preparing memory section and voiceover...');
+      
+      // Keep memory text in state (UI now uses integrated video player)
+      try { lastGeneratedMemory = memoryText || ''; } catch (_) {}
+      
+      // Get appropriate background image for this memory
+      const backgroundUrl = await getBackgroundImageForMemory(memoryText);
+      
+      // Update the background image
+      const revealBg = document.getElementById('reveal-bg');
+      if (revealBg && backgroundUrl) {
+        revealBg.style.backgroundImage = `url(${backgroundUrl})`;
+        log('🖼️ Background image updated for memory setting');
+      }
+      
+      // Start voiceover preparation (this is the main functionality now)
+      try {
+        log('🎵 Starting voiceover narration...');
+        await narrateMemory(memoryText); // Wait for voiceover to be ready
+                  log('✅ Voiceover ready, narration flow complete');
+      } catch (error) {
+        log('⚠️ Voiceover failed:', error);
+                  log('⚠️ Voiceover error stack:', error.stack);
+        // Continue anyway - the user can still download the recording
+      }
+      
+      // Note: The memory-section UI was removed when we cleaned up replay functionality
+      // The narration now handles the entire experience flow
+              log('✅ Memory section flow completed (UI removed, narration handles display)');
+    }
+    
+    // Debug functions
+    function toggleDebug() {
+      const debugPanel = document.getElementById('debug-panel');
+      debugPanel.classList.toggle('show');
+      updateDebugInfo();
+    }
+    
+    function updateDebugInfo() {
+      const speechStatus = document.getElementById('speech-status');
+      const voiceCount = document.getElementById('voice-count');
+      
+      // Update to show OpenAI TTS status
+      speechStatus.textContent = 'OpenAI TTS: Active';
+      voiceCount.textContent = 'Voice: Onyx (1950s Radio)';
+              log('Using OpenAI TTS with Onyx voice for 1950s radio host narration');
+      
+      // Show current background image info if available
+      const bgEl = document.getElementById('reveal-bg');
+      if (bgEl) {
+        const bgStyle = getComputedStyle(bgEl).backgroundImage;
+        const bgUrl = bgStyle.match(/url\("?(.*?)"?\)/)?.[1];
+        if (bgUrl) {
+          log('🖼️ Current background:', bgUrl);
+        }
+      }
+    }
+    
+    // Add natural pauses and emphasis to text - OPTIMIZED FOR CREDITS
+    function addNaturalPauses(text) {
+      // Limit text length to save credits  
+      const maxLength = 2500; // Increased for longer memories
+      if (text.length > maxLength) {
+        text = text.substring(0, maxLength) + '...';
+        log('Text truncated to save credits:', text.length, 'characters');
+      }
+      
+      // DON'T add instruction to the text - let OpenAI TTS handle the voice style
+      let enhanced = text;
+      
+      // Clean up text formatting
+      enhanced = enhanced
+        .replace(/\./g, '. ')
+        .replace(/,/g, ', ')
+        .replace(/([.!?])\s+/g, '$1 ');
+      
+      // Only emphasize key words (reduced list)
+      const keyWords = [
+        'remember', 'memory', 'felt', 'saw', 'heard',
+        'moment', 'time', 'place', 'feeling'
+      ];
+      
+      keyWords.forEach(word => {
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        enhanced = enhanced.replace(regex, `<emphasis level="moderate">${word}</emphasis>`);
+      });
+      
+      // Add natural pauses between sentences
+      enhanced = enhanced.replace(/([.!?])\s+/g, '$1<break time="50ms"/> ');
+      
+      return enhanced;
+    }
+    
+    // OpenAI TTS realistic radio announcer narration
+    async function narrateMemory(memoryText) {
+              log('Attempting to narrate memory with OpenAI TTS:', memoryText.substring(0, 50) + '...');
+      
+      try {
+        // Add radio static effect immediately
+        addRadioStaticEffect();
+        
+        // Duck background music for voiceover
+        duckBackgroundMusic();
+        
+        // Enhanced text for better narration
+        const enhancedText = addNaturalPauses(memoryText);
+        
+        // Sanitize text for JSON transmission
+        const sanitizedText = enhancedText
+          .replace(/\n/g, ' ')  // Replace newlines with spaces
+          .replace(/\r/g, ' ')  // Replace carriage returns with spaces
+          .replace(/\t/g, ' ')  // Replace tabs with spaces
+          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+          .trim();               // Remove leading/trailing spaces
+        
+        log('Sanitized text length:', sanitizedText.length);
+        
+        // Call OpenAI TTS API via Supabase Edge Function
+        log('🎙️ CALLING GENERATE SPEECH V2 WITH NEW API KEY');
+                  log('📞 Endpoint: generateSpeechV2 (NOT generateSpeech)');
+          log('🔑 Expected: New API key should work');
+                  log('Request URL:', 'https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now());
+          log('Request body:', JSON.stringify({ text: sanitizedText }));
+        
+        const response = await fetch('https://yhnsuovqpewwyqofrtaz.supabase.co/functions/v1/generateSpeechV2?v=4&t=' + Date.now(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlobnN1b3ZxcGV3d3lxb2ZydGF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzYzMzc3MywiZXhwIjoyMDY5MjA5NzczfQ.pABYaslGn8LPxR0vlt3q2F4Y27hFxpmV74yG0Q53JHk'
+          },
+          body: JSON.stringify({
+            text: sanitizedText
+          })
+        });
+        
+        log('OpenAI TTS response status:', response.status);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('OpenAI TTS error:', errorData);
+          throw new Error(`OpenAI TTS error: ${response.status} - ${JSON.stringify(errorData)}`);
+        }
+        
+        const data = await response.json();
+        log('OpenAI TTS success:', data);
+        
+        if (data.audio) {
+          // Convert base64 to audio blob
+          const audioData = atob(data.audio);
+          const audioArray = new Uint8Array(audioData.length);
+          for (let i = 0; i < audioData.length; i++) {
+            audioArray[i] = audioData.charCodeAt(i);
+          }
+          
+          const audioBlob = new Blob([audioArray], { type: 'audio/mp3' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Create and play audio
+          const audio = new Audio(audioUrl);
+          audio.volume = 0.9;
+
+          // Prepare reveal when metadata is ready
+          let boundaryTimes = null;
+          let boundaryPromise = null;
+          audio.addEventListener('loadedmetadata', () => {
+            const bg = document.getElementById('reveal-bg');
+            const dur = Math.max(6, Math.min(240, Math.floor(audio.duration || 20)));
+            if (bg) bg.style.animationDuration = dur + 's';
+            if (Number.isFinite(audio.duration) && audio.duration > 0) {
+              const sentenceCount = splitMemoryIntoLines(memoryText).length;
+              if (Array.isArray(data.segments) && data.segments.length) {
+                log('Using Whisper segments for caption timing (text-aligned)');
+                boundaryPromise = Promise.resolve(boundariesFromSegmentsAndText(data.segments, memoryText, audio.duration))
+                  .then(bt => (Array.isArray(bt) && bt.length ? bt : boundariesFromWhisperSegments(data.segments, sentenceCount, audio.duration)));
+              } else {
+                log('No Whisper segments; using offline silence analysis with calibrated reading-time snapping');
+                boundaryPromise = extractSilenceBoundariesFromBlob(audioBlob)
+                  .then(rawSilences => {
+                    const est = computeBoundaryTimesForLines(memoryText, audio.duration);
+                    return snapBoundariesToSilences(est, rawSilences, audio.duration);
+                  })
+                  .catch(() => computeBoundaryTimesForLines(memoryText, audio.duration));
+              }
+            }
+          });
+          
+          audio.onplay = async () => {
+            log('🎵 Live audio playback started successfully');
+            log('OpenAI TTS narration started');
+            updateDebugInfo();
+            // Start synchronized reveal
+            try {
+              const btResolved = await (boundaryPromise || Promise.resolve(boundaryTimes));
+              const bt = Array.isArray(btResolved) && btResolved.length ? btResolved : computeBoundaryTimesForLines(memoryText, Math.max(6, audio.duration || 20));
+              // Only use fixed timing as fallback if no Whisper segments
+              if (data.segments && data.segments.length > 0) {
+                log('🎯 WHISPER SEGMENTS DETECTED:', {
+                  segmentCount: data.segments.length,
+                  segments: data.segments.map((seg, i) => `${i}: "${seg.text}" (${seg.start?.toFixed(2)}s-${seg.end?.toFixed(2)}s)`),
+                  totalDuration: audio.duration?.toFixed(2) + 's'
+                });
+                log('✅ Using Whisper segments for timing and text division');
+                startKenBurnsRevealWithSegments(memoryText, audio, data.segments);
+              } else {
+                log('⚠️ NO WHISPER SEGMENTS AVAILABLE:', {
+                  hasSegments: !!data.segments,
+                  segmentLength: data.segments?.length || 0,
+                  dataKeys: Object.keys(data || {})
+                });
+                log('🔄 Falling back to fixed 2.5s timing');
+                revealSync.fixedSecondsPerLine = 2.5;
+                startKenBurnsReveal(memoryText, audio, null, bt);
+              }
+            } catch (error) {
+              log('❌ ERROR in caption timing logic:', error);
+              log('🔄 Emergency fallback to fixed 2.5s timing');
+              revealSync.fixedSecondsPerLine = 2.5;
+              const bt = computeBoundaryTimesForLines(memoryText, Math.max(6, audio.duration || 20));
+              startKenBurnsReveal(memoryText, audio, null, bt);
+            }
+          };
+          
+          audio.onended = () => {
+            log('OpenAI TTS narration ended');
+            removeRadioStaticEffect();
+            restoreBackgroundMusic(); // Restore background music volume
+            URL.revokeObjectURL(audioUrl); // Clean up
+            stopKenBurnsReveal();
+            // Recording is complete, user can download via outro screen
+            setTimeout(() => {
+              showOutroScreen();
+            }, 1000); // Small delay for smooth transition
+          };
+          
+          audio.onerror = (error) => {
+            console.error('OpenAI TTS audio error:', error);
+            removeRadioStaticEffect();
+            restoreBackgroundMusic(); // Restore background music volume
+            URL.revokeObjectURL(audioUrl);
+            alert('Audio playback failed. Please try clicking the "Replay Narration" button.');
+            stopKenBurnsReveal();
+          };
+          
+          // Start playing with proper error handling
+          try {
+          await audio.play();
+          } catch (playError) {
+            if (playError.name === 'NotAllowedError') {
+              log('🔇 Audio autoplay blocked - requesting user interaction');
+              // Show user-friendly message and request interaction
+              const interactionMsg = document.createElement('div');
+              interactionMsg.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                border: 2px solid cyan;
+                color: cyan;
+                padding: 20px;
+                border-radius: 10px;
+                font-family: monospace;
+                text-align: center;
+                z-index: 10000;
+                max-width: 400px;
+              `;
+              interactionMsg.innerHTML = `
+                <div style="margin-bottom: 15px;">🔇 Browser requires interaction</div>
+                <div style="font-size: 14px; margin-bottom: 20px;">Click anywhere to start narration</div>
+                <div style="font-size: 12px; color: #888;">Recording will capture everything</div>
+              `;
+              document.body.appendChild(interactionMsg);
+              
+              // Wait for user interaction then retry
+              const startNarration = async () => {
+                try {
+                  await audio.play();
+                  interactionMsg.remove();
+                  document.removeEventListener('click', startNarration);
+                } catch (retryError) {
+                  console.error('Retry failed:', retryError);
+                  interactionMsg.remove();
+                  document.removeEventListener('click', startNarration);
+                }
+              };
+              
+              document.addEventListener('click', startNarration, { once: true });
+              
+              // Also add a timeout fallback - if user doesn't interact in 10 seconds, 
+              // we'll try to start the narration flow anyway
+              setTimeout(() => {
+                if (interactionMsg.parentNode) {
+                  interactionMsg.remove();
+                  document.removeEventListener('click', startNarration);
+                  log('⏰ Timeout reached - attempting to continue narration flow');
+                  // The narration flow should continue even without audio playing
+                }
+              }, 10000);
+              
+            } else {
+              console.error('Audio playback error:', playError);
+              throw playError; // Re-throw other errors
+            }
+          }
+          
+        } else {
+          throw new Error('No audio data received from OpenAI TTS');
+        }
+        
+      } catch (error) {
+        console.error('❌ Error in OpenAI TTS narration:', error);
+        console.error('❌ Error stack:', error.stack);
+        removeRadioStaticEffect();
+        restoreBackgroundMusic(); // Restore background music volume
+        
+        // Fallback to Web Speech API if OpenAI TTS fails
+        log('🔄 Falling back to Web Speech API...');
+        try {
+        fallbackToWebSpeech(memoryText);
+        } catch (fallbackError) {
+          console.error('❌ Fallback to Web Speech API also failed:', fallbackError);
+          // Don't re-throw - we want to continue with the UI even if audio fails
+        }
+      }
+    }
+    
+    // Fallback to Web Speech API
+    function fallbackToWebSpeech(memoryText) {
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        
+        // Duck background music for voiceover
+        duckBackgroundMusic();
+        
+        const utterance = new SpeechSynthesisUtterance(memoryText);
+        utterance.rate = 0.85;
+        utterance.pitch = 0.9;
+        utterance.volume = 0.95;
+        
+        utterance.onstart = () => {
+          log('🗣️ Fallback Web Speech narration started');
+                      log('🔄 Web Speech API - using fixed 2.5s timing (no segments available)');
+          updateDebugInfo();
+          // Web Speech API doesn't provide timing segments, use fixed timing
+          revealSync.fixedSecondsPerLine = 2.5;
+          startKenBurnsReveal(memoryText, null, utterance);
+        };
+        
+        utterance.onend = () => {
+          log('Fallback Web Speech narration ended');
+          removeRadioStaticEffect();
+          restoreBackgroundMusic(); // Restore background music volume
+          stopKenBurnsReveal();
+          // Recording is complete, user can download via outro screen
+          setTimeout(() => {
+            showOutroScreen();
+          }, 1000); // Small delay for smooth transition
+        };
+        
+        utterance.onerror = (event) => {
+          log('Fallback Web Speech error:', event);
+          removeRadioStaticEffect();
+          restoreBackgroundMusic(); // Restore background music volume
+          alert('Speech synthesis failed. Please try again.');
+        };
+        
+        speechSynthesis.speak(utterance);
+      } else {
+        alert('Speech synthesis is not supported in this browser.');
+      }
+    }
+    
+    // Add radio static effect during narration
+    function addRadioStaticEffect() {
+      // Create static overlay
+      const staticOverlay = document.createElement('div');
+      staticOverlay.id = 'radio-static';
+      staticOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0, 255, 255, 0.05) 50%, transparent 100%);
+        pointer-events: none;
+        z-index: 1500;
+        animation: radio-static 0.1s linear infinite;
+      `;
+      
+      // Add static animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes radio-static {
+          0% { opacity: 0.1; transform: translateX(0px); }
+          25% { opacity: 0.2; transform: translateX(1px); }
+          50% { opacity: 0.1; transform: translateX(-1px); }
+          75% { opacity: 0.15; transform: translateX(0.5px); }
+          100% { opacity: 0.1; transform: translateX(0px); }
+        }
+      `;
+      document.head.appendChild(style);
+      document.body.appendChild(staticOverlay);
+      
+      // Add radio frequency display
+      const radioDisplay = document.createElement('div');
+      radioDisplay.id = 'radio-display';
+      radioDisplay.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(0, 255, 255, 0.5);
+        padding: 10px 15px;
+        font-family: 'JetBrains Mono', monospace;
+        color: #00ffff;
+        font-size: 12px;
+        z-index: 1501;
+        backdrop-filter: blur(10px);
+        animation: radio-display-glow 2s ease-in-out infinite;
+      `;
+      radioDisplay.innerHTML = `
+        <div>📻 RADIO VALLEXO</div>
+        <div style="font-size: 10px; opacity: 0.7;">FREQ: 88.5 MHz</div>
+        <div style="font-size: 10px; opacity: 0.7;">SIGNAL: STRONG</div>
+      `;
+      document.body.appendChild(radioDisplay);
+      
+      // Add radio display glow animation
+      const radioStyle = document.createElement('style');
+      radioStyle.textContent = `
+        @keyframes radio-display-glow {
+          0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); }
+          50% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.6); }
+        }
+      `;
+      document.head.appendChild(radioStyle);
+    }
+    
+    // Remove radio static effect
+    function removeRadioStaticEffect() {
+      const staticOverlay = document.getElementById('radio-static');
+      const radioDisplay = document.getElementById('radio-display');
+      
+      if (staticOverlay) {
+        staticOverlay.remove();
+      }
+      if (radioDisplay) {
+        radioDisplay.remove();
+      }
+    }
+
+
+    
+    // Initialize speech synthesis on page load
+    window.addEventListener('load', function() {
+      if ('speechSynthesis' in window) {
+        // Trigger voice loading
+        speechSynthesis.getVoices();
+        log('Speech synthesis initialized');
+        updateDebugInfo();
+        
+        // Wait for voices to load and log the best ones
+        setTimeout(() => {
+          const voices = speechSynthesis.getVoices();
+          const naturalVoices = voices.filter(v => 
+            v.name.toLowerCase().includes('natural') ||
+            v.name.toLowerCase().includes('google') ||
+            v.name.toLowerCase().includes('microsoft') ||
+            v.name.toLowerCase().includes('premium')
+          );
+          log('Natural-sounding voices available:', naturalVoices.map(v => v.name));
+        }, 2000);
+      }
+      
+      // Initialize integrated video player button handlers
+              log('🔧 Setting up integrated player button handlers...');
+      
+              log('✅ No integrated player buttons - download only via outro screen');
+      
+          // Global error handler to catch any uncaught errors
+    window.addEventListener('error', (event) => {
+      console.error('🚨 Global error caught:', event.error);
+      console.error('🚨 Error message:', event.message);
+      console.error('🚨 Error stack:', event.error?.stack);
+      console.error('🚨 Error source:', event.filename, 'line:', event.lineno);
+    });
+    
+    // Global unhandled promise rejection handler
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('🚨 Unhandled promise rejection:', event.reason);
+      console.error('🚨 Promise rejection stack:', event.reason?.stack);
+    });
+    
+    // Add global user interaction handler to resume AudioContexts
+    const resumeAudioContexts = () => {
+        log('👆 User interaction detected - resuming AudioContexts');
+        
+        // Initialize Tone.js properly on user interaction
+        if (window.Tone && !window.Tone.loaded) {
+          try {
+            window.loadToneJS().then(() => {
+              log('✅ Tone.js loaded and ready');
+              // Resume Tone.js context if it exists
+              if (window.Tone.context && window.Tone.context.state === 'suspended') {
+                return window.Tone.context.resume();
+              }
+            }).then(() => {
+              console.log('✅ Tone.js AudioContext resumed');
+            }).catch(err => {
+                              log('❌ Tone.js initialization failed:', err);
+            });
+          } catch (err) {
+            console.log('❌ Tone.js resume failed:', err);
+          }
+        } else if (window.Tone && window.Tone.context && window.Tone.context.state === 'suspended') {
+          try {
+                              window.Tone.context.resume().then(() => {
+                    log('✅ Tone.js AudioContext resumed');
+                  }).catch(err => {
+              log('❌ Failed to resume Tone.js AudioContext:', err);
+            });
+          } catch (err) {
+            console.log('❌ Tone.js resume failed:', err);
+          }
+        }
+        
+        // Resume main audio context
+        if (window.audioContext && window.audioContext.state === 'suspended') {
+          window.audioContext.resume().then(() => {
+            log('✅ Main AudioContext resumed');
+          }).catch(err => {
+                          log('❌ Failed to resume main AudioContext:', err);
+          });
+        }
+        
+        // Resume synthesized audio if available
+        if (window.synthesizedAudio && window.synthesizedAudio.drone && !window.synthesizedAudio.started) {
+          try {
+            window.synthesizedAudio.drone.start();
+            window.synthesizedAudio.started = true;
+            log('✅ Synthesized audio started');
+          } catch (err) {
+                          log('❌ Failed to start synthesized audio:', err);
+          }
+        }
+      };
+      
+      // Listen for user interactions to resume audio
+      ['click', 'touchstart', 'keydown'].forEach(eventType => {
+        document.addEventListener(eventType, resumeAudioContexts, { once: true });
+      });
+      
+              log('🎵 AudioContext resume handlers attached');
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Ctrl/Cmd + D to toggle debug
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        toggleDebug();
+      }
+    });
+
+    // Loading animation functions
+    function showLoadingOverlay() {
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.add('active');
+      
+      // Start matrix rain effect
+      startMatrixRain();
+      
+      // Start memory fragments
+      startMemoryFragments();
+      
+      // Update loading text and status
+      updateLoadingText();
+
+      // Add glitch slices and subtle audio tremolo to intensify nausea vibe
+      try {
+        const txt = document.getElementById('loading-text');
+        if (txt) {
+          txt.classList.add('glitch');
+          txt.setAttribute('data-text', txt.textContent || 'RECONSTRUCTING MEMORY');
+        }
+        // Occasional flash pops
+        const flash = document.createElement('div');
+        flash.className = 'loading-flash';
+        overlay.appendChild(flash);
+        setTimeout(() => flash.remove(), 140);
+        // Loop flash pops
+        overlay._flashTimer && clearInterval(overlay._flashTimer);
+        overlay._flashTimer = setInterval(() => {
+          const f = document.createElement('div');
+          f.className = 'loading-flash';
+          overlay.appendChild(f);
+          setTimeout(() => f.remove(), 140);
+        }, 2200 + Math.random()*1200);
+      } catch (e) { /* no-op */ }
+    }
+    
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.remove('active');
+      
+      // Clear matrix rain
+      const matrix = document.getElementById('loading-matrix');
+      matrix.innerHTML = '';
+      
+      // Clear memory fragments
+      const fragments = document.getElementById('memory-fragments');
+      fragments.innerHTML = '';
+
+      // Cleanup timers/effects
+      if (overlay && overlay._flashTimer) {
+        clearInterval(overlay._flashTimer);
+        overlay._flashTimer = null;
+      }
+      const txt = document.getElementById('loading-text');
+      if (txt) txt.classList.remove('glitch');
+    }
+    
+    function startMatrixRain() {
+      const matrix = document.getElementById('loading-matrix');
+      const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+      
+      setInterval(() => {
+        const rain = document.createElement('div');
+        rain.className = 'matrix-rain';
+        rain.style.left = Math.random() * 100 + '%';
+        rain.style.animationDelay = Math.random() * 2 + 's';
+        rain.textContent = characters[Math.floor(Math.random() * characters.length)];
+        matrix.appendChild(rain);
+        
+        // Remove after animation
+        setTimeout(() => {
+          if (rain.parentNode) {
+            rain.parentNode.removeChild(rain);
+          }
+        }, 3000);
+      }, 100);
+    }
+    
+    function startMemoryFragments() {
+      const fragments = document.getElementById('memory-fragments');
+      const fragmentTexts = [
+        'flickering screen...',
+        'warm carpet fibers...',
+        'distant laughter...',
+        'static hum...',
+        'glowing dials...',
+        'whispered secrets...',
+        'crackling vinyl...',
+        'neon reflections...',
+        'dust motes dancing...',
+        'echoing footsteps...',
+        'radio static...',
+        'fading light...',
+        'cold metal...',
+        'warm breath...',
+        'distant thunder...',
+        'cigarette smoke...',
+        'rain on windows...',
+        'old photographs...',
+        'telephone rings...',
+        'car engine hum...'
+      ];
+      
+      setInterval(() => {
+        const fragment = document.createElement('div');
+        fragment.className = 'loading-memory-fragments';
+        fragment.style.left = Math.random() * 80 + 10 + '%';
+        fragment.style.top = Math.random() * 80 + 10 + '%';
+        fragment.style.animationDelay = Math.random() * 2 + 's';
+        fragment.textContent = fragmentTexts[Math.floor(Math.random() * fragmentTexts.length)];
+        fragments.appendChild(fragment);
+        
+        // Remove after animation
+        setTimeout(() => {
+          if (fragment.parentNode) {
+            fragment.parentNode.removeChild(fragment);
+          }
+        }, 4000);
+      }, 800);
+    }
+    
+    function updateLoadingText() {
+      const loadingText = document.getElementById('loading-text');
+      const loadingStatus = document.getElementById('loading-status');
+      
+      const loadingPhases = [
+        { text: 'RECONSTRUCTING MEMORY', status: 'ACCESSING NEURAL PATHWAYS...' },
+        { text: 'SCANNING TIMELINE', status: 'LOCATING MEMORY FRAGMENTS...' },
+        { text: 'DECODING SIGNALS', status: 'ANALYZING EMOTIONAL PATTERNS...' },
+        { text: 'SYNCHRONIZING DATA', status: 'RECONSTRUCTING SCENES...' },
+        { text: 'PREPARING VOICEOVER', status: 'GENERATING AUDIO NARRATION...' },
+        { text: 'FINALIZING MEMORY', status: 'RENDERING EXPERIENCE...' }
+      ];
+      
+      let phaseIndex = 0;
+      const textInterval = setInterval(() => {
+        if (phaseIndex < loadingPhases.length) {
+          loadingText.textContent = loadingPhases[phaseIndex].text;
+          loadingStatus.textContent = loadingPhases[phaseIndex].status;
+          phaseIndex++;
+        } else {
+          clearInterval(textInterval);
+        }
+      }, 2000);
+    }
+
+    // Update form submit handler to show memory section
+    document.getElementById('memory-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+              log('📝 Form submitted - starting validation...');
+      
+      // Play sound effect for engagement
+      try {
+      playGenerateMemorySound();
+      } catch (soundError) {
+        console.warn('🔇 Sound effect failed:', soundError);
+      }
+      
+      clearErrors();
+      const fullname = document.getElementById('fullname').value.trim();
+      const birthYear = parseInt(document.getElementById('birthYear').value, 10);
+      
+              log('📝 Form data:', { fullname, birthYear });
+      
+      let hasErrors = false;
+      if (!fullname) {
+        document.getElementById('name-error').textContent = 'Please enter your full name';
+        document.getElementById('name-error').classList.add('show');
+        hasErrors = true;
+        log('❌ Name validation failed');
+      }
+      if (!birthYear) {
+        document.getElementById('birthYear-error').textContent = 'Please enter your birth year';
+        document.getElementById('birthYear-error').classList.add('show');
+        hasErrors = true;
+        log('❌ Birth year validation failed');
+      } else if (birthYear < 1950 || birthYear > 2010) {
+        document.getElementById('birthYear-error').textContent = 'Please enter a birth year between 1950-2010';
+        document.getElementById('birthYear-error').classList.add('show');
+        hasErrors = true;
+        log('❌ Birth year range validation failed');
+      }
+      
+      if (!hasErrors) {
+        log('✅ Form validation passed, proceeding with memory generation...');
+        
+        try {
+          closeModal();
+          log('✅ Modal closed');
+        } catch (modalError) {
+          console.warn('⚠️ Modal close failed:', modalError);
+        }
+        
+        try {
+        showLoadingOverlay();
+          log('✅ Loading overlay shown');
+        } catch (overlayError) {
+          console.warn('⚠️ Loading overlay failed:', overlayError);
+        }
+        
+        try {
+          log('🚀 Starting memory generation for:', fullname, birthYear);
+          
+          // Store user's name for filename generation later
+          if (fullname && fullname.trim()) {
+            const firstName = fullname.trim().split(' ')[0];
+            currentUserName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'USER';
+          }
+          
+          const memory = await generateMemory(fullname, birthYear);
+          log('✅ Memory generation completed successfully');
+          
+          // Start voice + UI
+          log('🎬 Starting memory section display...');
+          await showMemorySection(memory);
+          log('✅ Memory section displayed successfully');
+          hideLoadingOverlay();
+        } catch (error) {
+          console.error('💥 Memory generation failed:', error);
+          console.error('💥 Error stack:', error.stack);
+          
+          try {
+          hideLoadingOverlay();
+          } catch (hideError) {
+            console.warn('⚠️ Hide loading overlay failed:', hideError);
+          }
+          
+          // Show more specific error message
+          let errorMessage = 'Failed to generate memory. ';
+          if (error.message.includes('HTTP')) {
+            errorMessage += 'Server error - please try again in a moment.';
+          } else if (error.message.includes('Network')) {
+            errorMessage += 'Network error - please check your connection.';
+          } else if (error.message.includes('No memory returned')) {
+            errorMessage += 'API returned empty response - please try again.';
+          } else {
+            errorMessage += 'Please try again.';
+          }
+          
+          console.error('💥 Showing error alert:', errorMessage);
+          alert(errorMessage);
+        }
+      } else {
+        log('❌ Form validation failed, not proceeding');
+      }
+    });
+
+    // Add random glitch effects
+    setInterval(() => {
+      const elements = document.querySelectorAll('.glitch-text, .flicker-text');
+      const randomElement = elements[Math.floor(Math.random() * elements.length)];
+      randomElement.style.animation = 'none';
+      setTimeout(() => {
+        randomElement.style.animation = '';
+      }, 100);
+    }, 3000);
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+    // -------- Ken Burns + Caption sequencing --------
+    // Build sentence-level boundaries from Whisper segments (uniform snap)
+    function boundariesFromWhisperSegments(segments, sentenceCount, totalDurationSec) {
+      try {
+        if (!Array.isArray(segments) || !segments.length || !sentenceCount || !Number.isFinite(totalDurationSec)) {
+          return [];
+        }
+        // Construct cumulative boundaries from segments
+        const segBounds = [0];
+        for (let i = 0; i < segments.length; i++) {
+          const end = typeof segments[i].end === 'number' ? segments[i].end : 0;
+          if (Number.isFinite(end)) segBounds.push(Math.max(segBounds[segBounds.length - 1], end));
+        }
+        // Ensure final boundary equals total duration
+        const last = segBounds[segBounds.length - 1];
+        if (!Number.isFinite(last) || Math.abs(last - totalDurationSec) > 0.25) {
+          segBounds[segBounds.length - 1] = totalDurationSec;
+        }
+
+        // If we already have the exact count, return
+        if (segBounds.length === sentenceCount + 1) {
+          return segBounds;
+        }
+
+        // Otherwise resample to sentenceCount+1 evenly across time, snapping to nearest segment boundary
+        const out = [0];
+        for (let i = 1; i < sentenceCount; i++) {
+          const target = (i / sentenceCount) * totalDurationSec;
+          let nearest = segBounds[0];
+          let best = Math.abs(nearest - target);
+          for (let j = 1; j < segBounds.length; j++) {
+            const d = Math.abs(segBounds[j] - target);
+            if (d < best) { best = d; nearest = segBounds[j]; }
+          }
+          out.push(Math.max(0, Math.min(totalDurationSec, nearest)));
+        }
+        out.push(totalDurationSec);
+        for (let i = 1; i < out.length; i++) {
+          if (out[i] < out[i - 1]) out[i] = out[i - 1];
+        }
+        return out;
+      } catch (e) {
+        console.warn('boundariesFromWhisperSegments failed:', e);
+        return [];
+      }
+    }
+
+    // Build sentence-level boundaries by aligning Whisper segments to the actual sentence text
+    function boundariesFromSegmentsAndText(segments, fullText, totalDurationSec) {
+      try {
+        const sentences = splitMemoryIntoLines(fullText);
+        if (!Array.isArray(segments) || !segments.length || !sentences.length) return [];
+
+        const normalize = (s) => (s || '')
+          .toLowerCase()
+          // include all characters (we only collapse whitespace)
+          .replace(/\s+/g, ' ')                  // collapse whitespace
+          .trim();
+
+        const normSentences = sentences.map(normalize);
+        const segs = segments.map(s => ({
+          start: typeof s.start === 'number' ? s.start : 0,
+          end: typeof s.end === 'number' ? s.end : 0,
+          text: normalize(s.text)
+        }));
+
+        const boundaries = [0];
+        let sIdx = 0;
+        let accum = '';
+        let lastEnd = 0;
+
+        const MIN_SENT_DUR = 1.6; // guardrail minimum per chunk
+        const MAX_CLAMP = Math.max(6, totalDurationSec || 0);
+
+        for (let i = 0; i < segs.length && sIdx < normSentences.length; i++) {
+          const seg = segs[i];
+          accum += (accum ? ' ' : '') + seg.text;
+          lastEnd = Math.max(lastEnd, seg.end);
+          // Heuristic: advance when accumulated length reaches or exceeds sentence length * 0.9
+          const target = normSentences[sIdx];
+          if (!target || !accum) continue;
+          if (accum.length >= Math.max(1, Math.floor(target.length * 0.9))) {
+            // Set boundary at segment end for this sentence
+            const prev = boundaries[boundaries.length - 1];
+            const proposed = Math.max(prev + MIN_SENT_DUR, Math.min(MAX_CLAMP, lastEnd));
+            boundaries.push(proposed);
+            sIdx++;
+            accum = '';
+          }
+        }
+
+        // If we didn't fill all, distribute remaining evenly until totalDurationSec
+        if (sIdx < normSentences.length) {
+          const remaining = normSentences.length - sIdx;
+          const last = boundaries[boundaries.length - 1];
+          const restDur = Math.max(0, (Number.isFinite(totalDurationSec) ? totalDurationSec : last) - last);
+          const per = remaining > 0 ? Math.max(MIN_SENT_DUR, restDur / remaining) : 0;
+          for (; sIdx < normSentences.length; sIdx++) {
+            boundaries.push(Math.min(MAX_CLAMP, boundaries[boundaries.length - 1] + per));
+          }
+        }
+
+        // Ensure total ends at totalDurationSec when known
+        if (Number.isFinite(totalDurationSec) && totalDurationSec > 0) {
+          boundaries[boundaries.length - 1] = totalDurationSec;
+        }
+
+        // Ensure monotonic non-decreasing and correct count (sentences + 1)
+        for (let i = 1; i < boundaries.length; i++) {
+          if (boundaries[i] < boundaries[i - 1]) boundaries[i] = boundaries[i - 1];
+        }
+        const desiredLen = sentences.length + 1;
+        if (boundaries.length !== desiredLen) {
+          // Resample to desired length by linear interpolation
+          const out = [0];
+          const last = boundaries[boundaries.length - 1];
+          for (let i = 1; i < desiredLen - 1; i++) {
+            const target = (i / (desiredLen - 1)) * last;
+            // find nearest in boundaries
+            let nearest = boundaries[0];
+            let best = Math.abs(nearest - target);
+            for (let j = 1; j < boundaries.length; j++) {
+              const d = Math.abs(boundaries[j] - target);
+              if (d < best) { best = d; nearest = boundaries[j]; }
+            }
+            out.push(nearest);
+          }
+          out.push(last);
+          return out;
+        }
+        return boundaries;
+      } catch (e) {
+        console.warn('boundariesFromSegmentsAndText failed:', e);
+        return [];
+      }
+    }
+
+    // Snap estimated boundaries to nearest detected silences for reliability
+    function snapBoundariesToSilences(estimatedBoundaries, rawSilences, totalDurationSec) {
+      try {
+        if (!Array.isArray(estimatedBoundaries) || estimatedBoundaries.length < 2) return estimatedBoundaries || [];
+        if (!Array.isArray(rawSilences) || rawSilences.length < 2) return estimatedBoundaries;
+
+        const out = [];
+        for (let i = 0; i < estimatedBoundaries.length; i++) {
+          const t = estimatedBoundaries[i];
+          // Keep first and last untouched
+          if (i === 0 || i === estimatedBoundaries.length - 1) {
+            out.push(t);
+            continue;
+          }
+          // Find nearest raw silence
+          let nearest = rawSilences[0];
+          let best = Math.abs(nearest - t);
+          for (let j = 1; j < rawSilences.length; j++) {
+            const d = Math.abs(rawSilences[j] - t);
+            if (d < best) { best = d; nearest = rawSilences[j]; }
+          }
+          out.push(Math.max(0, Math.min(totalDurationSec, nearest)));
+        }
+        // Ensure monotonic non-decreasing
+        for (let i = 1; i < out.length; i++) {
+          if (out[i] < out[i - 1]) out[i] = out[i - 1];
+        }
+        return out;
+      } catch (e) {
+        console.warn('snapBoundariesToSilences failed:', e);
+        return estimatedBoundaries;
+      }
+    }
+    // Fixed-width segmentation: group into 3–4 words per line (include all text)
+    function splitMemoryIntoLines(text) {
+      if (!text) return [];
+      const raw = text.replace(/\s+/g, ' ').trim();
+      const words = raw.split(/\s+/).filter(Boolean);
+      const lines = [];
+      const TARGET = 4;
+      const MIN = 3;
+
+      for (let i = 0; i < words.length; i += TARGET) {
+        let chunk = words.slice(i, i + TARGET);
+        // If last chunk would be shorter than MIN, merge it with previous line
+        if (chunk.length < MIN && lines.length) {
+          const prev = lines.pop();
+          chunk = (prev + ' ' + chunk.join(' ')).trim().split(/\s+/);
+        }
+        lines.push(chunk.join(' '));
+      }
+      return lines;
+    }
+
+    // Compute time boundaries per sentence using reading-time model tied to TTS speed
+    function computeBoundaryTimesForLines(text, totalDurationSec) {
+      const sentences = splitMemoryIntoLines(text);
+      if (!sentences.length || !Number.isFinite(totalDurationSec) || totalDurationSec <= 0) return [];
+
+      const TTS_SPEED = 1.0;         // must match generateSpeechV2
+      const WORDS_PER_SECOND = 1.6 * TTS_SPEED; // ~96 wpm at 1.0 (slower to avoid outpacing)
+      const MIN_PER_SENTENCE = 2.2;  // increase minimum display per sentence
+      const BONUS_COMMA = 0.25;
+      const BONUS_SEMI = 0.35;
+      const BONUS_END = 0.5;
+
+      // Raw durations per sentence
+      const baseDurations = sentences.map((s) => {
+        const t = s.trim();
+        const words = t.split(/\s+/).filter(Boolean).length;
+        const commas = (t.match(/,/g) || []).length;
+        const semis = (t.match(/[;:]/g) || []).length;
+        const endPunct = /[.!?]$/.test(t) ? BONUS_END : 0;
+        const est = (words / Math.max(0.1, WORDS_PER_SECOND)) + commas * BONUS_COMMA + semis * BONUS_SEMI + endPunct;
+        return Math.max(MIN_PER_SENTENCE, est);
+      });
+
+      // Fit to totalDurationSec while respecting per-sentence minimums
+      const minTotal = sentences.length * MIN_PER_SENTENCE;
+      let durations;
+      if (totalDurationSec <= minTotal) {
+        // Extremely short audio: distribute evenly at min
+        const per = totalDurationSec / sentences.length;
+        durations = new Array(sentences.length).fill(per);
+      } else {
+        const extras = baseDurations.map(d => d - MIN_PER_SENTENCE);
+        const sumExtras = extras.reduce((a,b)=>a+b,0) || 1;
+        const availExtras = totalDurationSec - minTotal;
+        const scale = availExtras / sumExtras;
+        durations = extras.map(e => MIN_PER_SENTENCE + e * scale);
+      }
+
+      // Build cumulative boundaries
+      const times = [0];
+      let acc = 0;
+      for (let i = 0; i < durations.length - 1; i++) {
+        acc += durations[i];
+        times.push(Math.min(totalDurationSec, acc));
+      }
+      times.push(totalDurationSec);
+      return times;
+    }
+
+    // Offline silence detector using Web Audio API (no external services)
+    async function extractSilenceBoundariesFromBlob(audioBlob) {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * 60, 44100);
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      const channel = audioBuffer.getChannelData(0);
+      const sampleRate = audioBuffer.sampleRate;
+
+      // Parameters tuned for speech-like audio
+      const frameSize = Math.floor(sampleRate * 0.04); // 40ms frames
+      const hopSize = Math.floor(frameSize / 2);        // 20ms hop
+      const silenceThreshold = 0.02;                    // amplitude threshold
+      const minSilenceSec = 0.15;                       // min 150ms to count as boundary
+
+      const rms = (start) => {
+        let sum = 0;
+        for (let i = start; i < Math.min(start + frameSize, channel.length); i++) {
+          const v = channel[i];
+          sum += v * v;
+        }
+        return Math.sqrt(sum / frameSize);
+      };
+
+      const candidates = [];
+      let runStart = null;
+      for (let i = 0; i < channel.length; i += hopSize) {
+        const value = rms(i);
+        const t = i / sampleRate;
+        if (value < silenceThreshold) {
+          if (runStart === null) runStart = t;
+        } else {
+          if (runStart !== null) {
+            const dur = t - runStart;
+            if (dur >= minSilenceSec) candidates.push({ start: runStart, end: t });
+            runStart = null;
+          }
+        }
+      }
+      // If trailing silence
+      if (runStart !== null) {
+        const t = channel.length / sampleRate;
+        const dur = t - runStart;
+        if (dur >= minSilenceSec) candidates.push({ start: runStart, end: t });
+      }
+
+      // Use midpoints of silence regions as boundaries
+      const boundaries = [0];
+      for (const s of candidates) {
+        const mid = (s.start + s.end) / 2;
+        boundaries.push(mid);
+      }
+      boundaries.push(channel.length / sampleRate);
+      // Ensure sorted unique
+      boundaries.sort((a, b) => a - b);
+      const uniq = [];
+      for (let i = 0; i < boundaries.length; i++) {
+        if (i === 0 || boundaries[i] - boundaries[i - 1] > 0.05) uniq.push(boundaries[i]);
+      }
+      return uniq;
+    }
+
+    // Adapt raw time boundaries to match the number of lines
+    function adaptBoundariesToLines(boundaries, lineCount, totalDurationSec) {
+      if (!Array.isArray(boundaries) || boundaries.length < 3 || !lineCount) {
+        return [];
+      }
+      // Resample boundaries uniformly to lineCount+1
+      const out = [0];
+      for (let i = 1; i < lineCount; i++) {
+        const pos = (i / lineCount) * totalDurationSec;
+        // Snap to nearest boundary to keep phrase edges at silences
+        let nearest = boundaries[0];
+        let best = Math.abs(nearest - pos);
+        for (let j = 1; j < boundaries.length; j++) {
+          const d = Math.abs(boundaries[j] - pos);
+          if (d < best) { best = d; nearest = boundaries[j]; }
+        }
+        out.push(Math.max(0, Math.min(totalDurationSec, nearest)));
+      }
+      out.push(totalDurationSec);
+      // Ensure monotonic non-decreasing
+      for (let i = 1; i < out.length; i++) {
+        if (out[i] < out[i - 1]) out[i] = out[i - 1];
+      }
+      return out;
+    }
+
+    // Store last generated memory for sharing when text node is hidden
+    let lastGeneratedMemory = '';
+
+    // Real-time synced reveal state
+    let revealSync = {
+      audioEl: null,
+      utterance: null,
+      lines: [],
+      wordCounts: [],
+      cumulative: [],
+      totalWords: 0,
+      currentIdx: -1,
+      lastChangeSec: -Infinity,
+      fixedSecondsPerLine: null,
+      textTrack: null
+    };
+    let audioTimeHandler = null;
+    let estimateTimer = null;
+
+    function buildRevealState(text) {
+      const lines = splitMemoryIntoLines(text);
+      const wordCounts = lines.map(l => l.split(/\s+/).filter(Boolean).length || 1);
+      const cumulative = [];
+      let sum = 0;
+      for (const c of wordCounts) { sum += c; cumulative.push(sum); }
+      revealSync.lines = lines;
+      revealSync.wordCounts = wordCounts;
+      revealSync.cumulative = cumulative;
+      revealSync.totalWords = sum || lines.length;
+      revealSync.currentIdx = -1;
+    }
+
+    function setCaptionIndex(idx) {
+      const caption = document.getElementById('reveal-caption');
+      if (!caption) return;
+      if (idx === revealSync.currentIdx) return;
+      
+      revealSync.currentIdx = idx;
+      
+      // Handle the case where idx is -1 (no caption should be shown)
+      if (idx === -1) {
+        caption.innerHTML = '';
+        return;
+      }
+      
+      const safeIdx = Math.max(0, Math.min(idx, revealSync.lines.length - 1));
+      const el = document.createElement('div');
+      el.className = 'reveal-line';
+      el.textContent = revealSync.lines[safeIdx] || '';
+      caption.innerHTML = '';
+      caption.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      if (revealSync.audioEl && Number.isFinite(revealSync.audioEl.currentTime)) {
+        revealSync.lastChangeSec = revealSync.audioEl.currentTime;
+      }
+      // Update recorder caption text if active
+      currentCaptionText = revealSync.lines[safeIdx] || '';
+    }
+
+    // Directly set caption text (for TextTrack cue-based sync)
+    function setCaptionText(text) {
+      const caption = document.getElementById('reveal-caption');
+      if (!caption) return;
+      const el = document.createElement('div');
+      el.className = 'reveal-line';
+      el.textContent = text || '';
+      caption.innerHTML = '';
+      caption.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      if (revealSync.audioEl && Number.isFinite(revealSync.audioEl.currentTime)) {
+        revealSync.lastChangeSec = revealSync.audioEl.currentTime;
+      }
+      // Update recorder caption text if active
+      currentCaptionText = text || '';
+    }
+
+    function setCaptionByWords(wordsSpoken) {
+      if (revealSync.totalWords <= 0) return;
+      let i = 0;
+      while (i < revealSync.cumulative.length && revealSync.cumulative[i] <= wordsSpoken) i++;
+      setCaptionIndex(i);
+    }
+
+    function setCaptionByTime(currentTimeSec) {
+      const boundaries = revealSync.boundaryTimes;
+      if (!Array.isArray(boundaries) || boundaries.length === 0) return;
+      let idx = 0;
+      const hysteresis = 0.12;
+      while (idx + 1 < boundaries.length && currentTimeSec >= (boundaries[idx + 1] + hysteresis)) idx++;
+      const MIN_SENTENCE_SEC = 2.4;
+      if (idx > revealSync.currentIdx && (currentTimeSec - revealSync.lastChangeSec) < MIN_SENTENCE_SEC) {
+        return;
+      }
+      setCaptionIndex(idx);
+    }
+
+    function cleanupRevealHandlers() {
+      if (revealSync.audioEl && audioTimeHandler) {
+        revealSync.audioEl.removeEventListener('timeupdate', audioTimeHandler);
+      }
+      audioTimeHandler = null;
+      if (estimateTimer) {
+        clearInterval(estimateTimer);
+        estimateTimer = null;
+      }
+      if (revealSync.preciseTimer) {
+        clearInterval(revealSync.preciseTimer);
+        revealSync.preciseTimer = null;
+      }
+      // Remove TextTrack cues and listeners
+      try {
+        if (revealSync.textTrack) {
+          revealSync.textTrack.oncuechange = null;
+          if (revealSync.textTrack.cues) {
+            const cues = Array.from(revealSync.textTrack.cues);
+            cues.forEach(cue => {
+              try { revealSync.textTrack.removeCue(cue); } catch (_) {}
+            });
+          }
+        }
+      } catch (_) {}
+      revealSync.textTrack = null;
+    }
+
+    function startKenBurnsReveal(memoryText, audioEl, utterance, boundaryTimes) {
+      try {
+        const overlay = document.getElementById('reveal-overlay');
+        const caption = document.getElementById('reveal-caption');
+        const bg = document.getElementById('reveal-bg');
+        const paragraph = document.getElementById('memory-text');
+        if (!overlay || !caption || !bg) return;
+
+        overlay.classList.add('active');
+        caption.innerHTML = '';
+        if (paragraph) paragraph.classList.add('hidden-during-reveal');
+        cleanupRevealHandlers();
+
+        // Build state
+        buildRevealState(memoryText);
+        if (revealSync.fixedSecondsPerLine) {
+          const n = revealSync.lines.length;
+          revealSync.boundaryTimes = Array.from({ length: n + 1 }, (_, i) => i * revealSync.fixedSecondsPerLine);
+        } else {
+          revealSync.boundaryTimes = Array.isArray(boundaryTimes) ? boundaryTimes : [];
+        }
+        if (!revealSync.lines.length) return;
+        setCaptionIndex(0);
+
+        // Duration for Ken Burns
+        const words = revealSync.totalWords;
+        // Fallback pacing tuned for TTS speed=1.0 (~0.6s/word to avoid outpacing)
+        const fallbackSec = Math.min(300, Math.max(8, Math.round(words * 0.6)));
+        const durSec = (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0)
+          ? Math.max(8, Math.min(240, audioEl.duration))
+          : fallbackSec;
+        
+        // Setup enhanced 2.5D parallax with the currently set background
+        const bgStyle = getComputedStyle(bg);
+        const bgImage = bgStyle.backgroundImage;
+        const bgUrl = bgImage ? bgImage.match(/url\("?(.*?)"?\)/)?.[1] : 'img/hallway1.png';
+        setupLive2_5DParallax(bgUrl || 'img/hallway1.png');
+        
+        // Store duration for animation
+        revealSync.totalDuration = durSec;
+
+        // Attach sync via audio time
+        revealSync.audioEl = audioEl || null;
+        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+          // Start in-browser recording of the experience
+          try { startExperienceRecording(audioEl, durSec); } catch (_) {}
+          audioTimeHandler = () => {
+            if (!audioEl.duration || audioEl.duration <= 0) return;
+            
+            // Calculate progress for 2.5D parallax animation
+            const progress = Math.max(0, Math.min(1, audioEl.currentTime / audioEl.duration));
+            animateLive2_5DParallax(progress);
+            
+            if (Array.isArray(revealSync.boundaryTimes) && revealSync.boundaryTimes.length) {
+              if (revealSync.fixedSecondsPerLine) {
+                const idx = Math.min(revealSync.lines.length - 1, Math.floor(audioEl.currentTime / revealSync.fixedSecondsPerLine));
+                setCaptionIndex(idx);
+              } else {
+                setCaptionByTime(audioEl.currentTime);
+              }
+            } else {
+              const wordsSpoken = Math.floor(progress * revealSync.totalWords);
+              setCaptionByWords(wordsSpoken);
+            }
+          };
+          audioEl.addEventListener('timeupdate', audioTimeHandler);
+        } else {
+          // Fallback estimated timer when no audio duration
+        const wordsPerSec = revealSync.fixedSecondsPerLine
+          ? (revealSync.totalWords / (revealSync.lines.length * revealSync.fixedSecondsPerLine))
+          : (revealSync.totalWords / fallbackSec);
+          let startTs = performance.now();
+          estimateTimer = setInterval(() => {
+            const elapsedSec = (performance.now() - startTs) / 1000;
+            
+            // Calculate progress for 2.5D parallax animation
+            const progress = Math.max(0, Math.min(1, elapsedSec / fallbackSec));
+            animateLive2_5DParallax(progress);
+            
+            if (Array.isArray(revealSync.boundaryTimes) && revealSync.boundaryTimes.length) {
+              if (revealSync.fixedSecondsPerLine) {
+                const idx = Math.min(revealSync.lines.length - 1, Math.floor(elapsedSec / revealSync.fixedSecondsPerLine));
+                setCaptionIndex(idx);
+              } else {
+                setCaptionByTime(elapsedSec);
+              }
+            } else {
+              const wordsSpoken = Math.floor(elapsedSec * wordsPerSec);
+              setCaptionByWords(wordsSpoken);
+            }
+          }, 100);
+        }
+
+        // Web Speech boundary sync
+        revealSync.utterance = utterance || null;
+        if (utterance) {
+          utterance.onboundary = (event) => {
+            try {
+              const upto = (event.charIndex || 0);
+              const wordsSpoken = memoryText.slice(0, upto).trim().split(/\s+/).filter(Boolean).length;
+              setCaptionByWords(wordsSpoken);
+            } catch (_) {}
+          };
+        }
+      } catch (e) {
+        console.warn('Reveal overlay error:', e);
+      }
+    }
+
+    // Function to handle Ken Burns reveal using Whisper segments directly
+    function startKenBurnsRevealWithSegments(memoryText, audioEl, whisperSegments) {
+      try {
+        const overlay = document.getElementById('reveal-overlay');
+        const caption = document.getElementById('reveal-caption');
+        const bg = document.getElementById('reveal-bg');
+        const paragraph = document.getElementById('memory-text');
+        if (!overlay || !caption || !bg) return;
+
+        overlay.classList.add('active');
+        caption.innerHTML = '';
+        if (paragraph) paragraph.classList.add('hidden-during-reveal');
+        cleanupRevealHandlers();
+
+        // Use Whisper segments but merge short segments and only break on significant pauses
+        const rawSegments = whisperSegments.map(seg => ({
+          start: typeof seg.start === 'number' ? seg.start : 0,
+          end: typeof seg.end === 'number' ? seg.end : 0,
+          text: (seg.text || '').trim()
+        })).filter(seg => seg.text.length > 0);
+
+        // Build display segments with conservative merging and intelligent splitting
+        // 1) Normalize order and times
+        rawSegments.sort((a, b) => a.start - b.start);
+        for (const s of rawSegments) {
+          if (!Number.isFinite(s.start)) s.start = 0;
+          if (!Number.isFinite(s.end)) s.end = s.start + 0.1;
+          if (s.end < s.start) s.end = s.start + 0.1;
+        }
+
+        // 2) Merge only micro-segments: if either duration < 250ms and gap < 200ms
+        const microMerged = [];
+        let cur = null;
+        for (let i = 0; i < rawSegments.length; i++) {
+          const seg = rawSegments[i];
+          const dur = Math.max(0, seg.end - seg.start);
+          if (!cur) {
+            cur = { ...seg };
+            continue;
+          }
+          const gap = seg.start - cur.end;
+          const curDur = Math.max(0, cur.end - cur.start);
+          const shouldMerge = (gap >= 0 && gap < 0.2) && (dur < 0.25 || curDur < 0.25);
+          if (shouldMerge) {
+            cur.text = (cur.text + ' ' + seg.text).trim();
+            cur.end = Math.max(cur.end, seg.end);
+          } else {
+            microMerged.push(cur);
+            cur = { ...seg };
+          }
+        }
+        if (cur) microMerged.push(cur);
+
+        // 3) Split too-long segments by punctuation into subsegments with proportional timing
+        function splitLongSegment(seg) {
+          const maxChars = 140;
+          const maxDur = 4.5; // seconds
+          const dur = Math.max(0.08, seg.end - seg.start);
+          const t = (seg.text || '').trim();
+          if (!t) return [seg];
+          const needsSplit = t.length > maxChars || dur > maxDur || /[.!?].+/.test(t.replace(/^[^.!?]*[.!?]\s*/, ''));
+          if (!needsSplit) return [seg];
+          // Split on sentence punctuation while keeping delimiters
+          const parts = t.split(/(?<=[.!?])\s+/).filter(Boolean);
+          if (parts.length <= 1) return [seg];
+          const lengths = parts.map(p => Math.max(1, p.length));
+          const total = lengths.reduce((a,b)=>a+b,0);
+          let acc = seg.start;
+          const out = [];
+          for (let i = 0; i < parts.length; i++) {
+            const share = lengths[i] / total;
+            const subDur = Math.max(0.12, dur * share);
+            const sub = {
+              start: acc,
+              end: Math.min(seg.end, acc + subDur),
+              text: parts[i].trim()
+            };
+            out.push(sub);
+            acc = sub.end;
+          }
+          // Ensure last end aligns exactly
+          if (out.length) out[out.length - 1].end = seg.end;
+          return out;
+        }
+
+        const segments = [];
+        for (const s of microMerged) {
+          const subs = splitLongSegment(s);
+          for (const sub of subs) {
+            if ((sub.text || '').length > 0 && (sub.end - sub.start) >= 0.08) {
+              segments.push(sub);
+            }
+          }
+        }
+
+        log(`🔀 Merged ${rawSegments.length} raw segments into ${segments.length} display segments`);
+
+        if (!segments.length) {
+          log('⚠️ No valid Whisper segments after filtering, falling back to standard reveal');
+          startKenBurnsReveal(memoryText, audioEl, null, null);
+          return;
+        }
+
+        // Build reveal state from Whisper segments
+        revealSync.lines = segments.map(seg => seg.text);
+        revealSync.currentIdx = -1;
+        revealSync.audioEl = audioEl || null;
+
+        if (!revealSync.lines.length) return;
+
+        // Duration for Ken Burns animation
+        const totalDuration = segments.length > 0 ? segments[segments.length - 1].end : 10;
+        const durSec = Math.max(8, Math.min(240, totalDuration));
+        
+        // Setup enhanced 2.5D parallax with the currently set background
+        const bgStyle = getComputedStyle(bg);
+        const bgImage = bgStyle.backgroundImage;
+        const bgUrl = bgImage ? bgImage.match(/url\("?(.*?)"?\)/)?.[1] : 'img/hallway1.png';
+        setupLive2_5DParallax(bgUrl || 'img/hallway1.png');
+        
+        // Store duration for animation
+        revealSync.totalDuration = durSec;
+
+        // Prefer browser-native TextTrack cues for precise, subtitle-grade sync
+        const CueClass = (window.VTTCue || window.TextTrackCue || window.WebKitTextTrackCue);
+        const canUseTextTracks = audioEl && typeof audioEl.addTextTrack === 'function' && CueClass;
+        if (canUseTextTracks) {
+          try {
+            // Ensure media element is attached to DOM for reliable TextTrack events
+            if (!audioEl.isConnected) {
+              audioEl.style.display = 'none';
+              document.body.appendChild(audioEl);
+            }
+          } catch (_) {}
+          const track = audioEl.addTextTrack('captions', 'whisper-segments', 'en');
+          track.mode = 'showing';
+          // Populate cues
+              for (let i = 0; i < segments.length; i++) {
+            const s = Math.max(0, segments[i].start);
+            const e = Math.max(s + 0.02, segments[i].end); // ensure non-zero duration
+            const cue = new CueClass(s, e, segments[i].text);
+            try { track.addCue(cue); } catch (_) {}
+          }
+          revealSync.textTrack = track;
+          // Immediate caption for current time
+          try {
+            const t = audioEl.currentTime;
+            const cur = segments.find(seg => t >= seg.start && t < seg.end);
+            if (cur) setCaptionText(cur.text);
+          } catch (_) {}
+          // React to cue changes
+          track.oncuechange = () => {
+            try {
+              // Calculate progress for 2.5D parallax animation
+              if (audioEl && audioEl.duration > 0) {
+                const progress = Math.max(0, Math.min(1, audioEl.currentTime / audioEl.duration));
+                animateLive2_5DParallax(progress);
+              }
+              
+              if (track.activeCues && track.activeCues.length > 0) {
+                const cue = track.activeCues[0];
+                setCaptionText(cue.text || '');
+              } else {
+                // Between cues: clear to avoid showing stale line
+                setCaptionIndex(-1);
+              }
+            } catch (_) {}
+          };
+          // Start in-browser recording of the experience
+          try { startExperienceRecording(audioEl, durSec); } catch (_) {}
+        } else {
+          // Fallback: lightweight timer-based sync by time window
+        if (audioEl && Number.isFinite(audioEl.duration) && audioEl.duration > 0) {
+          audioTimeHandler = () => {
+            if (!audioEl || audioEl.paused) return;
+            
+            // Calculate progress for 2.5D parallax animation
+            const progress = Math.max(0, Math.min(1, audioEl.currentTime / audioEl.duration));
+            animateLive2_5DParallax(progress);
+            
+            const t = audioEl.currentTime;
+            let idx = -1;
+            for (let i = 0; i < segments.length; i++) {
+              if (t >= segments[i].start && t < segments[i].end) { idx = i; break; }
+            }
+            if (idx !== -1 && idx !== revealSync.currentIdx) {
+              setCaptionText(segments[idx].text);
+              revealSync.currentIdx = idx;
+            }
+          };
+          audioEl.addEventListener('timeupdate', audioTimeHandler);
+          const preciseTimer = setInterval(() => {
+              if (audioEl && !audioEl.paused && audioTimeHandler) audioTimeHandler();
+            }, 40);
+          revealSync.preciseTimer = preciseTimer;
+        } else {
+            // No audio duration: fall back to equal segment pacing
+            const avg = totalDuration / segments.length;
+            let i = 0;
+          estimateTimer = setInterval(() => {
+              if (i < segments.length) { setCaptionText(segments[i].text); i++; }
+            }, Math.max(200, avg * 1000));
+            }
+        }
+
+        log(`🎬 Ken Burns reveal started with ${segments.length} merged Whisper segments:`);
+        segments.forEach((seg, i) => {
+          const duration = seg.end - seg.start;
+          const nextGap = i < segments.length - 1 ? segments[i + 1].start - seg.end : 0;
+          log(`  ${i}: "${seg.text.trim()}" (${seg.start.toFixed(3)}s - ${seg.end.toFixed(3)}s, ${duration.toFixed(2)}s long, ${nextGap.toFixed(2)}s gap)`);
+        });
+                  log('🎵 Using TextTrack cue synchronization when available for subtitle-grade timing');
+      } catch (error) {
+        console.error('Error in startKenBurnsRevealWithSegments:', error);
+        // Fallback to regular reveal
+        startKenBurnsReveal(memoryText, audioEl, null, null);
+      }
+    }
+
+    // ---------- In-browser Experience Recorder (Canvas + Mixed Audio -> WebM) ----------
+    let currentCaptionText = '';
+    let experienceRecording = {
+      recorder: null,
+      chunks: [],
+      url: null,
+      canvas: null,
+      ctx: null,
+      drawId: null,
+      startTs: 0,
+      durationSec: 0,
+      bgImage: null,
+      previewVideo: null,
+      logicalWidth: 720,
+      logicalHeight: 1280,
+      finalMimeType: 'video/webm'
+    };
+
+    function startExperienceRecording(voiceAudioEl, totalDurationSec) {
+      // Show user-friendly notification about recording
+              log('🎬 Starting experience recording...');
+              log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
+      
+      // Prepare canvas - OPTIMIZED FOR 9:16 MOBILE ASPECT RATIO
+      const width = 720, height = 1280; // 9:16 aspect ratio (mobile-first)
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      canvas.style.position = 'fixed';
+      canvas.style.right = '12px';
+      canvas.style.bottom = '12px';
+      canvas.style.zIndex = '10';
+      canvas.style.opacity = '0'; // keep hidden
+      document.body.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+      // Scale the context to handle device pixel ratio properly
+      ctx.scale(dpr, dpr);
+      
+      // Store logical dimensions for drawing calculations
+      experienceRecording.logicalWidth = width;
+      experienceRecording.logicalHeight = height;
+
+      // Load background image from reveal-bg (uses the matched background from memory analysis)
+      const bgEl = document.getElementById('reveal-bg');
+      let bgUrl = '';
+      if (bgEl) {
+        const bi = getComputedStyle(bgEl).backgroundImage;
+        const m = bi && bi.match(/url\("?(.*?)"?\)/);
+        bgUrl = m && m[1] ? m[1] : '';
+      }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = bgUrl || 'img/hallway1.png';
+      
+              log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
+
+      // Build audio mix: voice + bgm (if available) - Mobile-optimized audio routing
+      let recordingAudioCtx = null;
+      let dest = null;
+      let audioStream = null;
+      
+      // Detect mobile device for audio handling
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Try to create separate AudioContext for recording (don't interfere with main audio)
+      try {
+        // Create separate context for recording to avoid conflicts
+        recordingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Resume context for mobile (non-blocking to prevent freezing)
+        if (recordingAudioCtx.state === 'suspended') {
+          log('🔇 Recording AudioContext suspended - attempting resume...');
+          recordingAudioCtx.resume().then(() => {
+                          log('✅ Recording AudioContext resumed successfully');
+          }).catch((resumeError) => {
+            console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
+          });
+        }
+        
+        dest = recordingAudioCtx.createMediaStreamDestination();
+        log(`🎵 Recording audio setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
+        
+      } catch (error) {
+        console.warn('⚠️ Failed to create recording AudioContext:', error);
+        // Continue without audio mixing if context creation fails
+      }
+      
+      // Audio routing with mobile-specific fallbacks
+      if (recordingAudioCtx && dest) {
+        try {
+          // Primary voice audio routing
+          const voiceNode = recordingAudioCtx.createMediaElementSource(voiceAudioEl);
+          const voiceGain = recordingAudioCtx.createGain();
+          voiceGain.gain.value = 1.0; // Full volume for voice
+          
+          voiceNode.connect(voiceGain);
+          voiceGain.connect(dest);
+          voiceGain.connect(recordingAudioCtx.destination);
+          
+          log('🎤 Voice audio routed to recording stream');
+          
+          // Background music routing (lower volume)
+          if (usingAudioFiles && audioElement && !audioElement.paused) {
+            try {
+              const bgNode = recordingAudioCtx.createMediaElementSource(audioElement);
+              const bgGain = recordingAudioCtx.createGain();
+              bgGain.gain.value = 0.3; // Lower volume for background
+              
+              bgNode.connect(bgGain);
+              bgGain.connect(dest);
+              bgGain.connect(recordingAudioCtx.destination);
+              
+              log('🎵 Background music routed to recording stream');
+            } catch (bgError) {
+              console.warn('⚠️ Background audio routing failed:', bgError);
+            }
+          }
+          
+          // Get the mixed audio stream
+          audioStream = dest.stream;
+          log(`🔊 Mixed audio stream ready: ${audioStream.getAudioTracks().length} tracks`);
+          
+        } catch (routingError) {
+          console.warn('⚠️ Audio routing failed:', routingError);
+          // Fallback: try to use the voice audio directly
+          try {
+            const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
+            if (directStream) {
+              audioStream = directStream;
+              log('🔄 Using direct audio capture fallback');
+            }
+          } catch (fallbackError) {
+            console.warn('⚠️ Direct audio capture also failed:', fallbackError);
+          }
+        }
+        
+        // Ensure context is running (non-blocking)
+        try { 
+          if (recordingAudioCtx.state !== 'running') {
+            recordingAudioCtx.resume().then(() => {
+              log('🎵 Recording AudioContext resumed and running');
+            }).catch(() => {
+                              log('⚠️ Recording AudioContext resume failed, continuing anyway');
+            });
+          }
+        } catch (_) {}
+      } else {
+        // Fallback: try direct audio capture if AudioContext mixing fails
+        try {
+          log('🔄 AudioContext mixing not available, trying direct capture...');
+          const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
+          if (directStream && directStream.getAudioTracks().length > 0) {
+            audioStream = directStream;
+            log('✅ Direct audio capture working as fallback');
+          } else {
+            console.warn('⚠️ No audio capture available - recording video only');
+          }
+        } catch (directError) {
+          console.warn('⚠️ Direct audio capture failed:', directError);
+          log('📹 Proceeding with video-only recording');
+        }
+      }
+
+      // Compose stream (video from canvas + mixed audio)
+      const stream = canvas.captureStream(30);
+      
+      // Add audio tracks with mobile-optimized approach
+      if (audioStream && audioStream.getAudioTracks().length > 0) {
+        try {
+          // Method 1: Direct track addition (preferred)
+          audioStream.getAudioTracks().forEach(track => {
+            log(`🎵 Adding audio track: ${track.kind} (${track.readyState})`);
+            stream.addTrack(track);
+          });
+          log(`✅ Audio tracks added: ${stream.getAudioTracks().length} tracks`);
+        } catch (addError) {
+          console.warn('⚠️ Direct track addition failed, trying merge method:', addError);
+          try {
+            // Method 2: Stream merging fallback
+            const videoTracks = stream.getVideoTracks();
+            const audioTracks = audioStream.getAudioTracks();
+            const merged = new MediaStream([...videoTracks, ...audioTracks]);
+            
+            // Replace stream reference
+            stream.getTracks().forEach(tr => stream.removeTrack(tr));
+            merged.getTracks().forEach(tr => stream.addTrack(tr));
+            log(`🔄 Stream merged: ${merged.getVideoTracks().length}V + ${merged.getAudioTracks().length}A`);
+          } catch (mergeError) {
+            console.warn('⚠️ Stream merging also failed:', mergeError);
+          }
+        }
+              } else {
+        console.warn('⚠️ No audio stream available for recording');
+      }
+
+      // Mobile-optimized codec selection with MP4 priority for mobile
+      let options = {};
+      
+      // Detect mobile device for format priority
+      const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Test codec support with mobile-first priority
+      const testFormats = isMobileDevice ? [
+        // Mobile-first: prioritize MP4 for better compatibility
+        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC (Mobile optimized)' },
+        { mimeType: 'video/mp4', name: 'MP4 (Default)' },
+        // WebM fallbacks for mobile
+        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
+        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus' },
+        { mimeType: 'video/webm', name: 'WebM (Default)' }
+      ] : [
+        // Desktop-first: WebM for better quality
+        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus (Desktop optimized)' },
+        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
+        { mimeType: 'video/webm', name: 'WebM (Default)' },
+        // MP4 fallbacks for desktop
+        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC' },
+        { mimeType: 'video/mp4', name: 'MP4 (Default)' }
+      ];
+      
+      // Find the best supported format
+      for (const format of testFormats) {
+        if (MediaRecorder.isTypeSupported(format.mimeType)) {
+          options = { mimeType: format.mimeType };
+          log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
+          break;
+        }
+      }
+      
+      // Fallback if no specific format is supported
+      if (!options.mimeType) {
+        // Try basic formats without codec specification
+        const basicFormats = ['video/mp4', 'video/webm'];
+        for (const format of basicFormats) {
+          if (MediaRecorder.isTypeSupported(format)) {
+            options = { mimeType: format };
+            log(`📱 Using basic ${format} as fallback`);
+            break;
+          }
+        }
+      }
+      
+      // Final fallback: let browser choose
+      if (!options.mimeType) {
+        options = {}; // Let browser choose default
+        log('📱 Using browser default codec (no specific format supported)');
+      }
+      
+      // Mobile format compatibility warning
+      if (isMobileDevice && options.mimeType && options.mimeType.includes('webm')) {
+        console.warn('⚠️ Mobile device using WebM format - may not play in all mobile video players');
+        console.warn('💡 Consider using MP4 for maximum mobile compatibility');
+      }
+      
+              log(`📱 Final recording options:`, options);
+              log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getVideoTracks().length}A tracks`);
+        log(`📱 Device type: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
+        log(`📱 Format priority: ${isMobileDevice ? 'MP4 first (mobile optimized)' : 'WebM first (desktop optimized)'}`);
+      
+      const recorder = new MediaRecorder(stream, options);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        // Determine MIME type from the actual recorder format
+        let finalMimeType = 'video/mp4'; // Default to MP4 for better mobile compatibility
+        if (options.mimeType) {
+          finalMimeType = options.mimeType.split(';')[0]; // Remove codec info for blob
+        } else if (recorder.mimeType) {
+          finalMimeType = recorder.mimeType.split(';')[0];
+        }
+        
+        // Ensure we have a mobile-compatible format
+        const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobileDevice && finalMimeType === 'video/webm') {
+          // Try to convert WebM to MP4 for mobile compatibility
+          log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
+          finalMimeType = 'video/mp4';
+        }
+        
+        log(`📱 Creating blob with MIME type: ${finalMimeType}`);
+        log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
+        log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
+        
+        const blob = new Blob(chunks, { type: finalMimeType });
+        const url = URL.createObjectURL(blob);
+        experienceRecording.url = url;
+        experienceRecording.finalMimeType = finalMimeType; // Store for filename generation
+        
+        // Recording complete - no preview needed
+        experienceRecording.previewVideo = null;
+        cleanupCanvas();
+        try { recordingAudioCtx && recordingAudioCtx.close(); } catch (_) {}
+        
+        log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
+        
+        // After recording is ready, show outro and enable responsive controls
+        try { showOutroScreen(); } catch (_) {}
+      };
+
+      experienceRecording = {
+        recorder, chunks, url: null, canvas, ctx,
+        drawId: null, startTs: performance.now(), durationSec: totalDurationSec,
+        bgImage: img, previewVideo: null,
+        logicalWidth: width, logicalHeight: height
+      };
+
+      // Start drawing once image is ready
+      img.onload = () => {
+        log(`🎬 Recording canvas setup: ${width}x${height} logical, ${canvas.width}x${canvas.height} physical (DPR: ${dpr})`);
+        drawRecordingFrame();
+        recorder.start(100); // collect data every 100ms
+        
+        // Show brief notification that recording is active
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(0, 255, 255, 0.1);
+          border: 1px solid rgba(0, 255, 255, 0.3);
+          color: cyan;
+          padding: 10px 15px;
+          border-radius: 5px;
+          font-family: monospace;
+          font-size: 12px;
+          z-index: 10000;
+          backdrop-filter: blur(5px);
+        `;
+        notification.textContent = '🎬 Recording Active';
+        document.body.appendChild(notification);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 3000);
+      };
+
+      // Stop when voiceover ends
+      const stopOnEnd = () => { try { stopExperienceRecording(); } catch (_) {} voiceAudioEl.removeEventListener('ended', stopOnEnd); };
+      voiceAudioEl.addEventListener('ended', stopOnEnd);
+
+      // Ensure media elements play through (some browsers pause when element is used as source)
+      try { if (voiceAudioEl.paused) voiceAudioEl.play().catch(() => {}); } catch (_) {}
+      try { if (usingAudioFiles && audioElement && audioElement.paused && isPlaying) audioElement.play().catch(() => {}); } catch (_) {}
+    }
+
+    // Performance detection for adaptive quality
+    let isLowPerformance = false;
+    function detectPerformance() {
+      // Simple performance detection based on device capabilities
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const hasLimitedMemory = navigator.deviceMemory && navigator.deviceMemory < 4;
+      const hasSlowConnection = navigator.connection && navigator.connection.effectiveType && 
+                               (navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g');
+      
+      isLowPerformance = isMobile || hasLimitedMemory || hasSlowConnection;
+              log('📱 Performance mode:', isLowPerformance ? 'Low (mobile/limited)' : 'High (desktop)');
+      return isLowPerformance;
+    }
+
+    // Simplified static background for live experience (parallax only in video)
+    function setupLive2_5DParallax(backgroundUrl) {
+      const revealBg = document.getElementById('reveal-bg');
+      if (!revealBg) return;
+      
+      // Clear existing content
+      revealBg.innerHTML = '';
+      
+      // Set simple static background for smooth performance
+      revealBg.style.backgroundImage = `url(${backgroundUrl})`;
+      revealBg.style.backgroundSize = 'cover';
+      revealBg.style.backgroundPosition = 'center';
+      revealBg.style.transform = 'scale(1.05)'; // Slight zoom for visual interest
+      
+              log('📱 Static background set for live experience (parallax saved for video)');
+    }
+    
+    // Optimized animation with throttling and RAF
+    let lastAnimationTime = 0;
+    let animationFrameId = null;
+    
+    function animateLive2_5DParallax(progress) {
+      // DISABLED: Keep background completely static for smooth performance
+      // Only the downloadable video will have parallax effects
+              log('📱 Live parallax disabled for performance - effects only in downloadable video');
+      return;
+    }
+    
+    // 2.5D Parallax background renderer with depth layers (VIDEO RECORDING ONLY)
+    // This creates the beautiful parallax effects in the downloadable MP4 video
+    function draw2_5DParallaxBackground(ctx, bgImage, width, height, t) {
+      if (!bgImage) return;
+      
+      // Create multiple parallax layers for 2.5D effect
+      const layers = [
+        { scale: 1.2, speed: 0.5, opacity: 0.3, blur: 8 },    // Far background layer (slow, blurred)
+        { scale: 1.1, speed: 0.8, opacity: 0.5, blur: 4 },    // Mid background layer
+        { scale: 1.05, speed: 1.0, opacity: 1.0, blur: 0 }    // Main layer (sharp, full opacity)
+      ];
+      
+      layers.forEach((layer, index) => {
+        // Calculate dynamic parallax movement for this layer
+        const parallaxX = Math.sin(t * Math.PI * 4) * 80 * layer.speed; // Faster, larger horizontal movement
+        const parallaxY = Math.cos(t * Math.PI * 3) * 60 * layer.speed; // Faster, larger vertical movement
+        
+        // Dynamic Ken Burns zoom with layer-specific scaling
+        const baseScale = layer.scale + 0.25 * t; // More dramatic zoom
+        
+        // Calculate image dimensions
+        const imgW = bgImage.naturalWidth, imgH = bgImage.naturalHeight;
+        const aspectCanvas = width / height;
+        const aspectImg = imgW / imgH;
+        
+        let drawW, drawH;
+        if (aspectImg > aspectCanvas) {
+          drawH = height * baseScale;
+          drawW = drawH * aspectImg;
+        } else {
+          drawW = width * baseScale;
+          drawH = drawW / aspectImg;
+        }
+        
+        // Position with parallax offset
+        const dx = (width - drawW) / 2 + parallaxX;
+        const dy = (height - drawH) / 2 + parallaxY;
+        
+        // Save context for layer-specific effects
+        ctx.save();
+        
+        // Apply blur for depth of field effect
+        if (layer.blur > 0) {
+          ctx.filter = `blur(${layer.blur}px)`;
+        }
+        
+        // Apply opacity for layering effect
+        ctx.globalAlpha = layer.opacity;
+        
+        // Draw the layer
+        ctx.drawImage(bgImage, dx, dy, drawW, drawH);
+        
+        // Restore context
+        ctx.restore();
+      });
+      
+      // Add subtle particle effects for extra depth
+      drawParallaxParticles(ctx, width, height, t);
+    }
+    
+    // Subtle particle system for enhanced 2.5D effect
+    function drawParallaxParticles(ctx, width, height, t) {
+      ctx.save();
+      
+      // Create dynamic floating particles at different depths
+      const particleCount = 25; // More particles for enhanced effect
+      for (let i = 0; i < particleCount; i++) {
+        const seed = i * 0.618033988749; // Golden ratio for distribution
+        const depth = (i % 3) / 3; // 3 depth layers
+        const speed = 0.5 + depth * 1.0; // Faster movement for all particles
+        
+        // Dynamic particle position with enhanced parallax movement
+        const baseX = (seed * width) % width;
+        const baseY = ((seed * 1.618033988749 * height) % height);
+        const parallaxX = Math.sin(t * Math.PI * 6 * speed + seed * 10) * 80 * (1 - depth); // Faster, larger movement
+        const parallaxY = Math.cos(t * Math.PI * 4 * speed + seed * 15) * 60 * (1 - depth); // Faster, larger movement
+        
+        const x = baseX + parallaxX;
+        const y = baseY + parallaxY;
+        
+        // Enhanced particle properties based on depth
+        const size = 2 + depth * 4; // Bigger particles for more visibility
+        const opacity = 0.2 + depth * 0.3; // More visible particles
+        const brightness = 120 + depth * 135; // Brighter particles
+        
+        // Draw particle
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = `rgba(${brightness}, ${brightness + 20}, ${brightness + 40}, ${opacity})`;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      ctx.restore();
+    }
+
+    function drawRecordingFrame() {
+      const { ctx, canvas, startTs, durationSec, bgImage, logicalWidth, logicalHeight } = experienceRecording;
+      if (!ctx || !bgImage) return;
+      
+      // Use stored logical dimensions for consistent 9:16 rendering
+      const width = logicalWidth || 720;
+      const height = logicalHeight || 1280;
+      const now = performance.now();
+      const t = Math.max(0, Math.min(1, (now - startTs) / (durationSec * 1000)));
+
+      // Clear canvas using logical dimensions (context is already scaled for DPR)
+      ctx.clearRect(0, 0, width, height);
+
+      // 2.5D Parallax effect with multiple layers
+      draw2_5DParallaxBackground(ctx, bgImage, width, height, t);
+
+      // Dark overlay for better text readability
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillRect(0, 0, width, height);
+
+      // Caption text optimized for 9:16 mobile
+      const text = currentCaptionText || '';
+      ctx.fillStyle = '#e6ffff';
+      ctx.textAlign = 'center';
+      
+      // Add subtle text outline for better readability
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.lineWidth = 2;
+      
+      // Bigger font size for better readability
+      const fontSize = Math.max(36, Math.min(64, width * 0.06)); // 36px to 64px
+      ctx.font = `${fontSize}px Playfair Display, serif`;
+      
+      // Text positioning centered vertically in the middle
+      const textY = height * 0.5; // Center text vertically
+      const maxTextWidth = width * 0.8; // Use 80% of width for text
+      
+      wrapAndDrawText(ctx, text, width / 2, textY, maxTextWidth);
+
+      experienceRecording.drawId = requestAnimationFrame(drawRecordingFrame);
+    }
+
+    function wrapAndDrawText(ctx, text, x, y, maxWidth) {
+      const words = (text || '').split(/\s+/);
+      const lines = [];
+      let line = '';
+      
+      for (let i = 0; i < words.length; i++) {
+        const test = line ? line + ' ' + words[i] : words[i];
+        const metrics = ctx.measureText(test);
+        if (metrics.width > maxWidth && line) {
+          lines.push(line);
+          line = words[i];
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      
+      // Responsive line height for mobile
+      const fontSize = parseInt(ctx.font);
+      const lineHeight = fontSize * 1.4; // 1.4x line height for better readability
+      
+      // Center text vertically around the target Y position
+      const startY = y - (lines.length - 1) * lineHeight / 2;
+      
+      // Enhanced text shadow for better readability with bigger font
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      
+      for (let i = 0; i < lines.length; i++) {
+        // Draw text outline first, then fill for better readability
+        ctx.strokeText(lines[i], x, startY + i * lineHeight);
+        ctx.fillText(lines[i], x, startY + i * lineHeight);
+      }
+      
+      // Reset shadow and stroke
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = 'transparent';
+      ctx.lineWidth = 0;
+    }
+
+    function stopExperienceRecording() {
+      try { if (experienceRecording.drawId) cancelAnimationFrame(experienceRecording.drawId); } catch (_) {}
+      try { if (experienceRecording.recorder && experienceRecording.recorder.state !== 'inactive') experienceRecording.recorder.stop(); } catch (_) {}
+    }
+
+    function cleanupCanvas() {
+      try { if (experienceRecording.canvas && experienceRecording.canvas.parentNode) experienceRecording.canvas.parentNode.removeChild(experienceRecording.canvas); } catch (_) {}
+      experienceRecording.canvas = null;
+      experienceRecording.ctx = null;
+    }
+
+    // Deprecated: previously created a floating preview video. Now we use the integrated player only.
+    function createOrGetPreviewVideo(url, width, height) {
+      return null;
+    }
+
+    // UI helpers for replay and share recorded video
+    function whenRecordingReady(cb) {
+      // Ready when a Blob URL is available (integrated player may or may not be set yet)
+      if (experienceRecording && experienceRecording.url) return cb();
+      const waitId = setInterval(() => {
+        if (experienceRecording && experienceRecording.url) {
+          clearInterval(waitId);
+          cb();
+        }
+      }, 250);
+    }
+
+
+
+    // Store user's name globally when memory is generated
+    let currentUserName = 'USER';
+
+    // Generate nostalgic filename format: MEMORY_LOG_XXX_NAME
+    function generateNostalgicFilename(fileExt) {
+      // Use stored name from memory generation
+      let userName = currentUserName || 'USER';
+      
+      // If no stored name, try to get from form as fallback
+      if (userName === 'USER') {
+        const nameInput = document.getElementById('fullname');
+        if (nameInput && nameInput.value && nameInput.value.trim()) {
+          const fullName = nameInput.value.trim();
+          const firstName = fullName.split(' ')[0]; // Get first name only
+          userName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!userName) userName = 'USER';
+        }
+      }
+      
+      // Generate random memory log number (001-999)
+      const randomLogNumber = Math.floor(Math.random() * 999) + 1;
+      const logNumber = String(randomLogNumber).padStart(3, '0');
+      
+      return `MEMORY_LOG_${logNumber}_${userName}.${fileExt}`;
+    }
+
+    function saveRecordedVideo() {
+      whenRecordingReady(() => {
+        const a = document.createElement('a');
+        a.href = experienceRecording.url;
+        
+        // Determine file extension from stored MIME type
+        const mimeType = experienceRecording.finalMimeType || 'video/webm';
+        const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        
+        log(`💾 Saving video: ${mimeType} -> .${fileExt}`);
+        
+        // Create nostalgic filename format: MEMORY_LOG_XXX_NAME
+        const nostalgicFilename = generateNostalgicFilename(fileExt);
+        a.download = nostalgicFilename;
+        a.type = mimeType;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        
+        log(`✅ Download initiated: ${nostalgicFilename}`);
+      });
+    }
+
+    function shareRecordedVideo() {
+      whenRecordingReady(async () => {
+        try {
+          // Check if Web Share API is available
+          if (navigator.share && navigator.canShare) {
+            // Convert blob URL to actual File object for sharing
+            const response = await fetch(experienceRecording.url);
+            const blob = await response.blob();
+            
+            // Use stored MIME type for consistency
+            const mimeType = experienceRecording.finalMimeType || 'video/webm';
+            const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            
+            log(`📤 Sharing video: ${mimeType} -> .${fileExt}`);
+            
+            // Create nostalgic filename
+            const nostalgicFilename = generateNostalgicFilename(fileExt);
+            
+            // Create File object for sharing
+            const file = new File([blob], nostalgicFilename, { type: mimeType });
+            
+            // Check if we can share this file
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'My Childhood Memory',
+                text: 'Check out this nostalgic childhood memory I generated!'
+              });
+              log('✅ Video shared successfully via system share sheet');
+            } else {
+              throw new Error('File sharing not supported');
+            }
+          } else {
+            throw new Error('Web Share API not available');
+          }
+      } catch (error) {
+          console.warn('⚠️ System share failed, falling back to download:', error);
+          // Fallback to download if sharing fails
+          saveRecordedVideo();
+        }
+      });
+    }
+
+    function stopKenBurnsReveal() {
+      cleanupRevealHandlers();
+      const overlay = document.getElementById('reveal-overlay');
+      const caption = document.getElementById('reveal-caption');
+      const paragraph = document.getElementById('memory-text');
+      if (overlay) overlay.classList.remove('active');
+      if (caption) caption.innerHTML = '';
+      if (paragraph) paragraph.classList.remove('hidden-during-reveal');
+      // reset state
+      revealSync = { audioEl: null, utterance: null, lines: [], wordCounts: [], cumulative: [], totalWords: 0, currentIdx: -1, lastChangeSec: -Infinity };
+    }
+
+    // Emotional outro screen functions
+    function showOutroScreen() {
+              log('🎭 Showing emotional outro screen');
+      const overlay = document.getElementById('outro-overlay');
+      if (overlay) {
+        overlay.classList.add('active');
+        
+        // Add staggered word animation
+        const words = overlay.querySelectorAll('.glitch-word');
+        words.forEach((word, index) => {
+          word.style.animationDelay = (index * 0.3) + 's';
+        });
+
+        // Add button functionality
+        const saveBtn = document.getElementById('save-btn');
+        const shareBtn = document.getElementById('share-btn');
+        
+        if (saveBtn) {
+          saveBtn.onclick = () => {
+            log('💾 Save button clicked');
+            // Download recorded video
+            if (experienceRecording && experienceRecording.url) {
+              saveRecordedVideo();
+            } else {
+              // If recording not ready yet, wait briefly then retry
+              whenRecordingReady(() => saveRecordedVideo());
+            }
+          };
+          saveBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Save');
+        }
+        
+        if (shareBtn) {
+          shareBtn.onclick = () => {
+            log('🔗 Share button clicked');
+            // Use system share sheet for recorded video
+            if (experienceRecording && experienceRecording.url) {
+              shareRecordedVideo();
+            } else {
+              // If recording not ready yet, wait briefly then retry
+              whenRecordingReady(() => shareRecordedVideo());
+            }
+          };
+          shareBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Share');
+        }
+        
+        const recallMoreBtn = document.getElementById('recall-more-btn');
+        if (recallMoreBtn) {
+          recallMoreBtn.onclick = () => {
+            log('🔄 Recall More button clicked');
+            // Hide outro screen and return to hero page
+            hideOutroScreen();
+            // Clean up any existing recordings
+            if (experienceRecording && experienceRecording.url) {
+              URL.revokeObjectURL(experienceRecording.url);
+            }
+            experienceRecording = {
+              recorder: null,
+              chunks: [],
+              url: null,
+              canvas: null,
+              ctx: null,
+              drawId: null,
+              startTs: 0,
+              durationSec: 0,
+              bgImage: null,
+              previewVideo: null,
+              logicalWidth: 720,
+              logicalHeight: 1280,
+              finalMimeType: 'video/webm'
+            };
+            // Reset any UI state
+            stopKenBurnsReveal();
+            log('✅ Ready for new memory generation');
+          };
+          recallMoreBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Recall More');
+        }
+
+      }
+    }
+
+    function hideOutroScreen() {
+      const overlay = document.getElementById('outro-overlay');
+      if (overlay) {
+        overlay.classList.remove('active');
+      }
+    }
+
+    function shareMemory() {
+      // Share functionality - copy memory text to clipboard or open share dialog
+      const memoryText = (typeof lastGeneratedMemory === 'string' && lastGeneratedMemory) ? lastGeneratedMemory : (document.getElementById('memory-text')?.textContent || '');
+      if (navigator.share) {
+        navigator.share({
+          title: 'My VALLEXO Memory',
+          text: memoryText,
+          url: window.location.href
+        }).catch(console.error);
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(memoryText).then(() => {
+          alert('Memory copied to clipboard!');
+        }).catch(() => {
+          // Fallback - show memory text in prompt
+          prompt('Copy this memory:', memoryText);
+        });
+      } else {
+        // Fallback - show memory text in prompt
+        prompt('Copy this memory:', memoryText);
+      }
+    }
+
+
+  </script>
 </body>
-</html>
+</html> 
