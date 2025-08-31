@@ -3,7 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Vallexo v11</title>
+  <title>Vallexo v11</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Generate nostalgic childhood memories with AI-powered storytelling. Relive your past through personalized, immersive experiences.">
+  <meta name="keywords" content="nostalgia, childhood memories, AI storytelling, memory generation, personal stories">
+  <meta name="author" content="Vallexo">
+  
+  <!-- Open Graph Meta Tags (Social Media) -->
+  <meta property="og:title" content="Vallexo - AI-Powered Nostalgic Memory Generation">
+  <meta property="og:description" content="Generate nostalgic childhood memories with AI-powered storytelling. Relive your past through personalized, immersive experiences.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://vallexo.com">
+  <meta property="og:image" content="/favicon.png">
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Vallexo - AI-Powered Nostalgic Memory Generation">
+  <meta name="twitter:description" content="Generate nostalgic childhood memories with AI-powered storytelling. Relive your past through personalized, immersive experiences.">
+  <meta name="twitter:image" content="/favicon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1334,7 +1357,7 @@
         onclick="openModal()"
         class="glitch-button font-mono bg-transparent border-2 border-cyan-400 text-cyan-400 px-12 py-6 text-xl md:text-2xl font-medium hover:bg-cyan-400 hover:text-gray-900 transition-all duration-500"
       >
-                    Generate My Memory — $12
+                    Unlock a Forgotten Memory
       </button>
       
       <!-- Ambient Text -->
@@ -1420,7 +1443,7 @@
           <div class="error-message" id="birthYear-error"></div>
         </div>
         
-        <button type="submit" class="modal-button">Generate My Memory →</button>
+        <button type="submit" class="modal-button">Generate My Memory ($1)</button>
       </form>
     </div>
   </div>
@@ -2986,6 +3009,11 @@
         document.getElementById('name-error').classList.add('show');
         hasErrors = true;
         log('❌ Name validation failed');
+      } else if (fullname.split(' ').filter(word => word.trim().length > 0).length < 2) {
+        document.getElementById('name-error').textContent = 'Please enter both your first and last name';
+        document.getElementById('name-error').classList.add('show');
+        hasErrors = true;
+        log('❌ Name format validation failed - needs first and last name');
       }
       if (!birthYear) {
         document.getElementById('birthYear-error').textContent = 'Please enter your birth year';
