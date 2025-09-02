@@ -1307,34 +1307,15 @@
         color: #6b7280;
       }
       
-      .email-section {
-        margin-bottom: 1rem;
-      }
-      
-      .email-input-with-watermark {
-        position: relative;
-      }
-      
-      .fastlane-container {
-        margin-top: 1rem;
-      }
-      
-      .payment-options {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
+
       
       .payment-instructions p {
         margin: 0;
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK with Fastlane -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&components=buttons,fastlane&currency=USD"></script>
-        
-        <!-- Preload Fastlane watermark for better UX -->
-        <link rel="preload" href="https://www.paypalobjects.com/fastlane-v1/assets/fastlane-with-tooltip_en_sm_light.0808.svg" as="image" type="image/avif" />
+          <!-- PayPal SDK -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -1532,48 +1513,20 @@
           <div class="error-message" id="birthYear-error"></div>
         </div>
         
-        <!-- Email Field for Fastlane -->
-        <div class="email-section mb-4">
-          <label for="customer-email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-          <div class="email-input-with-watermark">
-            <input 
-              type="email" 
-              id="customer-email" 
-              name="email" 
-              placeholder="Enter your email address" 
-              class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-              autocomplete="email"
-            />
-            <div id="fastlane-watermark" class="mt-2 text-xs text-gray-400 text-center">
-              <span>Powered by Fastlane</span>
-              <span class="ml-1">ⓘ</span>
-            </div>
-          </div>
-        </div>
+        <!-- Original Generate Button (triggers PayPal) -->
+        <button type="button" id="generate-memory-btn" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 w-full transform hover:scale-105 shadow-lg">
+          Generate My Memory ($1.99)
+        </button>
         
-        <!-- Payment Options -->
-        <div class="payment-options mb-4">
-          <button type="button" id="paypal-option" class="w-full mb-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
-            Pay with PayPal
-          </button>
-          
-          <button type="button" id="fastlane-option" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
-            Pay with Card (Fastlane)
-          </button>
-        </div>
-        
-        <!-- PayPal Smart Buttons Container -->
+        <!-- PayPal Smart Buttons Container (hidden initially) -->
         <div id="paypal-button-container" class="paypal-container hidden"></div>
-        
-        <!-- Fastlane Payment Component -->
-        <div id="fastlane-payment-container" class="fastlane-container hidden"></div>
         
         <!-- Payment Status -->
         <div id="payment-status" class="payment-status hidden"></div>
         
         <!-- Instructions -->
         <div class="payment-instructions">
-          <p>Fill in your details above, enter your email, then choose your preferred payment method to complete your $1.99 payment and generate your memory.</p>
+          <p>Fill in your details above, then click the PayPal button to complete your $1.99 payment and generate your memory.</p>
         </div>
       </form>
     </div>
@@ -4845,142 +4798,7 @@
       }
     }
     
-    // Initialize Fastlane payment (with fallback to regular PayPal)
-    function initializeFastlane() {
-      console.log('🔍 initializeFastlane called');
-      
-      // Check if PayPal SDK is loaded
-      if (typeof paypal === 'undefined') {
-        console.error('PayPal SDK not loaded yet');
-        showPaymentStatus('error', 'Payment system loading... Please try again in a moment.');
-        return;
-      }
-      
-      console.log('✅ PayPal SDK is loaded, checking for Fastlane...');
-      
-      // Clear any previous payment status
-      const statusEl = document.getElementById('payment-status');
-      if (statusEl) {
-        statusEl.classList.add('hidden');
-      }
-      
-      try {
-        // Check if Fastlane is available
-        if (typeof paypal.Fastlane !== 'undefined') {
-          console.log('🎯 Fastlane is available, using it...');
-          
-          // Get customer email
-          const email = document.getElementById('customer-email').value.trim();
-          
-          // Initialize Fastlane with Quick Start integration
-          paypal.Fastlane({
-            createOrder: function() {
-              return {
-                intent: 'CAPTURE',
-                purchase_units: [{
-                  amount: {
-                    value: '1.99',
-                    currency_code: 'USD'
-                  },
-                  description: 'Vallexo Memory Generation'
-                }]
-              };
-            },
-            
-            onApprove: function(data, actions) {
-              console.log('Fastlane payment approved:', data);
-              showPaymentStatus('processing', 'Processing payment...');
-              
-              // Capture the payment
-              return actions.order.capture().then(function(details) {
-                console.log('Fastlane payment captured:', details);
-                showPaymentStatus('success', 'Payment successful! Starting memory generation...');
-                
-                // Proceed with memory generation
-                setTimeout(() => {
-                  processPaymentSuccess(details);
-                }, 1500);
-              });
-            },
-            
-            onError: function(err) {
-              console.error('Fastlane payment error:', err);
-              showPaymentStatus('error', 'Payment failed. Please try again.');
-            },
-            
-            onCancel: function() {
-              showPaymentStatus('error', 'Payment cancelled.');
-            },
-            
-            // Quick Start integration for simpler UX
-            integrationPattern: 'QUICK_START',
-            
-            // Style options to match your theme
-            style: {
-              backgroundColor: '#1f2937',
-              textColor: '#ffffff',
-              borderColor: '#3b82f6'
-            }
-          }).render('#fastlane-payment-container');
-          
-          console.log('✅ Fastlane initialized successfully');
-          
-        } else {
-          console.log('⚠️ Fastlane not available, falling back to regular PayPal...');
-          
-          // Fallback: Use regular PayPal with card funding source
-          paypal.Buttons({
-            fundingSource: paypal.FUNDING.CARD,
-            createOrder: function(data, actions) {
-              // Validate form before creating order
-              if (!validateForm()) {
-                showPaymentStatus('error', 'Please fill in all fields correctly.');
-                return false;
-              }
-              
-              return actions.order.create({
-                purchase_units: [{
-                  amount: {
-                    value: '1.99'
-                  },
-                  description: 'Vallexo Memory Generation'
-                }]
-              });
-            },
-            
-            onApprove: function(data, actions) {
-              // Show payment processing status
-              showPaymentStatus('processing', 'Processing payment...');
-              
-              return actions.order.capture().then(function(details) {
-                // Payment successful!
-                showPaymentStatus('success', 'Payment successful! Starting memory generation...');
-                
-                // Get form data and proceed with memory generation
-                setTimeout(() => {
-                  processPaymentSuccess(details);
-                }, 1500);
-              });
-            },
-            
-            onError: function(err) {
-              console.error('PayPal payment error:', err);
-              showPaymentStatus('error', 'Payment failed. Please try again.');
-            },
-            
-            onCancel: function() {
-              showPaymentStatus('error', 'Payment cancelled.');
-            }
-          }).render('#fastlane-payment-container');
-          
-          console.log('✅ PayPal fallback initialized successfully');
-        }
-        
-      } catch (error) {
-        console.error('Error initializing payment system:', error);
-        showPaymentStatus('error', 'Payment system error. Please refresh and try again.');
-      }
-    }
+
     
     // Show payment status
     function showPaymentStatus(type, message) {
@@ -5030,7 +4848,7 @@
       }
     }
     
-    // Initialize Fastlane and PayPal when modal opens
+    // Initialize PayPal when modal opens
     document.addEventListener('DOMContentLoaded', function() {
       // Wait for PayPal SDK to be fully loaded
       function waitForPayPal() {
@@ -5043,100 +4861,51 @@
         }
       }
       
-      // Handle payment option clicks
-      const paypalOption = document.getElementById('paypal-option');
-      const fastlaneOption = document.getElementById('fastlane-option');
-      
-      if (paypalOption) {
-        paypalOption.addEventListener('click', function() {
-          console.log('🔘 PayPal option clicked');
-          handlePayPalPayment();
-        });
-      }
-      
-      if (fastlaneOption) {
-        fastlaneOption.addEventListener('click', function() {
-          console.log('🔘 Fastlane option clicked');
-          console.log('🔍 Button element:', fastlaneOption);
-          console.log('🔍 Event listener attached:', fastlaneOption.onclick);
-          handleFastlanePayment();
+      // Handle Generate Memory button click
+      const generateBtn = document.getElementById('generate-memory-btn');
+      if (generateBtn) {
+        generateBtn.addEventListener('click', function() {
+          console.log('🔘 Generate Memory button clicked');
+          
+          // Validate form first
+          if (!validateForm()) {
+            showPaymentStatus('error', 'Please fill in all fields correctly.');
+            return;
+          }
+          
+          // Check if PayPal is loaded
+          if (waitForPayPal()) {
+            // Show PayPal buttons
+            showPayPalButtons();
+          } else {
+            // Wait for PayPal to load, then show buttons
+            const checkPayPal = setInterval(() => {
+              if (waitForPayPal()) {
+                clearInterval(checkPayPal);
+                showPayPalButtons();
+              }
+            }, 100);
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+              clearInterval(checkPayPal);
+              if (typeof paypal === 'undefined') {
+                showPaymentStatus('error', 'Payment system loading... Please try again.');
+              }
+            }, 5000);
+          }
         });
       }
     });
-    
-    // Handle PayPal payment
-    function handlePayPalPayment() {
-      // Validate form first
-      if (!validateForm()) {
-        showPaymentStatus('error', 'Please fill in all fields correctly.');
-        return;
-      }
-      
-      // Check if PayPal is loaded
-      if (waitForPayPal()) {
-        showPayPalButtons();
-      } else {
-        // Wait for PayPal to load
-        const checkPayPal = setInterval(() => {
-          if (waitForPayPal()) {
-            clearInterval(checkPayPal);
-            showPayPalButtons();
-          }
-        }, 100);
-        
-        setTimeout(() => {
-          clearInterval(checkPayPal);
-          if (typeof paypal === 'undefined') {
-            showPaymentStatus('error', 'Payment system loading... Please try again.');
-          }
-        }, 5000);
-      }
-    }
-    
-    // Handle Fastlane payment
-    function handleFastlanePayment() {
-      // Validate form first
-      if (!validateForm()) {
-        showPaymentStatus('error', 'Please fill in all fields correctly.');
-        return;
-      }
-      
-      // Validate email
-      const email = document.getElementById('customer-email').value.trim();
-      if (!email) {
-        showPaymentStatus('error', 'Please enter your email address.');
-        return;
-      }
-      
-      // Check if PayPal is loaded
-      if (waitForPayPal()) {
-        showFastlanePayment();
-      } else {
-        // Wait for PayPal to load
-        const checkPayPal = setInterval(() => {
-          if (waitForPayPal()) {
-            clearInterval(checkPayPal);
-            showFastlanePayment();
-          }
-        }, 100);
-        
-        setTimeout(() => {
-          clearInterval(checkPayPal);
-          if (typeof paypal === 'undefined') {
-            showPaymentStatus('error', 'Payment system loading... Please try again.');
-          }
-        }, 5000);
-      }
-    }
     
     // Show PayPal buttons
     function showPayPalButtons() {
       console.log('🎯 Showing PayPal buttons');
       
-      // Hide payment options
-      const paymentOptions = document.querySelector('.payment-options');
-      if (paymentOptions) {
-        paymentOptions.classList.add('hidden');
+      // Hide the generate button
+      const generateBtn = document.getElementById('generate-memory-btn');
+      if (generateBtn) {
+        generateBtn.classList.add('hidden');
       }
       
       // Show PayPal container
@@ -5147,26 +4916,6 @@
       
       // Initialize PayPal buttons
       initializePayPal();
-    }
-    
-    // Show Fastlane payment
-    function showFastlanePayment() {
-      console.log('🎯 Showing Fastlane payment');
-      
-      // Hide payment options
-      const paymentOptions = document.querySelector('.payment-options');
-      if (paymentOptions) {
-        paymentOptions.classList.add('hidden');
-      }
-      
-      // Show Fastlane container
-      const fastlaneContainer = document.getElementById('fastlane-payment-container');
-      if (fastlaneContainer) {
-        fastlaneContainer.classList.remove('hidden');
-      }
-      
-      // Initialize Fastlane
-      initializeFastlane();
     }
 
   </script>
