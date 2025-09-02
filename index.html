@@ -4845,7 +4845,7 @@
       }
     }
     
-    // Initialize Fastlane payment
+    // Initialize Fastlane payment (with fallback to regular PayPal)
     function initializeFastlane() {
       console.log('🔍 initializeFastlane called');
       
@@ -4856,7 +4856,7 @@
         return;
       }
       
-      console.log('✅ PayPal SDK is loaded, creating Fastlane...');
+      console.log('✅ PayPal SDK is loaded, checking for Fastlane...');
       
       // Clear any previous payment status
       const statusEl = document.getElementById('payment-status');
@@ -4865,64 +4865,119 @@
       }
       
       try {
-        // Get customer email
-        const email = document.getElementById('customer-email').value.trim();
-        
-        // Initialize Fastlane with Quick Start integration
-        paypal.Fastlane({
-          createOrder: function() {
-            return {
-              intent: 'CAPTURE',
-              purchase_units: [{
-                amount: {
-                  value: '1.99',
-                  currency_code: 'USD'
-                },
-                description: 'Vallexo Memory Generation'
-              }]
-            };
-          },
+        // Check if Fastlane is available
+        if (typeof paypal.Fastlane !== 'undefined') {
+          console.log('🎯 Fastlane is available, using it...');
           
-          onApprove: function(data, actions) {
-            console.log('Fastlane payment approved:', data);
-            showPaymentStatus('processing', 'Processing payment...');
+          // Get customer email
+          const email = document.getElementById('customer-email').value.trim();
+          
+          // Initialize Fastlane with Quick Start integration
+          paypal.Fastlane({
+            createOrder: function() {
+              return {
+                intent: 'CAPTURE',
+                purchase_units: [{
+                  amount: {
+                    value: '1.99',
+                    currency_code: 'USD'
+                  },
+                  description: 'Vallexo Memory Generation'
+                }]
+              };
+            },
             
-            // Capture the payment
-            return actions.order.capture().then(function(details) {
-              console.log('Fastlane payment captured:', details);
-              showPaymentStatus('success', 'Payment successful! Starting memory generation...');
+            onApprove: function(data, actions) {
+              console.log('Fastlane payment approved:', data);
+              showPaymentStatus('processing', 'Processing payment...');
               
-              // Proceed with memory generation
-              setTimeout(() => {
-                processPaymentSuccess(details);
-              }, 1500);
-            });
-          },
+              // Capture the payment
+              return actions.order.capture().then(function(details) {
+                console.log('Fastlane payment captured:', details);
+                showPaymentStatus('success', 'Payment successful! Starting memory generation...');
+                
+                // Proceed with memory generation
+                setTimeout(() => {
+                  processPaymentSuccess(details);
+                }, 1500);
+              });
+            },
+            
+            onError: function(err) {
+              console.error('Fastlane payment error:', err);
+              showPaymentStatus('error', 'Payment failed. Please try again.');
+            },
+            
+            onCancel: function() {
+              showPaymentStatus('error', 'Payment cancelled.');
+            },
+            
+            // Quick Start integration for simpler UX
+            integrationPattern: 'QUICK_START',
+            
+            // Style options to match your theme
+            style: {
+              backgroundColor: '#1f2937',
+              textColor: '#ffffff',
+              borderColor: '#3b82f6'
+            }
+          }).render('#fastlane-payment-container');
           
-          onError: function(err) {
-            console.error('Fastlane payment error:', err);
-            showPaymentStatus('error', 'Payment failed. Please try again.');
-          },
+          console.log('✅ Fastlane initialized successfully');
           
-          onCancel: function() {
-            showPaymentStatus('error', 'Payment cancelled.');
-          },
+        } else {
+          console.log('⚠️ Fastlane not available, falling back to regular PayPal...');
           
-          // Quick Start integration for simpler UX
-          integrationPattern: 'QUICK_START',
+          // Fallback: Use regular PayPal with card funding source
+          paypal.Buttons({
+            fundingSource: paypal.FUNDING.CARD,
+            createOrder: function(data, actions) {
+              // Validate form before creating order
+              if (!validateForm()) {
+                showPaymentStatus('error', 'Please fill in all fields correctly.');
+                return false;
+              }
+              
+              return actions.order.create({
+                purchase_units: [{
+                  amount: {
+                    value: '1.99'
+                  },
+                  description: 'Vallexo Memory Generation'
+                }]
+              });
+            },
+            
+            onApprove: function(data, actions) {
+              // Show payment processing status
+              showPaymentStatus('processing', 'Processing payment...');
+              
+              return actions.order.capture().then(function(details) {
+                // Payment successful!
+                showPaymentStatus('success', 'Payment successful! Starting memory generation...');
+                
+                // Get form data and proceed with memory generation
+                setTimeout(() => {
+                  processPaymentSuccess(details);
+                }, 1500);
+              });
+            },
+            
+            onError: function(err) {
+              console.error('PayPal payment error:', err);
+              showPaymentStatus('error', 'Payment failed. Please try again.');
+            },
+            
+            onCancel: function() {
+              showPaymentStatus('error', 'Payment cancelled.');
+            }
+          }).render('#fastlane-payment-container');
           
-          // Style options to match your theme
-          style: {
-            backgroundColor: '#1f2937',
-            textColor: '#ffffff',
-            borderColor: '#3b82f6'
-          }
-        }).render('#fastlane-payment-container');
-        
-        console.log('✅ Fastlane initialized successfully');
+          console.log('✅ PayPal fallback initialized successfully');
+        }
         
       } catch (error) {
-        console.error('Error initializing Fastlane:', error);
+        console.error('Error initializing payment system:', error);
         showPaymentStatus('error', 'Payment system error. Please refresh and try again.');
       }
     }
@@ -5002,6 +5057,8 @@
       if (fastlaneOption) {
         fastlaneOption.addEventListener('click', function() {
           console.log('🔘 Fastlane option clicked');
+          console.log('🔍 Button element:', fastlaneOption);
+          console.log('🔍 Event listener attached:', fastlaneOption.onclick);
           handleFastlanePayment();
         });
       }
