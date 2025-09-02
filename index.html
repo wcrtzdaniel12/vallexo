@@ -1294,9 +1294,7 @@
         display: none;
       }
       
-      .fallback-button {
-        margin-top: 1rem;
-      }
+
       
       .payment-instructions {
         margin-top: 15px;
@@ -1513,15 +1511,13 @@
           <div class="error-message" id="birthYear-error"></div>
         </div>
         
-        <!-- PayPal Smart Buttons Container -->
-        <div id="paypal-button-container" class="paypal-container"></div>
+        <!-- Original Generate Button (triggers PayPal) -->
+        <button type="button" id="generate-memory-btn" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 w-full transform hover:scale-105 shadow-lg">
+          Generate My Memory ($1.99)
+        </button>
         
-        <!-- Fallback Button (shown if PayPal fails) -->
-        <div id="fallback-button" class="fallback-button hidden">
-          <button type="button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 w-full">
-            Continue with Memory Generation ($1.99)
-          </button>
-        </div>
+        <!-- PayPal Smart Buttons Container (hidden initially) -->
+        <div id="paypal-button-container" class="paypal-container hidden"></div>
         
         <!-- Payment Status -->
         <div id="payment-status" class="payment-status hidden"></div>
@@ -4857,61 +4853,70 @@
       // Wait for PayPal SDK to be fully loaded
       function waitForPayPal() {
         if (typeof paypal !== 'undefined') {
-          // Initialize PayPal when modal is opened
-          const modal = document.getElementById('modal');
-          if (modal) {
-            const observer = new MutationObserver(function(mutations) {
-              mutations.forEach(function(mutation) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                  if (modal.style.display === 'block' || modal.classList.contains('active')) {
-                    initializePayPal();
-                  }
-                }
-              });
-            });
-            
-            observer.observe(modal, { attributes: true });
-          }
+          console.log('✅ PayPal SDK loaded successfully');
+          return true;
         } else {
-          // Wait a bit more for PayPal SDK to load
-          setTimeout(waitForPayPal, 100);
+          console.log('⏳ Waiting for PayPal SDK...');
+          return false;
         }
       }
       
-      // Set a timeout to show fallback button if PayPal doesn't load
-      setTimeout(() => {
-        if (typeof paypal === 'undefined') {
-          console.warn('PayPal SDK failed to load, showing fallback button');
-          const fallbackBtn = document.getElementById('fallback-button');
-          if (fallbackBtn) {
-            fallbackBtn.classList.remove('hidden');
-          }
-        }
-      }, 5000); // 5 second timeout
-      
-      waitForPayPal();
-      
-      // Add event listener for fallback button
-      const fallbackBtn = document.getElementById('fallback-button');
-      if (fallbackBtn) {
-        fallbackBtn.addEventListener('click', function() {
-          // Simulate successful payment for testing
-          console.log('Fallback button clicked - proceeding with memory generation');
-          showPaymentStatus('success', 'Proceeding with memory generation...');
+      // Handle Generate Memory button click
+      const generateBtn = document.getElementById('generate-memory-btn');
+      if (generateBtn) {
+        generateBtn.addEventListener('click', function() {
+          console.log('🔘 Generate Memory button clicked');
           
-          setTimeout(() => {
-            const fullname = document.getElementById('fullname').value.trim();
-            const birthYear = parseInt(document.getElementById('birthYear').value, 10);
+          // Validate form first
+          if (!validateForm()) {
+            showPaymentStatus('error', 'Please fill in all fields correctly.');
+            return;
+          }
+          
+          // Check if PayPal is loaded
+          if (waitForPayPal()) {
+            // Show PayPal buttons
+            showPayPalButtons();
+          } else {
+            // Wait for PayPal to load, then show buttons
+            const checkPayPal = setInterval(() => {
+              if (waitForPayPal()) {
+                clearInterval(checkPayPal);
+                showPayPalButtons();
+              }
+            }, 100);
             
-            if (fullname && birthYear) {
-              processPaymentSuccess({});
-            } else {
-              showPaymentStatus('error', 'Please fill in all fields first.');
-            }
-          }, 1000);
+            // Timeout after 5 seconds
+            setTimeout(() => {
+              clearInterval(checkPayPal);
+              if (typeof paypal === 'undefined') {
+                showPaymentStatus('error', 'Payment system loading... Please try again.');
+              }
+            }, 5000);
+          }
         });
       }
     });
+    
+    // Show PayPal buttons
+    function showPayPalButtons() {
+      console.log('🎯 Showing PayPal buttons');
+      
+      // Hide the generate button
+      const generateBtn = document.getElementById('generate-memory-btn');
+      if (generateBtn) {
+        generateBtn.classList.add('hidden');
+      }
+      
+      // Show PayPal container
+      const paypalContainer = document.getElementById('paypal-button-container');
+      if (paypalContainer) {
+        paypalContainer.classList.remove('hidden');
+      }
+      
+      // Initialize PayPal buttons
+      initializePayPal();
+    }
 
   </script>
 </body>
