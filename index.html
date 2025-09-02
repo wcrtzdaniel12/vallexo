@@ -1256,8 +1256,62 @@
     }
 
     /* Hide normal paragraph while reveal is active */
-    .hidden-during-reveal { visibility: hidden; }
-  </style>
+          .hidden-during-reveal { visibility: hidden; }
+      
+      /* PayPal Button Styles */
+      .paypal-container {
+        margin-top: 20px;
+        text-align: center;
+      }
+      
+      .payment-status {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 500;
+      }
+      
+      .payment-status.success {
+        background-color: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+      }
+      
+      .payment-status.error {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      
+      .payment-status.processing {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+      }
+      
+      .hidden {
+        display: none;
+      }
+      
+      .payment-instructions {
+        margin-top: 15px;
+        padding: 15px;
+        background-color: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      
+      .payment-instructions p {
+        margin: 0;
+        line-height: 1.5;
+      }
+    </style>
+          <!-- PayPal SDK -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -1442,7 +1496,7 @@
       <button class="modal-close" onclick="closeModal()">&times;</button>
       <h2 class="modal-title">Generate Your Memory</h2>
       
-      <form id="memory-form">
+      <form id="memory-form" onsubmit="return false;">
         <div class="form-group">
           <label class="form-label">Your Full Name</label>
           <input type="text" class="form-input" id="fullname" placeholder="e.g. Evelyn Rose" required>
@@ -1455,7 +1509,16 @@
           <div class="error-message" id="birthYear-error"></div>
         </div>
         
-        <button type="submit" class="modal-button">Generate My Memory ($1)</button>
+        <!-- PayPal Smart Buttons Container -->
+        <div id="paypal-button-container" class="paypal-container"></div>
+        
+        <!-- Payment Status -->
+        <div id="payment-status" class="payment-status hidden"></div>
+        
+        <!-- Instructions -->
+        <div class="payment-instructions">
+          <p>Fill in your details above, then click the PayPal button to complete your $1.99 payment and generate your memory.</p>
+        </div>
       </form>
     </div>
   </div>
@@ -2996,24 +3059,13 @@
       }, 2000);
     }
 
-    // Update form submit handler to show memory section
-    document.getElementById('memory-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-              log('📝 Form submitted - starting validation...');
-      
-      // Play sound effect for engagement
-      try {
-      playGenerateMemorySound();
-      } catch (soundError) {
-        console.warn('🔇 Sound effect failed:', soundError);
-      }
-      
+    // Form validation function (used by PayPal payment flow)
+    function validateForm() {
       clearErrors();
       const fullname = document.getElementById('fullname').value.trim();
       const birthYear = parseInt(document.getElementById('birthYear').value, 10);
       
-              log('📝 Form data:', { fullname, birthYear });
+      log('📝 Validating form data:', { fullname, birthYear });
       
       let hasErrors = false;
       if (!fullname) {
@@ -3030,8 +3082,6 @@
       if (!birthYear) {
         document.getElementById('birthYear-error').textContent = 'Please enter your birth year';
         document.getElementById('birthYear-error').classList.add('show');
-        hasErrors = true;
-        log('❌ Birth year validation failed');
       } else if (birthYear < 1950 || birthYear > 2010) {
         document.getElementById('birthYear-error').textContent = 'Please enter a birth year between 1950-2010';
         document.getElementById('birthYear-error').classList.add('show');
@@ -3039,69 +3089,8 @@
         log('❌ Birth year range validation failed');
       }
       
-      if (!hasErrors) {
-        log('✅ Form validation passed, proceeding with memory generation...');
-        
-        try {
-          closeModal();
-          log('✅ Modal closed');
-        } catch (modalError) {
-          console.warn('⚠️ Modal close failed:', modalError);
-        }
-        
-        try {
-        showLoadingOverlay();
-          log('✅ Loading overlay shown');
-        } catch (overlayError) {
-          console.warn('⚠️ Loading overlay failed:', overlayError);
-        }
-        
-        try {
-          log('🚀 Starting memory generation for:', fullname, birthYear);
-          
-          // Store user's name for filename generation later
-          if (fullname && fullname.trim()) {
-            const firstName = fullname.trim().split(' ')[0];
-            currentUserName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'USER';
-          }
-          
-          const memory = await generateMemory(fullname, birthYear);
-          log('✅ Memory generation completed successfully');
-          
-          // Start voice + UI
-          log('🎬 Starting memory section display...');
-          await showMemorySection(memory);
-          log('✅ Memory section displayed successfully');
-          hideLoadingOverlay();
-        } catch (error) {
-          console.error('💥 Memory generation failed:', error);
-          console.error('💥 Error stack:', error.stack);
-          
-          try {
-          hideLoadingOverlay();
-          } catch (hideError) {
-            console.warn('⚠️ Hide loading overlay failed:', hideError);
-          }
-          
-          // Show more specific error message
-          let errorMessage = 'Failed to generate memory. ';
-          if (error.message.includes('HTTP')) {
-            errorMessage += 'Server error - please try again in a moment.';
-          } else if (error.message.includes('Network')) {
-            errorMessage += 'Network error - please check your connection.';
-          } else if (error.message.includes('No memory returned')) {
-            errorMessage += 'API returned empty response - please try again.';
-          } else {
-            errorMessage += 'Please try again.';
-          }
-          
-          console.error('💥 Showing error alert:', errorMessage);
-          alert(errorMessage);
-        }
-      } else {
-        log('❌ Form validation failed, not proceeding');
-      }
-    });
+      return !hasErrors;
+    }
 
     // Add random glitch effects
     setInterval(() => {
@@ -4724,6 +4713,131 @@
       }
     }
 
+    // PayPal Smart Buttons Integration
+    let paypalButtons = null;
+    
+    // Initialize PayPal when modal opens
+    function initializePayPal() {
+      if (paypalButtons) return; // Already initialized
+      
+      // Clear any previous payment status
+      const statusEl = document.getElementById('payment-status');
+      if (statusEl) {
+        statusEl.classList.add('hidden');
+      }
+      
+      paypal.Buttons({
+        createOrder: function(data, actions) {
+          // Validate form before creating order
+          if (!validateForm()) {
+            showPaymentStatus('error', 'Please fill in all fields correctly.');
+            return false;
+          }
+          
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: '1.99'
+              },
+              description: 'Vallexo Memory Generation'
+            }]
+          });
+        },
+        
+        onApprove: function(data, actions) {
+          // Show payment processing status
+          showPaymentStatus('processing', 'Processing payment...');
+          
+          return actions.order.capture().then(function(details) {
+            // Payment successful!
+            showPaymentStatus('success', 'Payment successful! Starting memory generation...');
+            
+            // Get form data and proceed with memory generation
+            setTimeout(() => {
+              processPaymentSuccess(details);
+            }, 1500);
+          });
+        },
+        
+        onError: function(err) {
+          console.error('PayPal payment error:', err);
+          showPaymentStatus('error', 'Payment failed. Please try again.');
+        },
+        
+        onCancel: function() {
+          showPaymentStatus('error', 'Payment cancelled.');
+        }
+      }).render('#paypal-button-container');
+      
+      paypalButtons = true;
+    }
+    
+    // Show payment status
+    function showPaymentStatus(type, message) {
+      const statusEl = document.getElementById('payment-status');
+      statusEl.textContent = message;
+      statusEl.className = `payment-status ${type}`;
+      statusEl.classList.remove('hidden');
+    }
+    
+    // Process successful payment
+    async function processPaymentSuccess(paymentDetails) {
+      try {
+        // Validate form before proceeding
+        if (!validateForm()) {
+          showPaymentStatus('error', 'Please fill in all fields correctly.');
+          return;
+        }
+        
+        const fullname = document.getElementById('fullname').value.trim();
+        const birthYear = parseInt(document.getElementById('birthYear').value, 10);
+        
+        // Close modal and start memory generation
+        closeModal();
+        showLoadingOverlay();
+        
+        log('🚀 Starting memory generation after successful payment for:', fullname, birthYear);
+        
+        // Store user's name for filename generation
+        if (fullname && fullname.trim()) {
+          const firstName = fullname.trim().split(' ')[0];
+          currentUserName = firstName.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'USER';
+        }
+        
+        const memory = await generateMemory(fullname, birthYear);
+        log('✅ Memory generation completed successfully');
+        
+        // Start voice + UI
+        log('🎬 Starting memory section display...');
+        await showMemorySection(memory);
+        log('✅ Memory section displayed successfully');
+        hideLoadingOverlay();
+        
+      } catch (error) {
+        console.error('💥 Memory generation failed after payment:', error);
+        hideLoadingOverlay();
+        showPaymentStatus('error', 'Memory generation failed. Please contact support.');
+      }
+    }
+    
+    // Initialize PayPal when modal opens
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize PayPal when modal is opened
+      const modal = document.getElementById('modal');
+      if (modal) {
+        const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+              if (modal.style.display === 'block' || modal.classList.contains('active')) {
+                initializePayPal();
+              }
+            }
+          });
+        });
+        
+        observer.observe(modal, { attributes: true });
+      }
+    });
 
   </script>
 </body>
