@@ -1339,7 +1339,7 @@
       }
     </style>
           <!-- PayPal SDK with embedded flow support -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=paypal,card"></script>
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=paypal,card&components=buttons,marks"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -2186,6 +2186,12 @@
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
       
+      // Clear any previous payment status
+      const statusEl = document.getElementById('payment-status');
+      if (statusEl) {
+        statusEl.classList.add('hidden');
+      }
+      
       // Focus on first input
       setTimeout(() => {
         document.getElementById('fullname').focus();
@@ -2200,6 +2206,25 @@
       // Clear form
       document.getElementById('memory-form').reset();
       clearErrors();
+      
+      // Clear PayPal buttons to prevent payment with missing form data
+      const paypalContainer = document.getElementById('paypal-button-container');
+      const generateBtn = document.getElementById('generate-memory-btn');
+      
+      if (paypalContainer) {
+        paypalContainer.classList.add('hidden');
+        paypalContainer.innerHTML = '';
+        paypalButtons = null; // Reset PayPal buttons state
+      }
+      if (generateBtn) {
+        generateBtn.classList.remove('hidden');
+      }
+      
+      // Clear payment status
+      const statusEl = document.getElementById('payment-status');
+      if (statusEl) {
+        statusEl.classList.add('hidden');
+      }
     }
 
     function clearErrors() {
@@ -4784,7 +4809,8 @@
             color: 'blue',
             shape: 'rect',
             label: 'paypal',
-            height: 45
+            height: 45,
+            tagline: false
           },
           createOrder: function(data, actions) {
             // Validate form before creating order
@@ -4802,7 +4828,9 @@
               }],
               application_context: {
                 shipping_preference: 'NO_SHIPPING', // No address required for digital products
-                user_action: 'PAY_NOW' // Force embedded flow instead of redirect
+                user_action: 'PAY_NOW', // Force embedded flow instead of redirect
+                return_url: window.location.href,
+                cancel_url: window.location.href
               }
             });
           },
@@ -4868,6 +4896,12 @@
         
         const fullname = document.getElementById('fullname').value.trim();
         const birthYear = parseInt(document.getElementById('birthYear').value, 10);
+        
+        // Additional safety check - ensure we have valid data
+        if (!fullname || !birthYear || birthYear < 1950 || birthYear > 2010) {
+          showPaymentStatus('error', 'Invalid form data. Please close and reopen the modal to try again.');
+          return;
+        }
         
         // Close modal and start memory generation
         closeModal();
