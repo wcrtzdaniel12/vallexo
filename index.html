@@ -1288,29 +1288,7 @@
         text-align: center;
       }
       
-      /* Back to Payment Options Styles */
-      .back-to-options {
-        margin-top: 15px;
-        text-align: center;
-      }
-      
-      .back-button {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        color: #00ffff;
-        padding: 10px 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        transition: all 0.3s ease;
-      }
-      
-      .back-button:hover {
-        background: rgba(0, 255, 255, 0.1);
-        border-color: rgba(0, 255, 255, 0.5);
-        transform: translateY(-1px);
-      }
+
       
       .payment-status {
         margin-top: 15px;
@@ -1569,12 +1547,7 @@
         <!-- PayPal Smart Buttons Container (hidden initially) -->
         <div id="paypal-button-container" class="paypal-container hidden"></div>
         
-        <!-- Back to Payment Options Button (hidden initially) -->
-        <div id="back-to-payment-options" class="back-to-options hidden">
-          <button type="button" id="back-btn" class="back-button">
-            ← Back to Payment Options
-          </button>
-        </div>
+
         
         <!-- Payment Status -->
         <div id="payment-status" class="payment-status hidden"></div>
@@ -4995,64 +4968,34 @@
         });
       }
       
-      // Handle Back to Payment Options button click
-      const backBtn = document.getElementById('back-btn');
-      if (backBtn) {
-        backBtn.addEventListener('click', function() {
-          console.log('🔙 Back to payment options clicked');
-          showPaymentOptions();
-        });
-      }
+
     });
     
     // Show PayPal buttons
     function showPayPalButtons() {
       console.log('🎯 Showing PayPal buttons');
       
-      // Hide the generate button
-      const generateBtn = document.getElementById('generate-memory-btn');
-      if (generateBtn) {
-        generateBtn.classList.add('hidden');
-      }
-      
+      // Keep the generate button visible (don't hide it)
       // Show PayPal container
       const paypalContainer = document.getElementById('paypal-button-container');
       if (paypalContainer) {
         paypalContainer.classList.remove('hidden');
       }
       
-      // Show back button
-      const backOptions = document.getElementById('back-to-payment-options');
-      if (backOptions) {
-        backOptions.classList.remove('hidden');
-      }
-      
       // Initialize PayPal buttons
       initializePayPal();
     }
     
-    // Show payment options (back to original state)
+    // Reset payment state (used when modal closes)
     function showPaymentOptions() {
-      console.log('🔄 Showing payment options');
+      console.log('🔄 Resetting payment state');
       
-      // Show the generate button
-      const generateBtn = document.getElementById('generate-memory-btn');
-      if (generateBtn) {
-        generateBtn.classList.remove('hidden');
-      }
-      
-      // Hide PayPal container
+      // Hide PayPal container and clear it
       const paypalContainer = document.getElementById('paypal-button-container');
       if (paypalContainer) {
         paypalContainer.classList.add('hidden');
         paypalContainer.innerHTML = '';
         paypalButtons = null; // Reset PayPal buttons state
-      }
-      
-      // Hide back button
-      const backOptions = document.getElementById('back-to-payment-options');
-      if (backOptions) {
-        backOptions.classList.add('hidden');
       }
       
       // Clear payment status
