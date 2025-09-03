@@ -1526,12 +1526,6 @@
       
       <form id="memory-form" onsubmit="return false;">
         <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input type="email" class="form-input" id="email" placeholder="your.email@example.com" required>
-          <div class="error-message" id="email-error"></div>
-        </div>
-        
-        <div class="form-group">
           <label class="form-label">Your Full Name</label>
           <input type="text" class="form-input" id="fullname" placeholder="e.g. Evelyn Rose" required>
           <div class="error-message" id="name-error"></div>
@@ -1556,7 +1550,7 @@
         
         <!-- Instructions -->
         <div class="payment-instructions">
-          <p>Fill in your details above, then click the PayPal button to complete your $1.99 payment and generate your memory. No shipping address required for digital products.</p>
+          <p>Fill in your details above, then click the PayPal button to complete your $1.99 payment and generate your memory. Email will be collected during payment for digital delivery.</p>
         </div>
       </form>
     </div>
@@ -3101,26 +3095,12 @@
     // Form validation function (used by PayPal payment flow)
     function validateForm() {
       clearErrors();
-      const email = document.getElementById('email').value.trim();
       const fullname = document.getElementById('fullname').value.trim();
       const birthYear = parseInt(document.getElementById('birthYear').value, 10);
       
-      log('📝 Validating form data:', { email, fullname, birthYear });
+      log('📝 Validating form data:', { fullname, birthYear });
       
       let hasErrors = false;
-      
-      // Validate email
-      if (!email) {
-        document.getElementById('email-error').textContent = 'Please enter your email address';
-        document.getElementById('email-error').classList.add('show');
-        hasErrors = true;
-        log('❌ Email validation failed');
-      } else if (!isValidEmail(email)) {
-        document.getElementById('email-error').textContent = 'Please enter a valid email address';
-        document.getElementById('email-error').classList.add('show');
-        hasErrors = true;
-        log('❌ Email format validation failed');
-      }
       
       if (!fullname) {
         document.getElementById('name-error').textContent = 'Please enter your full name';
@@ -4872,7 +4852,6 @@
           return;
         }
         
-        const email = document.getElementById('email').value.trim();
         const fullname = document.getElementById('fullname').value.trim();
         const birthYear = parseInt(document.getElementById('birthYear').value, 10);
         
