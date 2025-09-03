@@ -4975,7 +4975,12 @@
     function showPayPalButtons() {
       console.log('🎯 Showing PayPal buttons');
       
-      // Keep the generate button visible (don't hide it)
+      // Hide the generate button (user already clicked it)
+      const generateBtn = document.getElementById('generate-memory-btn');
+      if (generateBtn) {
+        generateBtn.classList.add('hidden');
+      }
+      
       // Show PayPal container
       const paypalContainer = document.getElementById('paypal-button-container');
       if (paypalContainer) {
@@ -4989,6 +4994,12 @@
     // Reset payment state (used when modal closes)
     function showPaymentOptions() {
       console.log('🔄 Resetting payment state');
+      
+      // Show the generate button again
+      const generateBtn = document.getElementById('generate-memory-btn');
+      if (generateBtn) {
+        generateBtn.classList.remove('hidden');
+      }
       
       // Hide PayPal container and clear it
       const paypalContainer = document.getElementById('paypal-button-container');
