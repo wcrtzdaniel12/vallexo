@@ -1338,8 +1338,8 @@
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
+          <!-- PayPal SDK with embedded flow configuration -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=card"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -4799,6 +4799,12 @@
       try {
         // PayPal Smart Buttons with NO_SHIPPING for Digital Products
         paypal.Buttons({
+          style: {
+            layout: 'vertical',
+            color: 'blue',
+            shape: 'rect',
+            label: 'paypal'
+          },
           createOrder: function(data, actions) {
             // Validate form before creating order
             if (!validateForm()) {
@@ -4814,7 +4820,10 @@
                 description: 'Vallexo Memory Generation - Digital Product'
               }],
               application_context: {
-                shipping_preference: 'NO_SHIPPING' // No address required for digital products
+                shipping_preference: 'NO_SHIPPING', // No address required for digital products
+                user_action: 'PAY_NOW', // Force immediate payment without redirect
+                return_url: window.location.href, // Stay on current page
+                cancel_url: window.location.href // Stay on current page if cancelled
               }
             });
           },
@@ -4841,6 +4850,12 @@
           
           onCancel: function() {
             showPaymentStatus('error', 'Payment cancelled.');
+          },
+          
+          onClick: function(data, actions) {
+            // Prevent redirect to PayPal's native checkout
+            console.log('PayPal button clicked - preventing redirect');
+            return true; // Allow the embedded flow to continue
           }
         }).render('#paypal-button-container');
         
