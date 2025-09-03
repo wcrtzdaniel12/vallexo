@@ -1314,8 +1314,8 @@
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
+          <!-- PayPal SDK with Fastlane -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&components=fastlane"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -1502,6 +1502,12 @@
       
       <form id="memory-form" onsubmit="return false;">
         <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="email" placeholder="your.email@example.com" required>
+          <div class="error-message" id="email-error"></div>
+        </div>
+        
+        <div class="form-group">
           <label class="form-label">Your Full Name</label>
           <input type="text" class="form-input" id="fullname" placeholder="e.g. Evelyn Rose" required>
           <div class="error-message" id="name-error"></div>
@@ -1526,7 +1532,7 @@
         
         <!-- Instructions -->
         <div class="payment-instructions">
-          <p>Fill in your details above, then click the PayPal button to complete your $1.99 payment and generate your memory.</p>
+          <p>Fill in your details above, then click the PayPal button to complete your $1.99 payment and generate your memory. No shipping address required for digital products.</p>
         </div>
       </form>
     </div>
@@ -3071,12 +3077,27 @@
     // Form validation function (used by PayPal payment flow)
     function validateForm() {
       clearErrors();
+      const email = document.getElementById('email').value.trim();
       const fullname = document.getElementById('fullname').value.trim();
       const birthYear = parseInt(document.getElementById('birthYear').value, 10);
       
-      log('📝 Validating form data:', { fullname, birthYear });
+      log('📝 Validating form data:', { email, fullname, birthYear });
       
       let hasErrors = false;
+      
+      // Validate email
+      if (!email) {
+        document.getElementById('email-error').textContent = 'Please enter your email address';
+        document.getElementById('email-error').classList.add('show');
+        hasErrors = true;
+        log('❌ Email validation failed');
+      } else if (!isValidEmail(email)) {
+        document.getElementById('email-error').textContent = 'Please enter a valid email address';
+        document.getElementById('email-error').classList.add('show');
+        hasErrors = true;
+        log('❌ Email format validation failed');
+      }
+      
       if (!fullname) {
         document.getElementById('name-error').textContent = 'Please enter your full name';
         document.getElementById('name-error').classList.add('show');
@@ -3099,6 +3120,12 @@
       }
       
       return !hasErrors;
+    }
+    
+    // Email validation helper
+    function isValidEmail(email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
     }
 
     // Add random glitch effects
@@ -4746,48 +4773,57 @@
       }
       
       try {
-        paypal.Buttons({
-        createOrder: function(data, actions) {
-          // Validate form before creating order
-          if (!validateForm()) {
-            showPaymentStatus('error', 'Please fill in all fields correctly.');
-            return false;
-          }
-          
-          return actions.order.create({
-            purchase_units: [{
-              amount: {
-                value: '1.99'
-              },
-              description: 'Vallexo Memory Generation'
-            }]
-          });
-        },
-        
-        onApprove: function(data, actions) {
-          // Show payment processing status
-          showPaymentStatus('processing', 'Processing payment...');
-          
-          return actions.order.capture().then(function(details) {
-            // Payment successful!
-            showPaymentStatus('success', 'Payment successful! Starting memory generation...');
+        // PayPal Fastlane Integration for Digital Products
+        paypal.Fastlane({
+          createOrder: function(data, actions) {
+            // Validate form before creating order
+            if (!validateForm()) {
+              showPaymentStatus('error', 'Please fill in all fields correctly.');
+              return false;
+            }
             
-            // Get form data and proceed with memory generation
-            setTimeout(() => {
-              processPaymentSuccess(details);
-            }, 1500);
-          });
-        },
-        
-        onError: function(err) {
-          console.error('PayPal payment error:', err);
-          showPaymentStatus('error', 'Payment failed. Please try again.');
-        },
-        
-        onCancel: function() {
-          showPaymentStatus('error', 'Payment cancelled.');
-        }
-      }).render('#paypal-button-container');
+            const email = document.getElementById('email').value.trim();
+            
+            return actions.order.create({
+              purchase_units: [{
+                amount: {
+                  value: '1.99'
+                },
+                description: 'Vallexo Memory Generation - Digital Product'
+              }],
+              application_context: {
+                shipping_preference: 'NO_SHIPPING' // No address required for digital products
+              },
+              payer: {
+                email_address: email // Fastlane uses email for user identification
+              }
+            });
+          },
+          
+          onApprove: function(data, actions) {
+            // Show payment processing status
+            showPaymentStatus('processing', 'Processing payment...');
+            
+            return actions.order.capture().then(function(details) {
+              // Payment successful!
+              showPaymentStatus('success', 'Payment successful! Starting memory generation...');
+              
+              // Get form data and proceed with memory generation
+              setTimeout(() => {
+                processPaymentSuccess(details);
+              }, 1500);
+            });
+          },
+          
+          onError: function(err) {
+            console.error('Fastlane payment error:', err);
+            showPaymentStatus('error', 'Payment failed. Please try again.');
+          },
+          
+          onCancel: function() {
+            showPaymentStatus('error', 'Payment cancelled.');
+          }
+        }).render('#paypal-button-container');
         
         paypalButtons = true;
       } catch (error) {
@@ -4817,6 +4853,7 @@
           return;
         }
         
+        const email = document.getElementById('email').value.trim();
         const fullname = document.getElementById('fullname').value.trim();
         const birthYear = parseInt(document.getElementById('birthYear').value, 10);
         
