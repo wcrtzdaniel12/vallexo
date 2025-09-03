@@ -1314,8 +1314,8 @@
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK with Fastlane -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&components=fastlane"></script>
+          <!-- PayPal SDK -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -4773,16 +4773,14 @@
       }
       
       try {
-        // PayPal Fastlane Integration for Digital Products
-        paypal.Fastlane({
+        // PayPal Smart Buttons with NO_SHIPPING for Digital Products
+        paypal.Buttons({
           createOrder: function(data, actions) {
             // Validate form before creating order
             if (!validateForm()) {
               showPaymentStatus('error', 'Please fill in all fields correctly.');
               return false;
             }
-            
-            const email = document.getElementById('email').value.trim();
             
             return actions.order.create({
               purchase_units: [{
@@ -4793,9 +4791,6 @@
               }],
               application_context: {
                 shipping_preference: 'NO_SHIPPING' // No address required for digital products
-              },
-              payer: {
-                email_address: email // Fastlane uses email for user identification
               }
             });
           },
@@ -4816,7 +4811,7 @@
           },
           
           onError: function(err) {
-            console.error('Fastlane payment error:', err);
+            console.error('PayPal payment error:', err);
             showPaymentStatus('error', 'Payment failed. Please try again.');
           },
           
