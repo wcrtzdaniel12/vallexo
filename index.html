@@ -299,6 +299,8 @@
       display: none;
       opacity: 0;
       transition: opacity 0.5s ease;
+      overflow-y: auto;
+      padding: 20px 0;
     }
     
     .modal-overlay.active {
@@ -313,15 +315,37 @@
       padding: 40px;
       max-width: 500px;
       width: 90%;
+      max-height: 90vh;
       margin: auto;
       position: relative;
       box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
       animation: modal-glow 3s ease-in-out infinite;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     
     @keyframes modal-glow {
       0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.2); }
       50% { box-shadow: 0 0 50px rgba(0, 255, 255, 0.4); }
+    }
+    
+    /* Custom scrollbar for modal */
+    .modal-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .modal-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+    }
+    
+    .modal-content::-webkit-scrollbar-thumb {
+      background: rgba(0, 255, 255, 0.5);
+      border-radius: 4px;
+    }
+    
+    .modal-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 255, 255, 0.7);
     }
     
     .modal-title {
