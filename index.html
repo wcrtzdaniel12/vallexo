@@ -1338,8 +1338,8 @@
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK with embedded flow configuration -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=card"></script>
+          <!-- PayPal SDK with minimal configuration for digital products -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=card&disable-funding=credit&components=buttons"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -4812,6 +4812,12 @@
               return false;
             }
             
+            const email = document.getElementById('email').value.trim();
+            const fullname = document.getElementById('fullname').value.trim();
+            const nameParts = fullname.split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            
             return actions.order.create({
               purchase_units: [{
                 amount: {
@@ -4819,11 +4825,21 @@
                 },
                 description: 'Vallexo Memory Generation - Digital Product'
               }],
+              payer: {
+                email_address: email,
+                name: {
+                  given_name: firstName,
+                  surname: lastName
+                }
+              },
               application_context: {
                 shipping_preference: 'NO_SHIPPING', // No address required for digital products
                 user_action: 'PAY_NOW', // Force immediate payment without redirect
                 return_url: window.location.href, // Stay on current page
-                cancel_url: window.location.href // Stay on current page if cancelled
+                cancel_url: window.location.href, // Stay on current page if cancelled
+                brand_name: 'Vallexo',
+                landing_page: 'NO_PREFERENCE',
+                locale: 'en_US'
               }
             });
           },
