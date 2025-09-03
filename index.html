@@ -1338,8 +1338,8 @@
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK with minimal configuration for digital products -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=card&disable-funding=credit&components=buttons"></script>
+          <!-- PayPal SDK -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -4799,24 +4799,12 @@
       try {
         // PayPal Smart Buttons with NO_SHIPPING for Digital Products
         paypal.Buttons({
-          style: {
-            layout: 'vertical',
-            color: 'blue',
-            shape: 'rect',
-            label: 'paypal'
-          },
           createOrder: function(data, actions) {
             // Validate form before creating order
             if (!validateForm()) {
               showPaymentStatus('error', 'Please fill in all fields correctly.');
               return false;
             }
-            
-            const email = document.getElementById('email').value.trim();
-            const fullname = document.getElementById('fullname').value.trim();
-            const nameParts = fullname.split(' ');
-            const firstName = nameParts[0] || '';
-            const lastName = nameParts.slice(1).join(' ') || '';
             
             return actions.order.create({
               purchase_units: [{
@@ -4825,21 +4813,8 @@
                 },
                 description: 'Vallexo Memory Generation - Digital Product'
               }],
-              payer: {
-                email_address: email,
-                name: {
-                  given_name: firstName,
-                  surname: lastName
-                }
-              },
               application_context: {
-                shipping_preference: 'NO_SHIPPING', // No address required for digital products
-                user_action: 'PAY_NOW', // Force immediate payment without redirect
-                return_url: window.location.href, // Stay on current page
-                cancel_url: window.location.href, // Stay on current page if cancelled
-                brand_name: 'Vallexo',
-                landing_page: 'NO_PREFERENCE',
-                locale: 'en_US'
+                shipping_preference: 'NO_SHIPPING' // No address required for digital products
               }
             });
           },
@@ -4866,12 +4841,6 @@
           
           onCancel: function() {
             showPaymentStatus('error', 'Payment cancelled.');
-          },
-          
-          onClick: function(data, actions) {
-            // Prevent redirect to PayPal's native checkout
-            console.log('PayPal button clicked - preventing redirect');
-            return true; // Allow the embedded flow to continue
           }
         }).render('#paypal-button-container');
         
