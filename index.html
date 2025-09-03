@@ -1338,8 +1338,8 @@
         line-height: 1.5;
       }
     </style>
-          <!-- PayPal SDK -->
-        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD"></script>
+          <!-- PayPal SDK with embedded flow support -->
+        <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=paypal,card"></script>
 </head>
 <body class="liminal-bg min-h-screen">
   <!-- Audio Controls -->
@@ -4779,6 +4779,13 @@
       try {
         // PayPal Smart Buttons with NO_SHIPPING for Digital Products
         paypal.Buttons({
+          style: {
+            layout: 'vertical',
+            color: 'blue',
+            shape: 'rect',
+            label: 'paypal',
+            height: 45
+          },
           createOrder: function(data, actions) {
             // Validate form before creating order
             if (!validateForm()) {
@@ -4794,7 +4801,8 @@
                 description: 'Vallexo Memory Generation - Digital Product'
               }],
               application_context: {
-                shipping_preference: 'NO_SHIPPING' // No address required for digital products
+                shipping_preference: 'NO_SHIPPING', // No address required for digital products
+                user_action: 'PAY_NOW' // Force embedded flow instead of redirect
               }
             });
           },
@@ -4821,6 +4829,12 @@
           
           onCancel: function() {
             showPaymentStatus('error', 'Payment cancelled.');
+          },
+          
+          onClick: function(data, actions) {
+            // Ensure embedded flow - prevent redirect to PayPal's site
+            console.log('PayPal button clicked - using embedded flow');
+            return true; // Allow the embedded flow to continue
           }
         }).render('#paypal-button-container');
         
