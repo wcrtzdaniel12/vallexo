@@ -4185,7 +4185,9 @@
       // Compose stream (video from canvas + mixed audio)
       const stream = canvas.captureStream(30);
       
-      // Add audio tracks with mobile-optimized approach
+      // Enhanced audio track debugging and fallback
+      log(`🔍 Audio stream debug: ${audioStream ? 'exists' : 'null'}, tracks: ${audioStream ? audioStream.getAudioTracks().length : 0}`);
+      
       if (audioStream && audioStream.getAudioTracks().length > 0) {
         try {
           // Method 1: Direct track addition (preferred)
@@ -4210,8 +4212,33 @@
             console.warn('⚠️ Stream merging also failed:', mergeError);
           }
         }
-              } else {
+      } else {
         console.warn('⚠️ No audio stream available for recording');
+        
+        // Enhanced fallback: Try to capture audio directly from the voice element
+        try {
+          log('🔄 Attempting direct audio capture from voice element...');
+          if (voiceAudioEl && voiceAudioEl.captureStream) {
+            const directAudioStream = voiceAudioEl.captureStream();
+            if (directAudioStream && directAudioStream.getAudioTracks().length > 0) {
+              log(`🎵 Direct capture successful: ${directAudioStream.getAudioTracks().length} audio tracks`);
+              
+              // Add the direct audio tracks
+              directAudioStream.getAudioTracks().forEach(track => {
+                log(`🎵 Adding direct audio track: ${track.kind} (${track.readyState})`);
+                stream.addTrack(track);
+              });
+              
+              log(`✅ Direct audio tracks added: ${stream.getAudioTracks().length} total tracks`);
+            } else {
+              log('⚠️ Direct capture returned no audio tracks');
+            }
+          } else {
+            log('⚠️ Voice element does not support captureStream');
+          }
+        } catch (directError) {
+          console.warn('⚠️ Direct audio capture failed:', directError);
+        }
       }
 
       // Mobile-optimized codec selection with MP4 priority for mobile
@@ -4220,22 +4247,24 @@
       // Detect mobile device for format priority
       const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      // Test codec support with mobile-first priority
+      // Test codec support with audio-enabled formats prioritized
       const testFormats = isMobileDevice ? [
-        // Mobile-first: prioritize MP4 for better compatibility
+        // Mobile-first: prioritize MP4 with audio codecs for better compatibility
         { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC (Mobile optimized)' },
+        { mimeType: 'video/mp4;codecs=avc1.42E01E', name: 'MP4 H264 (Mobile)' },
         { mimeType: 'video/mp4', name: 'MP4 (Default)' },
-        // WebM fallbacks for mobile
+        // WebM fallbacks for mobile with audio
         { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
         { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus' },
         { mimeType: 'video/webm', name: 'WebM (Default)' }
       ] : [
-        // Desktop-first: WebM for better quality
+        // Desktop-first: WebM with audio codecs for better quality
         { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus (Desktop optimized)' },
         { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
         { mimeType: 'video/webm', name: 'WebM (Default)' },
-        // MP4 fallbacks for desktop
+        // MP4 fallbacks for desktop with audio
         { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC' },
+        { mimeType: 'video/mp4;codecs=avc1.42E01E', name: 'MP4 H264' },
         { mimeType: 'video/mp4', name: 'MP4 (Default)' }
       ];
       
@@ -4301,11 +4330,16 @@
         log(`📱 Creating blob with MIME type: ${finalMimeType}`);
         log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
         log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
+        log(`📱 Stream had ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);
         
         const blob = new Blob(chunks, { type: finalMimeType });
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
         experienceRecording.finalMimeType = finalMimeType; // Store for filename generation
+        
+        // Log final video info for debugging
+        log(`✅ Final video created: ${blob.size} bytes, type: ${finalMimeType}`);
+        log(`🎬 Video should contain audio: ${stream.getAudioTracks().length > 0 ? 'YES' : 'NO'}`);
         
         // Recording complete - no preview needed
         experienceRecording.previewVideo = null;
