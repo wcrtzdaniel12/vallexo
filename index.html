@@ -4247,32 +4247,23 @@
       // Detect mobile device for format priority
       const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      // Test codec support with audio-enabled formats prioritized
-      const testFormats = isMobileDevice ? [
-        // Mobile-first: prioritize MP4 with audio codecs for better compatibility
-        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC (Mobile optimized)' },
-        { mimeType: 'video/mp4;codecs=avc1.42E01E', name: 'MP4 H264 (Mobile)' },
+      // Universal MP4-first approach for consistent format across all devices
+      const testFormats = [
+        // MP4 with audio codecs - prioritize for all devices for consistency
+        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC (Universal)' },
+        { mimeType: 'video/mp4;codecs=avc1.42E01E', name: 'MP4 H264 (Universal)' },
         { mimeType: 'video/mp4', name: 'MP4 (Default)' },
-        // WebM fallbacks for mobile with audio
-        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
-        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus' },
-        { mimeType: 'video/webm', name: 'WebM (Default)' }
-      ] : [
-        // Desktop-first: WebM with audio codecs for better quality
-        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus (Desktop optimized)' },
-        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus' },
-        { mimeType: 'video/webm', name: 'WebM (Default)' },
-        // MP4 fallbacks for desktop with audio
-        { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', name: 'MP4 H264+AAC' },
-        { mimeType: 'video/mp4;codecs=avc1.42E01E', name: 'MP4 H264' },
-        { mimeType: 'video/mp4', name: 'MP4 (Default)' }
+        // WebM fallbacks only if MP4 is not supported
+        { mimeType: 'video/webm;codecs=vp8,opus', name: 'WebM VP8+Opus (Fallback)' },
+        { mimeType: 'video/webm;codecs=vp9,opus', name: 'WebM VP9+Opus (Fallback)' },
+        { mimeType: 'video/webm', name: 'WebM (Fallback)' }
       ];
       
       // Find the best supported format
       for (const format of testFormats) {
         if (MediaRecorder.isTypeSupported(format.mimeType)) {
           options = { mimeType: format.mimeType };
-          log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
+          log(`📱 Using ${format.name} for universal recording`);
           break;
         }
       }
@@ -4312,18 +4303,16 @@
       recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = () => {
         // Determine MIME type from the actual recorder format
-        let finalMimeType = 'video/mp4'; // Default to MP4 for better mobile compatibility
+        let finalMimeType = 'video/mp4'; // Default to MP4 for universal compatibility
         if (options.mimeType) {
           finalMimeType = options.mimeType.split(';')[0]; // Remove codec info for blob
         } else if (recorder.mimeType) {
           finalMimeType = recorder.mimeType.split(';')[0];
         }
         
-        // Ensure we have a mobile-compatible format
-        const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (isMobileDevice && finalMimeType === 'video/webm') {
-          // Try to convert WebM to MP4 for mobile compatibility
-          log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
+        // Force MP4 format for universal compatibility and audio support
+        if (finalMimeType === 'video/webm') {
+          log('📱 Converting WebM to MP4 for universal compatibility and audio support');
           finalMimeType = 'video/mp4';
         }
         
@@ -4340,6 +4329,7 @@
         // Log final video info for debugging
         log(`✅ Final video created: ${blob.size} bytes, type: ${finalMimeType}`);
         log(`🎬 Video should contain audio: ${stream.getAudioTracks().length > 0 ? 'YES' : 'NO'}`);
+        log(`🌍 Universal MP4 format ensures compatibility across all devices`);
         
         // Recording complete - no preview needed
         experienceRecording.previewVideo = null;
