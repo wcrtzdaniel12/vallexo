@@ -2601,11 +2601,58 @@
             stopKenBurnsReveal();
           };
           
-          // Mobile audio optimization - simple fix
+          // Mobile audio optimization - comprehensive fix for 2024 browser changes
           const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
           if (isMobile) {
+            // Mobile-specific audio settings to prevent cut-off
             audio.preload = 'auto';
-            log('📱 Mobile detected - optimizing audio playback');
+            audio.crossOrigin = 'anonymous';
+            audio.loop = false;
+            
+            // Force mobile audio session to stay active
+            audio.addEventListener('loadstart', () => {
+              log('📱 Mobile audio load started');
+            });
+            
+            audio.addEventListener('canplay', () => {
+              log('📱 Mobile audio can play');
+            });
+            
+            // Prevent mobile browsers from pausing audio unexpectedly
+            audio.addEventListener('pause', (e) => {
+              log('📱 Mobile audio paused unexpectedly - attempting to resume');
+              if (!audio.ended && audio.currentTime < audio.duration - 1) {
+                setTimeout(() => {
+                  audio.play().catch(err => log('📱 Resume failed:', err));
+                }, 100);
+              }
+            });
+            
+            // Monitor audio progress to detect stuck playback
+            let lastProgressTime = 0;
+            let stuckCount = 0;
+            const progressMonitor = setInterval(() => {
+              if (!audio.ended && audio.currentTime > 0) {
+                if (Math.abs(audio.currentTime - lastProgressTime) < 0.1) {
+                  stuckCount++;
+                  if (stuckCount > 3) {
+                    log('📱 Mobile audio appears stuck - forcing resume');
+                    audio.play().catch(err => log('📱 Force resume failed:', err));
+                    stuckCount = 0;
+                  }
+                } else {
+                  stuckCount = 0;
+                }
+                lastProgressTime = audio.currentTime;
+              }
+            }, 1000);
+            
+            // Clear monitor when audio ends
+            audio.addEventListener('ended', () => {
+              clearInterval(progressMonitor);
+            });
+            
+            log('📱 Mobile detected - comprehensive audio optimization applied');
           }
           
           // Start playing with proper error handling
@@ -4024,17 +4071,31 @@
       
       // Try to create separate AudioContext for recording (don't interfere with main audio)
       try {
-        // Create separate context for recording to avoid conflicts
-        recordingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Resume context for mobile (non-blocking to prevent freezing)
-        if (recordingAudioCtx.state === 'suspended') {
-          log('🔇 Recording AudioContext suspended - attempting resume...');
-          recordingAudioCtx.resume().then(() => {
-                          log('✅ Recording AudioContext resumed successfully');
-          }).catch((resumeError) => {
-            console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
-          });
+        // Mobile-specific AudioContext handling to prevent audio conflicts
+        if (isMobile) {
+          log('📱 Mobile detected - using simplified audio recording to prevent conflicts');
+          // On mobile, avoid creating additional AudioContexts that can interfere with main audio
+          // This prevents the mobile browser from cutting off the main audio playback
+          if (audioContext && audioContext.state !== 'closed') {
+            recordingAudioCtx = audioContext; // Reuse existing context
+            log('📱 Reusing existing AudioContext for mobile recording');
+          } else {
+            log('📱 No existing AudioContext - skipping complex audio mixing on mobile');
+            // Skip audio context creation on mobile to prevent main audio interference
+          }
+        } else {
+          // Desktop: Create separate context for recording
+          recordingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          
+          // Resume context for desktop
+          if (recordingAudioCtx.state === 'suspended') {
+            log('🔇 Recording AudioContext suspended - attempting resume...');
+            recordingAudioCtx.resume().then(() => {
+              log('✅ Recording AudioContext resumed successfully');
+            }).catch((resumeError) => {
+              console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
+            });
+          }
         }
         
         dest = recordingAudioCtx.createMediaStreamDestination();
