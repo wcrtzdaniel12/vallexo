@@ -2601,6 +2601,13 @@
             stopKenBurnsReveal();
           };
           
+          // Mobile audio optimization - simple fix
+          const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          if (isMobile) {
+            audio.preload = 'auto';
+            log('📱 Mobile detected - optimizing audio playback');
+          }
+          
           // Start playing with proper error handling
           try {
           await audio.play();
@@ -2634,9 +2641,13 @@
               // Wait for user interaction then retry
               const startNarration = async () => {
                 try {
+                  if (isMobile) {
+                    audio.load(); // Reload audio for mobile
+                  }
                   await audio.play();
                   interactionMsg.remove();
                   document.removeEventListener('click', startNarration);
+                  log('✅ Audio playback started after user interaction');
                 } catch (retryError) {
                   console.error('Retry failed:', retryError);
                   interactionMsg.remove();
