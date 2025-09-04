@@ -1899,9 +1899,9 @@
     function duckBackgroundMusic() {
       if (!isDucking) {
         originalVolume = volume;
-        setVolume(0.05); // Reduce to 5% (50% of the previous 10%)
+        setVolume(0.25); // Reduce to 25% for better background music presence
         isDucking = true;
-        log('Background music ducked to 5% for voiceover');
+        log('Background music ducked to 25% for voiceover');
       }
     }
     
