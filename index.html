@@ -4024,11 +4024,6 @@
               log('🎬 Starting experience recording...');
               log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
       
-      // Reset audio connection tracking for new recording session
-      if (window.connectedAudioElements) {
-        window.connectedAudioElements.clear();
-        log('🧹 Reset audio connection tracking for new recording');
-      }
       
       // Prepare canvas - OPTIMIZED FOR 9:16 MOBILE ASPECT RATIO
       const width = 720, height = 1280; // 9:16 aspect ratio (mobile-first)
@@ -4112,50 +4107,22 @@
         // Continue without audio mixing if context creation fails
       }
       
-      // Audio routing with mobile-specific fallbacks and connection tracking
+      // Audio routing with mobile-specific fallbacks
       if (recordingAudioCtx && dest) {
         try {
-          // Track connected audio elements to prevent duplicate connections
-          if (!window.connectedAudioElements) {
-            window.connectedAudioElements = new Set();
-          }
+          // Primary voice audio routing
+          const voiceNode = recordingAudioCtx.createMediaElementSource(voiceAudioEl);
+          const voiceGain = recordingAudioCtx.createGain();
+          voiceGain.gain.value = 1.0; // Full volume for voice
           
-          // Primary voice audio routing - check if already connected
-          if (!window.connectedAudioElements.has(voiceAudioEl)) {
-            try {
-              const voiceNode = recordingAudioCtx.createMediaElementSource(voiceAudioEl);
-              const voiceGain = recordingAudioCtx.createGain();
-              voiceGain.gain.value = 1.0; // Full volume for voice
-              
-              voiceNode.connect(voiceGain);
-              voiceGain.connect(dest);
-              voiceGain.connect(recordingAudioCtx.destination);
-              
-              window.connectedAudioElements.add(voiceAudioEl);
-              log('🎤 Voice audio routed to recording stream');
-            } catch (voiceError) {
-              console.warn('⚠️ Voice audio routing failed:', voiceError);
-              // Try direct audio capture as fallback
-              if (voiceAudioEl.captureStream) {
-                try {
-                  const directVoiceStream = voiceAudioEl.captureStream();
-                  if (directVoiceStream && directVoiceStream.getAudioTracks().length > 0) {
-                    log('🎤 Using direct voice capture as fallback');
-                    directVoiceStream.getAudioTracks().forEach(track => {
-                      dest.stream.addTrack(track);
-                    });
-                  }
-                } catch (directError) {
-                  console.warn('⚠️ Direct voice capture failed:', directError);
-                }
-              }
-            }
-          } else {
-            log('🎤 Voice audio already connected, skipping duplicate connection');
-          }
+          voiceNode.connect(voiceGain);
+          voiceGain.connect(dest);
+          voiceGain.connect(recordingAudioCtx.destination);
           
-          // Background music routing (lower volume) - check if already connected
-          if (usingAudioFiles && audioElement && !audioElement.paused && !window.connectedAudioElements.has(audioElement)) {
+          log('🎤 Voice audio routed to recording stream');
+          
+          // Background music routing (lower volume)
+          if (usingAudioFiles && audioElement && !audioElement.paused) {
             try {
               const bgNode = recordingAudioCtx.createMediaElementSource(audioElement);
               const bgGain = recordingAudioCtx.createGain();
@@ -4165,27 +4132,10 @@
               bgGain.connect(dest);
               bgGain.connect(recordingAudioCtx.destination);
               
-              window.connectedAudioElements.add(audioElement);
               log('🎵 Background music routed to recording stream');
             } catch (bgError) {
               console.warn('⚠️ Background audio routing failed:', bgError);
-              // Try direct audio capture as fallback
-              if (audioElement.captureStream) {
-                try {
-                  const directBgStream = audioElement.captureStream();
-                  if (directBgStream && directBgStream.getAudioTracks().length > 0) {
-                    log('🎵 Using direct background capture as fallback');
-                    directBgStream.getAudioTracks().forEach(track => {
-                      dest.stream.addTrack(track);
-                    });
-                  }
-                } catch (directError) {
-                  console.warn('⚠️ Direct background capture failed:', directError);
-                }
-              }
             }
-          } else if (window.connectedAudioElements.has(audioElement)) {
-            log('🎵 Background audio already connected, skipping duplicate connection');
           }
           
           // Get the mixed audio stream
@@ -4199,7 +4149,7 @@
             const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
             if (directStream) {
               audioStream = directStream;
-              log('🔄 Using direct audio capture fallback');
+              log('🎤 Using direct audio capture fallback');
             }
           } catch (fallbackError) {
             console.warn('⚠️ Direct audio capture also failed:', fallbackError);
@@ -4212,14 +4162,14 @@
             recordingAudioCtx.resume().then(() => {
               log('🎵 Recording AudioContext resumed and running');
             }).catch(() => {
-                              log('⚠️ Recording AudioContext resume failed, continuing anyway');
+              log('⚠️ Recording AudioContext resume failed, continuing anyway');
             });
           }
         } catch (_) {}
       } else {
         // Fallback: try direct audio capture if AudioContext mixing fails
         try {
-          log('🔄 AudioContext mixing not available, trying direct capture...');
+          log('🎤 AudioContext mixing not available, trying direct capture...');
           const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
           if (directStream && directStream.getAudioTracks().length > 0) {
             audioStream = directStream;
@@ -4387,11 +4337,6 @@
         cleanupCanvas();
         try { recordingAudioCtx && recordingAudioCtx.close(); } catch (_) {}
         
-        // Clean up connected audio elements tracking
-        if (window.connectedAudioElements) {
-          window.connectedAudioElements.clear();
-          log('🧹 Cleaned up audio connection tracking');
-        }
         
         log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
         
