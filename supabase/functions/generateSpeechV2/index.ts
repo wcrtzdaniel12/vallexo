@@ -204,6 +204,8 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         'Access-Control-Allow-Origin': '*',
       },
+
+      
     });
   }
 }); 

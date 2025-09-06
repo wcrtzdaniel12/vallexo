@@ -4021,9 +4021,8 @@
 
     function startExperienceRecording(voiceAudioEl, totalDurationSec) {
       // Show user-friendly notification about recording
-              log('🎬 Starting experience recording...');
-              log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
-      
+      console.log('🎬 Starting experience recording...');
+      console.log('💡 Note: Live audio may be muted by browser, but recording will capture everything');
       
       // Prepare canvas - OPTIMIZED FOR 9:16 MOBILE ASPECT RATIO
       const width = 720, height = 1280; // 9:16 aspect ratio (mobile-first)
@@ -4060,7 +4059,7 @@
       img.crossOrigin = 'anonymous';
       img.src = bgUrl || 'img/hallway1.png';
       
-              log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
+      console.log('🎬 Recording will use background:', bgUrl || 'img/hallway1.png');
 
       // Build audio mix: voice + bgm (if available) - Mobile-optimized audio routing
       let recordingAudioCtx = null;
@@ -4072,35 +4071,21 @@
       
       // Try to create separate AudioContext for recording (don't interfere with main audio)
       try {
-        // Mobile-specific AudioContext handling to prevent audio conflicts
-        if (isMobile) {
-          log('📱 Mobile detected - using simplified audio recording to prevent conflicts');
-          // On mobile, avoid creating additional AudioContexts that can interfere with main audio
-          // This prevents the mobile browser from cutting off the main audio playback
-          if (audioContext && audioContext.state !== 'closed') {
-            recordingAudioCtx = audioContext; // Reuse existing context
-            log('📱 Reusing existing AudioContext for mobile recording');
-          } else {
-            log('📱 No existing AudioContext - skipping complex audio mixing on mobile');
-            // Skip audio context creation on mobile to prevent main audio interference
-          }
-        } else {
-          // Desktop: Create separate context for recording
-          recordingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          
-          // Resume context for desktop
-          if (recordingAudioCtx.state === 'suspended') {
-            log('🔇 Recording AudioContext suspended - attempting resume...');
-            recordingAudioCtx.resume().then(() => {
-              log('✅ Recording AudioContext resumed successfully');
-            }).catch((resumeError) => {
-              console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
-            });
-          }
+        // Create separate context for recording to avoid conflicts
+        recordingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Resume context for mobile (non-blocking to prevent freezing)
+        if (recordingAudioCtx.state === 'suspended') {
+          console.log('🔇 Recording AudioContext suspended - attempting resume...');
+          recordingAudioCtx.resume().then(() => {
+            console.log('✅ Recording AudioContext resumed successfully');
+          }).catch((resumeError) => {
+            console.warn('⚠️ Recording AudioContext resume failed:', resumeError);
+          });
         }
         
         dest = recordingAudioCtx.createMediaStreamDestination();
-        log(`🎵 Recording audio setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
+        console.log(`🎵 Recording audio setup: ${isMobile ? 'Mobile' : 'Desktop'} mode`);
         
       } catch (error) {
         console.warn('⚠️ Failed to create recording AudioContext:', error);
@@ -4119,7 +4104,7 @@
           voiceGain.connect(dest);
           voiceGain.connect(recordingAudioCtx.destination);
           
-          log('🎤 Voice audio routed to recording stream');
+          console.log('🎤 Voice audio routed to recording stream');
           
           // Background music routing (lower volume)
           if (usingAudioFiles && audioElement && !audioElement.paused) {
@@ -4132,7 +4117,7 @@
               bgGain.connect(dest);
               bgGain.connect(recordingAudioCtx.destination);
               
-              log('🎵 Background music routed to recording stream');
+              console.log('🎵 Background music routed to recording stream');
             } catch (bgError) {
               console.warn('⚠️ Background audio routing failed:', bgError);
             }
@@ -4140,7 +4125,7 @@
           
           // Get the mixed audio stream
           audioStream = dest.stream;
-          log(`🔊 Mixed audio stream ready: ${audioStream.getAudioTracks().length} tracks`);
+          console.log(`🔊 Mixed audio stream ready: ${audioStream.getAudioTracks().length} tracks`);
           
         } catch (routingError) {
           console.warn('⚠️ Audio routing failed:', routingError);
@@ -4149,7 +4134,7 @@
             const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
             if (directStream) {
               audioStream = directStream;
-              log('🎤 Using direct audio capture fallback');
+              console.log('🎤 Using direct audio capture fallback');
             }
           } catch (fallbackError) {
             console.warn('⚠️ Direct audio capture also failed:', fallbackError);
@@ -4160,43 +4145,41 @@
         try { 
           if (recordingAudioCtx.state !== 'running') {
             recordingAudioCtx.resume().then(() => {
-              log('🎵 Recording AudioContext resumed and running');
+              console.log('🎵 Recording AudioContext resumed and running');
             }).catch(() => {
-              log('⚠️ Recording AudioContext resume failed, continuing anyway');
+              console.log('⚠️ Recording AudioContext resume failed, continuing anyway');
             });
           }
         } catch (_) {}
       } else {
         // Fallback: try direct audio capture if AudioContext mixing fails
         try {
-          log('🎤 AudioContext mixing not available, trying direct capture...');
+          console.log('🎤 AudioContext mixing not available, trying direct capture...');
           const directStream = voiceAudioEl.captureStream ? voiceAudioEl.captureStream() : null;
           if (directStream && directStream.getAudioTracks().length > 0) {
             audioStream = directStream;
-            log('✅ Direct audio capture working as fallback');
+            console.log('✅ Direct audio capture working as fallback');
           } else {
             console.warn('⚠️ No audio capture available - recording video only');
           }
         } catch (directError) {
           console.warn('⚠️ Direct audio capture failed:', directError);
-          log('📹 Proceeding with video-only recording');
+          console.log('📹 Proceeding with video-only recording');
         }
       }
 
       // Compose stream (video from canvas + mixed audio)
       const stream = canvas.captureStream(30);
       
-      // Enhanced audio track debugging and fallback
-      log(`🔍 Audio stream debug: ${audioStream ? 'exists' : 'null'}, tracks: ${audioStream ? audioStream.getAudioTracks().length : 0}`);
-      
+      // Add audio tracks with mobile-optimized approach
       if (audioStream && audioStream.getAudioTracks().length > 0) {
         try {
           // Method 1: Direct track addition (preferred)
           audioStream.getAudioTracks().forEach(track => {
-            log(`🎵 Adding audio track: ${track.kind} (${track.readyState})`);
+            console.log(`🎵 Adding audio track: ${track.kind} (${track.readyState})`);
             stream.addTrack(track);
           });
-          log(`✅ Audio tracks added: ${stream.getAudioTracks().length} tracks`);
+          console.log(`✅ Audio tracks added: ${stream.getAudioTracks().length} tracks`);
         } catch (addError) {
           console.warn('⚠️ Direct track addition failed, trying merge method:', addError);
           try {
@@ -4208,7 +4191,7 @@
             // Replace stream reference
             stream.getTracks().forEach(tr => stream.removeTrack(tr));
             merged.getTracks().forEach(tr => stream.addTrack(tr));
-            log(`🔄 Stream merged: ${merged.getVideoTracks().length}V + ${merged.getAudioTracks().length}A`);
+            console.log(`🔄 Stream merged: ${merged.getVideoTracks().length}V + ${merged.getAudioTracks().length}A`);
           } catch (mergeError) {
             console.warn('⚠️ Stream merging also failed:', mergeError);
           }
@@ -4246,7 +4229,7 @@
       for (const format of testFormats) {
         if (MediaRecorder.isTypeSupported(format.mimeType)) {
           options = { mimeType: format.mimeType };
-          log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
+          console.log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
           break;
         }
       }
@@ -4258,7 +4241,7 @@
         for (const format of basicFormats) {
           if (MediaRecorder.isTypeSupported(format)) {
             options = { mimeType: format };
-            log(`📱 Using basic ${format} as fallback`);
+            console.log(`📱 Using basic ${format} as fallback`);
             break;
           }
         }
@@ -4267,7 +4250,7 @@
       // Final fallback: let browser choose
       if (!options.mimeType) {
         options = {}; // Let browser choose default
-        log('📱 Using browser default codec (no specific format supported)');
+        console.log('📱 Using browser default codec (no specific format supported)');
       }
       
       // Mobile format compatibility warning
@@ -4276,10 +4259,10 @@
         console.warn('💡 Consider using MP4 for maximum mobile compatibility');
       }
       
-              log(`📱 Final recording options:`, options);
-              log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getAudioTracks().length}A tracks`);
-        log(`📱 Device type: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
-        log(`📱 Format priority: ${isMobileDevice ? 'MP4 first (mobile optimized)' : 'WebM first (desktop optimized)'}`);
+      console.log(`📱 Final recording options:`, options);
+      console.log(`📱 Stream info: ${stream.getVideoTracks().length}V + ${stream.getAudioTracks().length}A tracks`);
+      console.log(`📱 Device type: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
+      console.log(`📱 Format priority: ${isMobileDevice ? 'MP4 first (mobile optimized)' : 'WebM first (desktop optimized)'}`);
       
       const recorder = new MediaRecorder(stream, options);
       const chunks = [];
@@ -4297,31 +4280,25 @@
         const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobileDevice && finalMimeType === 'video/webm') {
           // Try to convert WebM to MP4 for mobile compatibility
-          log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
+          console.log('📱 Mobile device detected - attempting MP4 conversion for better compatibility');
           finalMimeType = 'video/mp4';
         }
         
-        log(`📱 Creating blob with MIME type: ${finalMimeType}`);
-        log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
-        log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
-        log(`📱 Stream had ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`);
+        console.log(`📱 Creating blob with MIME type: ${finalMimeType}`);
+        console.log(`📱 Recording chunks: ${chunks.length} pieces, total size: ${chunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`);
+        console.log(`📱 Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}, Format: ${finalMimeType}`);
         
         const blob = new Blob(chunks, { type: finalMimeType });
         const url = URL.createObjectURL(blob);
         experienceRecording.url = url;
         experienceRecording.finalMimeType = finalMimeType; // Store for filename generation
         
-        // Log final video info for debugging
-        log(`✅ Final video created: ${blob.size} bytes, type: ${finalMimeType}`);
-        log(`🎬 Video should contain audio: ${stream.getAudioTracks().length > 0 ? 'YES' : 'NO'}`);
-        
         // Recording complete - no preview needed
         experienceRecording.previewVideo = null;
         cleanupCanvas();
         try { recordingAudioCtx && recordingAudioCtx.close(); } catch (_) {}
         
-        
-        log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
+        console.log(`✅ Recording complete: ${blob.size} bytes, type: ${finalMimeType}`);
         
         // After recording is ready, show outro and enable responsive controls
         try { showOutroScreen(); } catch (_) {}
@@ -4336,7 +4313,7 @@
 
       // Start drawing once image is ready
       img.onload = () => {
-        log(`🎬 Recording canvas setup: ${width}x${height} logical, ${canvas.width}x${canvas.height} physical (DPR: ${dpr})`);
+        console.log(`🎬 Recording canvas setup: ${width}x${height} logical, ${canvas.width}x${canvas.height} physical (DPR: ${dpr})`);
         drawRecordingFrame();
         recorder.start(100); // collect data every 100ms
         
