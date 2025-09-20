@@ -4758,7 +4758,7 @@
         
         const recallMoreBtn = document.getElementById('recall-more-btn');
         if (recallMoreBtn) {
-          recallMoreBtn.onclick = () => {
+          recallMoreBtn.onclick = async () => {
             log('🔄 Recall More button clicked');
             // Hide outro screen and return to hero page
             hideOutroScreen();
@@ -4784,17 +4784,12 @@
             // Reset any UI state
             stopKenBurnsReveal();
             
-            // Restore background music - check both state and toggle button
+            // Restore background music - simple approach
             const audioToggle = document.getElementById('audio-toggle');
             const isToggleOn = audioToggle && audioToggle.textContent.includes('Music: ON');
             
             if (isToggleOn || isPlaying) {
-              // Initialize audio if needed
-              if (!audioElement && !audioContext) {
-                await initAudio();
-              }
-              
-              // Check if audio is actually paused and needs resuming
+              // Simple resume if audio exists and is paused
               if (usingAudioFiles && audioElement && audioElement.paused) {
                 audioElement.play().then(() => {
                   isPlaying = true;
@@ -4809,11 +4804,12 @@
                 }).catch(error => {
                   log('❌ Failed to resume audio context:', error);
                 });
-              } else if (!isPlaying) {
+              } else if (audioElement || audioContext) {
+                // Try to start playback if audio system exists
                 startPlayback();
-                log('🎵 Background music started after recall more');
+                log('🎵 Background music restored after recall more');
               } else {
-                log('🎵 Background music already playing');
+                log('🎵 No audio system available to restore');
               }
             }
             
