@@ -4769,6 +4769,13 @@
             stopKenBurnsReveal();
             
             // Restore background music after recall more
+            log('🔍 DEBUG: Music restoration check:');
+            log('  - isPlaying:', isPlaying);
+            log('  - usingAudioFiles:', usingAudioFiles);
+            log('  - audioElement exists:', !!audioElement);
+            log('  - audioElement.paused:', audioElement ? audioElement.paused : 'N/A');
+            log('  - audioElement.loop:', audioElement ? audioElement.loop : 'N/A');
+            
             if (isPlaying) {
               // CRITICAL: Restore loop property that was lost during recording
               if (usingAudioFiles && audioElement) {
@@ -4793,6 +4800,21 @@
                 // Try to start playback
                 startPlayback();
                 log('🎵 Background music restored after recall more');
+              }
+            } else {
+              // Fallback: Force music restoration even if isPlaying is false
+              log('⚠️ isPlaying is false, attempting forced music restoration...');
+              if (usingAudioFiles && audioElement) {
+                audioElement.loop = true;
+                audioElement.play().then(() => {
+                  isPlaying = true;
+                  log('🎵 Background music force-started after recall more');
+                }).catch(error => {
+                  log('❌ Failed to force-start background music:', error);
+                });
+              } else if (audioContext) {
+                startPlayback();
+                log('🎵 Background music force-restored via startPlayback');
               }
             }
             
