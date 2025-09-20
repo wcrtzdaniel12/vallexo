@@ -915,6 +915,53 @@
       animation: btn-glitch-anim 0.3s ease-in-out;
     }
 
+    /* Special effects for Recall More button */
+    #recall-more-btn {
+      animation: recall-pulse 2s ease-in-out infinite;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #recall-more-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0,255,255,0.4), transparent);
+      animation: recall-shine 3s ease-in-out infinite;
+    }
+
+    #recall-more-btn:hover {
+      animation: recall-bounce 0.6s ease-in-out;
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.6), 0 0 80px rgba(0, 255, 255, 0.3);
+    }
+
+    @keyframes recall-pulse {
+      0%, 100% { 
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        transform: scale(1);
+      }
+      50% { 
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        transform: scale(1.02);
+      }
+    }
+
+    @keyframes recall-shine {
+      0% { left: -100%; }
+      50% { left: 100%; }
+      100% { left: 100%; }
+    }
+
+    @keyframes recall-bounce {
+      0%, 100% { transform: scale(1); }
+      25% { transform: scale(1.05); }
+      50% { transform: scale(0.98); }
+      75% { transform: scale(1.02); }
+    }
+
     .outro-btn:hover .btn-glitch::before {
       top: 0;
       text-shadow: -2px 0 #ff00ff;
@@ -4742,8 +4789,41 @@
         
         const recallMoreBtn = document.getElementById('recall-more-btn');
         if (recallMoreBtn) {
+          // Add engaging text changes and effects
+          const textElement = recallMoreBtn.querySelector('.btn-glitch');
+          const encouragingTexts = [
+            'Recall More',
+            'Try Again!',
+            'Another Memory?',
+            'Discover More',
+            'Keep Exploring',
+            'Unlock Another',
+            'Find More Memories'
+          ];
+          
+          let textIndex = 0;
+          const textInterval = setInterval(() => {
+            if (textElement) {
+              textElement.textContent = encouragingTexts[textIndex];
+              textElement.setAttribute('data-text', encouragingTexts[textIndex]);
+              textIndex = (textIndex + 1) % encouragingTexts.length;
+            }
+          }, 2000);
+          
+          // Add click sound effect
+          recallMoreBtn.addEventListener('click', () => {
+            playGenerateMemorySound();
+          });
+          
           recallMoreBtn.onclick = async () => {
             log('🔄 Recall More button clicked');
+            
+            // Clear text interval and reset to original text
+            clearInterval(textInterval);
+            if (textElement) {
+              textElement.textContent = 'Recall More';
+              textElement.setAttribute('data-text', 'Recall More');
+            }
             // Hide outro screen and return to hero page
             hideOutroScreen();
             // Clean up any existing recordings
