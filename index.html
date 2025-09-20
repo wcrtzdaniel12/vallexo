@@ -962,6 +962,154 @@
       75% { transform: scale(1.02); }
     }
 
+    /* Exit Intent Overlay Styles */
+    .exit-intent-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .exit-intent-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .exit-intent-content {
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(20, 20, 40, 0.9) 100%);
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      position: relative;
+      animation: exit-intent-pulse 2s ease-in-out infinite;
+    }
+
+    .exit-intent-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      animation: exit-intent-bounce 1s ease-in-out infinite;
+    }
+
+    .exit-intent-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.5rem;
+      color: #00ffff;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+
+    .exit-intent-message {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.3rem;
+      color: #ffffff;
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .exit-intent-subtitle {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      color: #cccccc;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+
+    .exit-intent-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .exit-intent-btn {
+      background: linear-gradient(135deg, rgba(0,255,255,0.1) 0%, rgba(0,255,255,0.05) 100%);
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      color: #00ffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 15px 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .exit-intent-stay:hover {
+      background: linear-gradient(135deg, rgba(0,255,255,0.2) 0%, rgba(0,255,255,0.1) 100%);
+      border-color: rgba(0, 255, 255, 0.6);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .exit-intent-leave {
+      background: linear-gradient(135deg, rgba(255,100,100,0.1) 0%, rgba(255,100,100,0.05) 100%);
+      border-color: rgba(255, 100, 100, 0.3);
+      color: #ff6464;
+    }
+
+    .exit-intent-leave:hover {
+      background: linear-gradient(135deg, rgba(255,100,100,0.2) 0%, rgba(255,100,100,0.1) 100%);
+      border-color: rgba(255, 100, 100, 0.6);
+      box-shadow: 0 0 30px rgba(255, 100, 100, 0.4);
+      transform: translateY(-2px);
+    }
+
+    @keyframes exit-intent-pulse {
+      0%, 100% { 
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+      }
+      50% { 
+        box-shadow: 0 0 50px rgba(0, 255, 255, 0.4);
+      }
+    }
+
+    @keyframes exit-intent-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .exit-intent-content {
+        padding: 30px 20px;
+        margin: 20px;
+      }
+      
+      .exit-intent-title {
+        font-size: 2rem;
+      }
+      
+      .exit-intent-message {
+        font-size: 1.1rem;
+      }
+      
+      .exit-intent-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .exit-intent-btn {
+        width: 100%;
+        max-width: 250px;
+      }
+    }
+
     .outro-btn:hover .btn-glitch::before {
       top: 0;
       text-shadow: -2px 0 #ff00ff;
@@ -5163,5 +5311,126 @@
     }
 
   </script>
+  
+  <!-- Exit Intent Detection Script -->
+  <script>
+    // Exit Intent Detection System
+    let exitIntentShown = false;
+    let exitIntentCooldown = false;
+    
+    // Desktop: Mouse movement detection
+    document.addEventListener('mousemove', (e) => {
+      if (e.clientY <= 5 && !exitIntentShown && !exitIntentCooldown) {
+        showExitIntent();
+      }
+    });
+    
+    // Mobile & Desktop: Visibility API (tab switching, app switching)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && !exitIntentShown && !exitIntentCooldown) {
+        showExitIntent();
+      }
+    });
+    
+    // Mobile & Desktop: Beforeunload (closing tab/window)
+    window.addEventListener('beforeunload', (e) => {
+      if (!exitIntentShown && !exitIntentCooldown) {
+        showExitIntent();
+        // Prevent immediate close on some browsers
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+    
+    // Mobile: Touch swipe detection (app switching gesture)
+    let startY = 0;
+    let startX = 0;
+    
+    document.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+    });
+    
+    document.addEventListener('touchmove', (e) => {
+      if (!exitIntentShown && !exitIntentCooldown) {
+        const currentY = e.touches[0].clientY;
+        const currentX = e.touches[0].clientX;
+        const diffY = startY - currentY;
+        const diffX = Math.abs(startX - currentX);
+        
+        // Detect upward swipe (app switching gesture) or edge swipe
+        if ((diffY > 100 && diffX < 100) || currentY < 50) {
+          showExitIntent();
+        }
+      }
+    });
+    
+    // Show exit intent overlay
+    function showExitIntent() {
+      if (exitIntentShown || exitIntentCooldown) return;
+      
+      exitIntentShown = true;
+      const overlay = document.getElementById('exit-intent-overlay');
+      if (overlay) {
+        overlay.classList.add('active');
+        log('🚪 Exit intent detected - showing overlay');
+      }
+    }
+    
+    // Hide exit intent overlay
+    function hideExitIntent() {
+      const overlay = document.getElementById('exit-intent-overlay');
+      if (overlay) {
+        overlay.classList.remove('active');
+        log('✅ User chose to stay');
+        
+        // Set cooldown to prevent immediate re-triggering
+        exitIntentCooldown = true;
+        setTimeout(() => {
+          exitIntentCooldown = false;
+        }, 5000); // 5 second cooldown
+      }
+    }
+    
+    // Confirm exit
+    function confirmExit() {
+      log('👋 User confirmed exit');
+      // Allow the page to unload
+      window.removeEventListener('beforeunload', arguments.callee);
+      window.location.href = 'about:blank';
+    }
+    
+    // Reset exit intent when user interacts with page
+    document.addEventListener('click', () => {
+      if (exitIntentShown) {
+        hideExitIntent();
+      }
+    });
+    
+    document.addEventListener('scroll', () => {
+      if (exitIntentShown) {
+        hideExitIntent();
+      }
+    });
+  </script>
+  
+  <!-- Exit Intent Overlay -->
+  <div id="exit-intent-overlay" class="exit-intent-overlay">
+    <div class="exit-intent-content">
+      <div class="exit-intent-icon">⚠️</div>
+      <h2 class="exit-intent-title">Wait!</h2>
+      <p class="exit-intent-message">Not everything here survives outside the page.</p>
+      <p class="exit-intent-subtitle">Your memories and experiences are unique to this moment.</p>
+      <div class="exit-intent-buttons">
+        <button class="exit-intent-btn exit-intent-stay" onclick="hideExitIntent()">
+          <span class="btn-glitch">Stay & Explore</span>
+        </button>
+        <button class="exit-intent-btn exit-intent-leave" onclick="confirmExit()">
+          <span class="btn-glitch">Leave Anyway</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
 </body>
 </html> 
