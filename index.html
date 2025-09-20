@@ -5312,58 +5312,23 @@
 
   </script>
   
-  <!-- Exit Intent Detection Script -->
+  <!-- Exit Intent Detection Script - Back Button Only -->
   <script>
-    // Exit Intent Detection System
+    // Exit Intent Detection System - Back Button Only
     let exitIntentShown = false;
     let exitIntentCooldown = false;
     
-    // Desktop: Mouse movement detection
-    document.addEventListener('mousemove', (e) => {
-      if (e.clientY <= 5 && !exitIntentShown && !exitIntentCooldown) {
-        showExitIntent();
-      }
-    });
-    
-    // Mobile & Desktop: Visibility API (tab switching, app switching)
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && !exitIntentShown && !exitIntentCooldown) {
-        showExitIntent();
-      }
-    });
-    
-    // Mobile & Desktop: Beforeunload (closing tab/window)
-    window.addEventListener('beforeunload', (e) => {
+    // Detect back button press (mobile and desktop)
+    window.addEventListener('popstate', (e) => {
       if (!exitIntentShown && !exitIntentCooldown) {
         showExitIntent();
-        // Prevent immediate close on some browsers
-        e.preventDefault();
-        e.returnValue = '';
+        // Push state back to prevent actual navigation
+        history.pushState(null, null, location.href);
       }
     });
     
-    // Mobile: Touch swipe detection (app switching gesture)
-    let startY = 0;
-    let startX = 0;
-    
-    document.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
-      startX = e.touches[0].clientX;
-    });
-    
-    document.addEventListener('touchmove', (e) => {
-      if (!exitIntentShown && !exitIntentCooldown) {
-        const currentY = e.touches[0].clientY;
-        const currentX = e.touches[0].clientX;
-        const diffY = startY - currentY;
-        const diffX = Math.abs(startX - currentX);
-        
-        // Detect upward swipe (app switching gesture) or edge swipe
-        if ((diffY > 100 && diffX < 100) || currentY < 50) {
-          showExitIntent();
-        }
-      }
-    });
+    // Push initial state to enable back button detection
+    history.pushState(null, null, location.href);
     
     // Show exit intent overlay
     function showExitIntent() {
@@ -5373,7 +5338,7 @@
       const overlay = document.getElementById('exit-intent-overlay');
       if (overlay) {
         overlay.classList.add('active');
-        log('🚪 Exit intent detected - showing overlay');
+        log('🚪 Back button pressed - showing overlay');
       }
     }
     
@@ -5388,7 +5353,7 @@
         exitIntentCooldown = true;
         setTimeout(() => {
           exitIntentCooldown = false;
-        }, 5000); // 5 second cooldown
+        }, 3000); // 3 second cooldown
       }
     }
     
@@ -5396,8 +5361,7 @@
     function confirmExit() {
       log('👋 User confirmed exit');
       // Allow the page to unload
-      window.removeEventListener('beforeunload', arguments.callee);
-      window.location.href = 'about:blank';
+      window.history.back();
     }
     
     // Reset exit intent when user interacts with page
