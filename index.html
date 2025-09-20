@@ -4783,6 +4783,13 @@
             };
             // Reset any UI state
             stopKenBurnsReveal();
+            
+            // Restore background music if it was playing before
+            if (isPlaying && (audioElement || audioContext)) {
+              startPlayback();
+              log('🎵 Background music restored after recall more');
+            }
+            
             log('✅ Ready for new memory generation');
           };
           recallMoreBtn.querySelector('.btn-glitch').setAttribute('data-text', 'Recall More');
