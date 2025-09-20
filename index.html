@@ -4784,10 +4784,37 @@
             // Reset any UI state
             stopKenBurnsReveal();
             
-            // Restore background music if it was playing before
-            if (isPlaying && (audioElement || audioContext)) {
-              startPlayback();
-              log('🎵 Background music restored after recall more');
+            // Restore background music - check both state and toggle button
+            const audioToggle = document.getElementById('audio-toggle');
+            const isToggleOn = audioToggle && audioToggle.textContent.includes('Music: ON');
+            
+            if (isToggleOn || isPlaying) {
+              // Initialize audio if needed
+              if (!audioElement && !audioContext) {
+                await initAudio();
+              }
+              
+              // Check if audio is actually paused and needs resuming
+              if (usingAudioFiles && audioElement && audioElement.paused) {
+                audioElement.play().then(() => {
+                  isPlaying = true;
+                  log('🎵 Background music resumed after recall more');
+                }).catch(error => {
+                  log('❌ Failed to resume background music:', error);
+                });
+              } else if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                  isPlaying = true;
+                  log('🎵 Audio context resumed after recall more');
+                }).catch(error => {
+                  log('❌ Failed to resume audio context:', error);
+                });
+              } else if (!isPlaying) {
+                startPlayback();
+                log('🎵 Background music started after recall more');
+              } else {
+                log('🎵 Background music already playing');
+              }
             }
             
             log('✅ Ready for new memory generation');
