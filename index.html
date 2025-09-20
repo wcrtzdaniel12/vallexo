@@ -1951,8 +1951,9 @@
     
     // Initialize audio on page load with better error handling and default to ON
     window.addEventListener('load', function() {
-      // Don't set playing state until audio is actually working
-      document.getElementById('audio-toggle').textContent = '♪ LOADING...';
+      // Set default state to ON
+      isPlaying = true;
+      document.getElementById('audio-toggle').textContent = '♪ ON';
       document.getElementById('audio-toggle').classList.remove('muted');
       
       // Small delay to ensure page is fully loaded
@@ -1963,23 +1964,15 @@
             if ((usingAudioFiles && audioElement) || (!usingAudioFiles && audioContext)) {
               const success = await startPlayback();
               if (success) {
-                isPlaying = true;
-                document.getElementById('audio-toggle').textContent = '♪ ON';
                 log('Background music auto-started successfully');
               } else {
-                isPlaying = false;
-                document.getElementById('audio-toggle').textContent = '♪ OFF';
-                log('Background music auto-start failed');
+                log('Background music needs user interaction to start');
               }
             } else {
-              isPlaying = false;
-              document.getElementById('audio-toggle').textContent = '♪ OFF';
-              log('Audio system not properly initialized');
+              log('Background music needs user interaction to start');
             }
           }
         } catch (error) {
-          isPlaying = false;
-          document.getElementById('audio-toggle').textContent = '♪ OFF';
           log('Auto-start failed, will start on user interaction:', error);
         }
       }, 500);
@@ -4791,32 +4784,25 @@
             // Reset any UI state
             stopKenBurnsReveal();
             
-            // Restore background music - simple approach
-            const audioToggle = document.getElementById('audio-toggle');
-            const isToggleOn = audioToggle && audioToggle.textContent.includes('♪ ON');
-            
-            if (isToggleOn || isPlaying) {
-              // Simple resume if audio exists and is paused
+            // Restore background music after recall more
+            if (isPlaying) {
+              // Try to resume if audio is paused
               if (usingAudioFiles && audioElement && audioElement.paused) {
                 audioElement.play().then(() => {
-                  isPlaying = true;
                   log('🎵 Background music resumed after recall more');
                 }).catch(error => {
                   log('❌ Failed to resume background music:', error);
                 });
               } else if (audioContext && audioContext.state === 'suspended') {
                 audioContext.resume().then(() => {
-                  isPlaying = true;
                   log('🎵 Audio context resumed after recall more');
                 }).catch(error => {
                   log('❌ Failed to resume audio context:', error);
                 });
-              } else if (audioElement || audioContext) {
-                // Try to start playback if audio system exists
+              } else {
+                // Try to start playback
                 startPlayback();
                 log('🎵 Background music restored after recall more');
-              } else {
-                log('🎵 No audio system available to restore');
               }
             }
             
