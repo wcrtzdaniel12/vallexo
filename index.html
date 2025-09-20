@@ -1475,7 +1475,7 @@
     }
 
     /* Hide normal paragraph while reveal is active */
-          .hidden-during-reveal { visibility: hidden; }
+    .hidden-during-reveal { visibility: hidden; }
       
       /* PayPal Button Styles */
       .paypal-container {
@@ -1534,7 +1534,7 @@
         margin: 0;
         line-height: 1.5;
       }
-    </style>
+  </style>
           <!-- PayPal SDK with embedded flow support -->
         <script src="https://www.paypal.com/sdk/js?client-id=AdHR1p_-KSZYRX7ilyNb_q2dHSAG7Q3jUTYPYYpLVahU0nISen9Tqy6o5q-7N1YZVHkTLHIeEnB7fumH&currency=USD&intent=capture&enable-funding=paypal,card&components=buttons,marks"></script>
 </head>
@@ -1791,7 +1791,7 @@
           try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             log('Created audio context for sound effect');
-                      } catch (e) {
+          } catch (e) {
               log('Could not create audio context for sound effect');
             return;
           }
@@ -4396,10 +4396,10 @@
         if (MediaRecorder.isTypeSupported(format.mimeType)) {
           options = { mimeType: format.mimeType };
           console.log(`📱 Using ${format.name} for ${isMobileDevice ? 'mobile' : 'desktop'} recording`);
-          break;
-        }
-      }
-      
+                break;
+              }
+            }
+            
       // Fallback if no specific format is supported
       if (!options.mimeType) {
         // Try basic formats without codec specification
@@ -4408,11 +4408,11 @@
           if (MediaRecorder.isTypeSupported(format)) {
             options = { mimeType: format };
             console.log(`📱 Using basic ${format} as fallback`);
-            break;
-          }
-        }
-      }
-      
+                  break;
+                }
+              }
+            }
+            
       // Final fallback: let browser choose
       if (!options.mimeType) {
         options = {}; // Let browser choose default
