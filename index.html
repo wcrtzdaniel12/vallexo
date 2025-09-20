@@ -4689,6 +4689,15 @@
     // Emotional outro screen functions
     function showOutroScreen() {
               log('🎭 Showing emotional outro screen');
+      
+      // Debug background music state
+      log('🎵 Background music state check:');
+      log('  - isPlaying:', isPlaying);
+      log('  - audioElement exists:', !!audioElement);
+      log('  - audioElement paused:', audioElement ? audioElement.paused : 'N/A');
+      log('  - audioContext exists:', !!audioContext);
+      log('  - audioContext state:', audioContext ? audioContext.state : 'N/A');
+      
       const overlay = document.getElementById('outro-overlay');
       if (overlay) {
         overlay.classList.add('active');
