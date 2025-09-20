@@ -1580,11 +1580,7 @@
     let currentTrackIndex = 0;
     let audioElement = null;
     let audioFiles = [
-      'audio/track1.mp3',
-      'audio/track2.mp3',
-      'audio/track3.mp3', 
-      'audio/track4.mp3',
-      'audio/track5.mp3'
+      'audio/track1.mp3'
     ];
     let isPlaying = false;
     let volume = 0.5;
@@ -1716,13 +1712,13 @@
         audioElement.volume = volume;
         audioElement.preload = 'auto';
         
-        audioElement.addEventListener('ended', playNextTrack);
+        audioElement.loop = true;
         audioElement.addEventListener('error', handleAudioError);
         audioElement.addEventListener('canplaythrough', () => {
           log('Audio track loaded successfully');
         });
         
-        loadTrack(currentTrackIndex);
+        loadTrack(0); // Always load track 1
         log('Audio file playlist system initialized');
         return true;
       } catch (error) {
@@ -1799,27 +1795,6 @@
         audioElement.oncanplaythrough = () => {
           log('Track loaded successfully:', audioFiles[index]);
         };
-      }
-    }
-    
-    // Play next track
-    function playNextTrack() {
-      if (usingAudioFiles && audioFiles.length > 0) {
-        currentTrackIndex = (currentTrackIndex + 1) % audioFiles.length;
-        log('Moving to track', currentTrackIndex + 1, 'of', audioFiles.length);
-        loadTrack(currentTrackIndex);
-        if (isPlaying && audioElement) {
-          audioElement.play().catch(error => {
-            log('Auto-play failed for next track:', error);
-            // If auto-play fails, try the next track
-            setTimeout(() => {
-              playNextTrack();
-            }, 2000);
-          });
-        }
-      } else {
-        log('No more tracks available, stopping playlist');
-        stopPlayback();
       }
     }
     
