@@ -4770,6 +4770,12 @@
             
             // Restore background music after recall more
             if (isPlaying) {
+              // CRITICAL: Restore loop property that was lost during recording
+              if (usingAudioFiles && audioElement) {
+                audioElement.loop = true;
+                log('🔄 Restored audio loop property to true');
+              }
+              
               // Try to resume if audio is paused
               if (usingAudioFiles && audioElement && audioElement.paused) {
                 audioElement.play().then(() => {
